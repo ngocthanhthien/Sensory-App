@@ -247,14 +247,18 @@ const CONFIG = {
   ERR_APPEARANCE:['màu sậm','hai màu','lumpy (lump dầu)','hạt cháy','bụi','bề mặt bị rổ','vụn'],
   ERR_TASTE:['chemical','overdried','less aroma','more aroma','chua','đắng','cook']
 };
-const STORAGE_KEY='ild_sensory_v1', THEME_KEY='ild_sensory_theme';
+const FIREBASE_CONFIG={apiKey:'AIzaSyCe9LogdqmyrQla7lJxxDxhXkMf_WjLRfI',authDomain:'sensory-app-72a44.firebaseapp.com',
+  projectId:'sensory-app-72a44',storageBucket:'sensory-app-72a44.firebasestorage.app',messagingSenderId:'846967567706',
+  appId:'1:846967567706:web:70166fa047ff6e57f66f63'};
+const CLOUD_ALLOWED_EMAIL='binhdangthanh94@gmail.com';
+const STORAGE_KEY='ild_sensory_v1', THEME_KEY='ild_sensory_theme', CLOUD_AUTO_KEY='ild_sensory_cloud_auto', CLOUD_CLIENT_KEY='ild_sensory_cloud_client';
 
 /* ===================== [STATE] ===================== */
 let STATE={panellists:[],products:[],recipes:[],pos:[],batches:[],itemCodes:[],sets:[],currentSetId:null,
   currentPanellistId:null,audit:[]};
 
 /* ===================== [STORAGE] (P3) ===================== */
-function persist(){
+function persist(skipCloud=false){
   try{
     const data={panellists:STATE.panellists,products:STATE.products,recipes:STATE.recipes,
       pos:STATE.pos,batches:STATE.batches,itemCodes:STATE.itemCodes,sets:STATE.sets,currentSetId:STATE.currentSetId,
@@ -262,9 +266,10 @@ function persist(){
     localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
     const t=new Date().toLocaleTimeString('vi-VN');
     const el=document.getElementById('saveState'); if(el)el.textContent='Tự lưu: '+t;
+    if(!skipCloud)cloudQueuePush();
   }catch(e){ toast('Lỗi lưu dữ liệu: '+e.message,'err'); }
 }
-function save(){ persist(); }               // alias dùng khắp nơi
+function save(skipCloud=false){ persist(skipCloud); }               // alias dùng khắp nơi
 function loadState(){
   try{
     const raw=localStorage.getItem(STORAGE_KEY); if(!raw)return false;
@@ -923,6 +928,82 @@ function renderGuide(){
   </div>`;
 }
 
+/* ===================== [CLOUD] Firebase Auth + Firestore ===================== */
+const CLOUD={ready:false,loading:true,error:'',user:null,db:null,auth:null,m:null,unsub:null,timer:null,
+  applying:false,localDirty:false,lastSync:'',auto:localStorage.getItem(CLOUD_AUTO_KEY)==='1',
+  clientId:localStorage.getItem(CLOUD_CLIENT_KEY)||uid('client')};
+localStorage.setItem(CLOUD_CLIENT_KEY,CLOUD.clientId);
+function cloudData(){return {schemaVersion:1,panellists:STATE.panellists,products:STATE.products,recipes:STATE.recipes,
+  pos:STATE.pos,batches:STATE.batches,itemCodes:STATE.itemCodes,sets:STATE.sets,currentSetId:STATE.currentSetId,audit:STATE.audit};}
+function cloudStatus(){
+  if(CLOUD.loading)return 'Đang nạp Firebase…';
+  if(CLOUD.error)return 'Lỗi Firebase: '+CLOUD.error;
+  if(!CLOUD.user)return 'Chưa đăng nhập';
+  return 'Đã đăng nhập: '+CLOUD.user.email+(CLOUD.lastSync?' · Đồng bộ '+CLOUD.lastSync:'')+(CLOUD.auto?' · Tự động bật':'');
+}
+function cloudRefreshSettings(){if($('#tab-settings').classList.contains('active'))renderSettings();}
+async function firebaseInit(){
+  try{
+    const [appM,authM,fsM]=await Promise.all([
+      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js'),
+      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js')]);
+    const app=appM.initializeApp(FIREBASE_CONFIG);CLOUD.auth=authM.getAuth(app);CLOUD.db=fsM.getFirestore(app);CLOUD.m={...authM,...fsM};
+    await authM.setPersistence(CLOUD.auth,authM.browserLocalPersistence);
+    authM.onAuthStateChanged(CLOUD.auth,async user=>{
+      if(user&&user.email?.toLowerCase()!==CLOUD_ALLOWED_EMAIL){await authM.signOut(CLOUD.auth);CLOUD.error='Tài khoản không được cấp quyền';toast(CLOUD.error,'err');return;}
+      CLOUD.user=user||null;CLOUD.ready=true;CLOUD.loading=false;CLOUD.error='';
+      if(CLOUD.user&&CLOUD.auto)cloudStartListener();else cloudStopListener();cloudRefreshSettings();
+    });
+  }catch(e){CLOUD.loading=false;CLOUD.error=e.message||'Không tải được SDK';cloudRefreshSettings();}
+}
+async function cloudSignIn(){
+  if(!CLOUD.ready||!CLOUD.auth)return toast('Firebase chưa sẵn sàng','err');
+  try{const p=new CLOUD.m.GoogleAuthProvider();p.setCustomParameters({login_hint:CLOUD_ALLOWED_EMAIL,prompt:'select_account'});
+    await CLOUD.m.signInWithPopup(CLOUD.auth,p);toast('Đã đăng nhập Firebase','ok');}
+  catch(e){if(e.code!=='auth/popup-closed-by-user')toast('Đăng nhập lỗi: '+e.message,'err');}
+}
+async function cloudSignOut(){if(CLOUD.auth){cloudStopListener();await CLOUD.m.signOut(CLOUD.auth);toast('Đã đăng xuất Firebase');}}
+function cloudDoc(){return CLOUD.m.doc(CLOUD.db,'ild_sensory','shared_state');}
+function cloudQueuePush(){
+  if(CLOUD.applying||!CLOUD.auto||!CLOUD.user)return;CLOUD.localDirty=true;clearTimeout(CLOUD.timer);
+  CLOUD.timer=setTimeout(()=>cloudPush(false),1200);
+}
+async function cloudPush(manual=true){
+  if(!CLOUD.user)return toast('Đăng nhập Firebase trước','err');
+  clearTimeout(CLOUD.timer);CLOUD.localDirty=true;
+  try{
+    if(manual){logAudit('Đẩy dữ liệu lên Firebase');persist(true);}
+    const data=cloudData(),bytes=new Blob([JSON.stringify(data)]).size;if(bytes>900000)throw new Error('Dữ liệu gần vượt giới hạn 1 MB của một document');
+    await CLOUD.m.setDoc(cloudDoc(),{...data,updatedAt:CLOUD.m.serverTimestamp(),updatedBy:CLOUD.user.email,clientId:CLOUD.clientId},{merge:false});
+    CLOUD.localDirty=false;CLOUD.lastSync=new Date().toLocaleTimeString('vi-VN');cloudRefreshSettings();if(manual)toast('Đã đẩy dữ liệu lên Firebase','ok');
+  }catch(e){CLOUD.localDirty=false;CLOUD.error=e.message;cloudRefreshSettings();toast('Đồng bộ lỗi: '+e.message,'err');}
+}
+function cloudApply(d){
+  if(!d||!Array.isArray(d.sets))throw new Error('Dữ liệu cloud không hợp lệ');CLOUD.applying=true;
+  STATE.panellists=d.panellists||[];STATE.products=d.products||[];STATE.recipes=d.recipes||[];STATE.pos=d.pos||[];
+  STATE.batches=d.batches||[];STATE.itemCodes=d.itemCodes||[];STATE.sets=d.sets||[];STATE.currentSetId=d.currentSetId||null;
+  STATE.currentPanellistId=null;STATE.audit=d.audit||[];persist(true);CLOUD.applying=false;CLOUD.lastSync=new Date().toLocaleTimeString('vi-VN');
+  $('#hdrSet').textContent=setLabel(curSet());const active=$('.panel.active')?.id||'tab-scoring';switchTab(active);cloudRefreshSettings();
+}
+async function cloudPull(){
+  if(!CLOUD.user)return toast('Đăng nhập Firebase trước','err');
+  try{const snap=await CLOUD.m.getDoc(cloudDoc());if(!snap.exists())return toast('Firebase chưa có dữ liệu','err');
+    confirmAsk('Tải từ Firebase sẽ thay thế dữ liệu đang có trên máy. Tiếp tục?','Tải xuống',()=>{try{cloudApply(snap.data());toast('Đã tải dữ liệu từ Firebase','ok');}catch(e){toast(e.message,'err');}});
+  }catch(e){toast('Tải dữ liệu lỗi: '+e.message,'err');}
+}
+function cloudStopListener(){if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null;}}
+function cloudStartListener(){
+  cloudStopListener();if(!CLOUD.user||!CLOUD.auto)return;
+  CLOUD.unsub=CLOUD.m.onSnapshot(cloudDoc(),snap=>{if(!snap.exists()||CLOUD.localDirty)return;const d=snap.data();
+    if(d.clientId===CLOUD.clientId)return;try{cloudApply(d);toast('Đã nhận dữ liệu mới từ Firebase','ok');}catch(e){toast(e.message,'err');}},
+    e=>{CLOUD.error=e.message;cloudRefreshSettings();});
+}
+function cloudToggleAuto(){
+  if(!CLOUD.user)return toast('Đăng nhập Firebase trước','err');CLOUD.auto=!CLOUD.auto;localStorage.setItem(CLOUD_AUTO_KEY,CLOUD.auto?'1':'0');
+  if(CLOUD.auto){cloudStartListener();cloudPush(false);}else cloudStopListener();cloudRefreshSettings();toast(CLOUD.auto?'Đã bật tự động đồng bộ':'Đã tắt tự động đồng bộ','ok');
+}
+
 /* ===================== [SETTINGS] (P3/P5) ===================== */
 function renderSettings(){
   const box=$('#settingsBody');
@@ -930,6 +1011,14 @@ function renderSettings(){
   box.innerHTML=`
     <div class="card"><h3>Thông số hệ thống</h3>
       <p>Ngưỡng đạt: <b>${CONFIG.PASS_THRESHOLD}%</b> · Điểm Out=3, Just In=0.5, In=0 · Tối thiểu <b>${CONFIG.MIN_PANELLIST}</b> panellist/mẫu.</p></div>
+    <div class="card"><div class="toolbar"><h3 style="margin:0">Đồng bộ Firebase</h3><span class="spacer"></span>
+      ${CLOUD.user?`<button class="btn sec sm" onclick="cloudSignOut()">Đăng xuất</button>`:`<button class="btn sm" onclick="cloudSignIn()" ${CLOUD.ready?'':'disabled'}>Đăng nhập Google</button>`}</div>
+      <p><b>${esc(cloudStatus())}</b></p>
+      <div class="toolbar" style="margin-top:12px">
+        <button class="btn sm" onclick="cloudPush(true)" ${CLOUD.user?'':'disabled'}>↑ Đẩy dữ liệu lên Firebase</button>
+        <button class="btn sec sm" onclick="cloudPull()" ${CLOUD.user?'':'disabled'}>↓ Tải dữ liệu từ Firebase</button>
+        <button class="btn sec sm" onclick="cloudToggleAuto()" ${CLOUD.user?'':'disabled'}>${CLOUD.auto?'Tắt':'Bật'} tự động đồng bộ</button></div>
+      <p class="hint">LocalStorage vẫn là bản dự phòng offline. Lần đầu hãy đẩy dữ liệu lên Firebase, sau đó bật tự động đồng bộ giữa các thiết bị.</p></div>
     <div class="row c2">
       <div class="card"><h3>Sao lưu JSON</h3>
         <button class="btn" onclick="exportBackup()">⤓ Sao lưu JSON</button>
@@ -981,7 +1070,7 @@ function boot(){
 (function init(){
   document.body.dataset.theme=localStorage.getItem(THEME_KEY)||'light';
   const loaded=loadState(); if(!loaded){ seed(); persist(); }
-  boot();
+  boot();firebaseInit();
 })();
 </script>
 </body>
