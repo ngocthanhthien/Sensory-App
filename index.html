@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iLD Sensory Entry – Nhập kết quả nếm</title>
+<!-- ============================================================
+     iLD SENSORY ENTRY  ·  Hoàn chỉnh P1→P5
+     P1 khung · P2 logic · P3 lưu trữ/xuất-nhập · P4 polish · P5 validation
+     Vùng mã: [CONFIG] [STATE] [STORAGE] [UTIL] [AUTH] [THEME]
+              [SCORING] [SETUP] [SUMMARY] [LOOKUP] [MASTER]
+              [ITEMS] [IMPEXP] [PRINT] [SETTINGS] [AUDIT] [NAV] [SEED] [BOOT]
+     Chạy offline (1 file). Không dùng thư viện ngoài.
+     ============================================================ -->
+<style>
+/* ===================== [STYLE] Industrial Dashboard · iLD ===================== */
+:root{
+  --ild-red:#E30613;--ild-red-dark:#B00610;--ink:#1c1f24;--panel:#fff;
+  --bg:#eef1f4;--bg-dark:#20242b;--bg-dark-2:#2a2f38;--line:#d3d9e0;
+  --muted:#6b7480;--ok:#1a8f3c;--warn:#d98a00;--fail:#d21c1c;--text:#1c1f24;
+  --radius:10px;--shadow:0 1px 3px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.08);
+  --font:'Segoe UI',Roboto,Arial,sans-serif;
+}
+body[data-theme="dark"]{
+  --ink:#e7ebf0;--panel:#252a31;--bg:#161a20;--bg-dark:#0f1216;--bg-dark-2:#1b1f25;
+  --line:#333a44;--muted:#9aa4b0;--text:#e7ebf0;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:var(--font);color:var(--text);background:var(--bg);
+  display:flex;flex-direction:column;height:100vh;overflow:hidden}
+header{display:flex;align-items:center;gap:14px;background:var(--ink);color:#fff;
+  padding:0 16px;height:58px;flex:none;box-shadow:var(--shadow);z-index:20}
+body[data-theme="dark"] header{background:#0b0d10}
+.logo{font-weight:800;font-size:22px;letter-spacing:.5px;background:var(--ild-red);color:#fff;padding:4px 10px;border-radius:6px}
+.app-title{font-size:16px;font-weight:600;color:#fff}
+.app-title small{display:block;font-size:11px;color:#9aa4b0;font-weight:400}
+.header-spacer{flex:1}
+.set-badge{font-size:12px;background:var(--bg-dark-2);border:1px solid #3a404a;padding:6px 12px;border-radius:20px;color:#cfd6df}
+.set-badge b{color:#fff}
+.role-pill{display:flex;align-items:center;gap:8px;font-size:13px;background:var(--bg-dark-2);
+  border:1px solid #3a404a;padding:5px 12px;border-radius:20px;color:#cfd6df}
+.role-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.hbtn{background:var(--ild-red);color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.hbtn.ghost{background:transparent;border:1px solid #3a404a;color:#cfd6df}
+.hbtn:hover{background:var(--ild-red-dark)}.hbtn.ghost:hover{background:var(--bg-dark-2)}
+.shell{display:flex;flex:1;min-height:0}
+nav.side{width:250px;background:var(--bg-dark);color:#cfd6df;flex:none;overflow-y:auto;padding:10px 0}
+.nav-group{padding:14px 18px 6px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#69707c}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 18px;cursor:pointer;font-size:14px;
+  border-left:3px solid transparent;color:#cfd6df;user-select:none}
+.nav-item .ico{width:22px;text-align:center;font-size:16px}
+.nav-item .lock{margin-left:auto;font-size:11px;opacity:.6}
+.nav-item:hover{background:var(--bg-dark-2)}
+.nav-item.active{background:var(--bg-dark-2);border-left-color:var(--ild-red);color:#fff;font-weight:600}
+main{flex:1;min-width:0;overflow-y:auto;padding:22px 26px}
+.panel{display:none}.panel.active{display:block;animation:fade .18s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.page-head{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.page-head h1{font-size:20px;margin:0}
+.page-head .tag{font-size:11px;background:#e3e8ee;color:var(--muted);padding:3px 10px;border-radius:20px}
+body[data-theme="dark"] .page-head .tag{background:#31373f}
+.page-head .form-code{margin-left:auto;font-size:12px;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.card h3{margin:0 0 12px;font-size:15px}
+.card p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.6}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.kpi .num{font-size:26px;font-weight:800}.kpi .lbl{font-size:12px;color:var(--muted);margin-top:2px}
+.kpi.ok .num{color:var(--ok)}.kpi.fail .num{color:var(--fail)}.kpi.warn .num{color:var(--warn)}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700}
+.badge.pass{background:#e5f5ea;color:var(--ok)}.badge.fail{background:#fbe6e6;color:var(--fail)}.badge.gray{background:#e9edf1;color:var(--muted)}
+body[data-theme="dark"] .badge.pass{background:#173d24}body[data-theme="dark"] .badge.fail{background:#3d1a1a}body[data-theme="dark"] .badge.gray{background:#2b3038}
+.ph{border:1.5px dashed var(--line);border-radius:var(--radius);padding:26px;text-align:center;color:var(--muted);font-size:13.5px;background:var(--panel)}
+.ph .big{font-size:30px;display:block;margin-bottom:8px;opacity:.5}
+label.f{display:block;font-size:12.5px;font-weight:600;margin:0 0 4px;color:var(--text)}
+input.t,select.s,textarea.t{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-family:var(--font);font-size:13.5px;background:var(--panel);color:var(--text)}
+textarea.t{resize:vertical;min-height:38px}
+.row{display:grid;gap:12px;margin-bottom:12px}
+.row.c2{grid-template-columns:1fr 1fr}.row.c3{grid-template-columns:1fr 1fr 1fr}.row.c4{grid-template-columns:repeat(4,1fr)}
+.btn{background:var(--ild-red);color:#fff;border:none;border-radius:7px;padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--ild-red-dark)}
+.btn.sec{background:var(--bg);color:var(--text);border:1px solid var(--line)}.btn.sec:hover{background:var(--line)}
+.btn.sm{padding:6px 11px;font-size:12.5px}
+.btn.danger{background:#fbe6e6;color:var(--fail);border:1px solid #f2c9c9}
+body[data-theme="dark"] .btn.danger{background:#3d1a1a}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.toolbar .spacer{flex:1}
+table.grid{width:100%;border-collapse:collapse;font-size:13px;background:var(--panel)}
+table.grid th,table.grid td{border:1px solid var(--line);padding:8px 10px;text-align:center;vertical-align:middle}
+table.grid th{background:var(--bg);font-weight:600;position:sticky;top:0}
+table.grid td.l,table.grid th.l{text-align:left}
+table.grid tr:nth-child(even) td{background:var(--bg)}
+.tbl-wrap{max-height:60vh;overflow:auto;border:1px solid var(--line);border-radius:var(--radius)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg label{padding:8px 14px;font-size:12.5px;cursor:pointer;background:var(--panel);border-right:1px solid var(--line);user-select:none;color:var(--text)}
+.seg label:last-child{border-right:none}
+.seg label.in.on{background:#e5f5ea;color:var(--ok);font-weight:700}
+.seg label.ji.on{background:#fdf3e0;color:var(--warn);font-weight:700}
+.seg label.out.on{background:#fbe6e6;color:var(--fail);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{font-size:11.5px;padding:4px 9px;border:1px solid var(--line);border-radius:16px;cursor:pointer;background:var(--panel);color:var(--text)}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.err-box{margin-top:8px;display:none}.err-box.show{display:block}
+.err-box .lab{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 2px}
+.overlay{position:fixed;inset:0;background:rgba(15,18,22,.55);display:none;align-items:center;justify-content:center;z-index:50}
+.overlay.show{display:flex}
+.modal{background:var(--panel);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3);width:380px;max-width:92vw;padding:22px}
+.modal h3{margin:0 0 4px;font-size:16px}.modal p{margin:0 0 14px;font-size:13px;color:var(--muted)}
+.modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px;font-size:13.5px;opacity:0;pointer-events:none;transition:.25s;z-index:60}
+#toast.show{opacity:1}#toast.ok{background:var(--ok)}#toast.err{background:var(--fail)}
+footer{flex:none;background:var(--bg-dark-2);border-top:1px solid var(--line);font-size:11.5px;color:#9aa4b0;padding:6px 18px;display:flex;gap:16px}
+footer .spacer{flex:1}
+.hint{font-size:12px;color:var(--muted);margin-top:6px}
+.pill-done{font-size:11.5px;background:#e5f5ea;color:var(--ok);padding:3px 9px;border-radius:14px;margin:2px;display:inline-block}
+.pill-wait{font-size:11.5px;background:var(--bg);color:var(--muted);padding:3px 9px;border-radius:14px;margin:2px;display:inline-block;border:1px solid var(--line)}
+.audit{font-size:12.5px;max-height:280px;overflow:auto}
+.audit div{padding:5px 0;border-bottom:1px solid var(--line);color:var(--muted)}
+.audit b{color:var(--text)}
+@media(max-width:860px){
+  nav.side{position:fixed;left:0;top:58px;bottom:0;z-index:15;transform:translateX(-100%);transition:.2s}
+  nav.side.open{transform:none}.menu-toggle{display:inline-flex!important}
+  .grid-3{grid-template-columns:1fr}.row.c2,.row.c3,.row.c4{grid-template-columns:1fr}
+  .app-title small{display:none}
+}
+.menu-toggle{display:none;background:transparent;border:1px solid #3a404a;color:#fff;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:16px}
+/* ===================== [PRINT] xuất PDF ===================== */
+#printArea{display:none}
+@media print{
+  .noprint{display:none!important}
+  body{height:auto;overflow:visible;background:#fff;color:#000}
+  #printArea{display:block!important;padding:0}
+  #printArea table{width:100%;border-collapse:collapse;font-size:12px}
+  #printArea th,#printArea td{border:1px solid #444;padding:5px 7px;text-align:center}
+  #printArea td.l{text-align:left}
+  #printArea h2{margin:0 0 2px}#printArea .meta{font-size:12px;margin-bottom:10px;color:#333}
+}
+</style>
+</head>
+<body data-theme="light">
+
+<!-- ===================== HEADER ===================== -->
+<header class="noprint">
+  <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+  <span class="logo">iLD</span>
+  <div class="app-title">Sensory Entry<small>Nhập &amp; tổng hợp kết quả nếm · ILD Coffee Vietnam</small></div>
+  <div class="header-spacer"></div>
+  <span class="set-badge">Set: <b id="hdrSet">— chưa mở —</b></span>
+  <button class="hbtn ghost" onclick="toggleTheme()" title="Sáng/Tối">🌓</button>
+</header>
+
+<div class="shell noprint">
+  <!-- ===================== SIDEBAR ===================== -->
+  <nav class="side" id="sidebar">
+    <div class="nav-group">Tác nghiệp</div>
+    <div class="nav-item active" data-tab="tab-scoring"><span class="ico">✍️</span> Chấm điểm nếm</div>
+    <div class="nav-item" data-tab="tab-setup"><span class="ico">🧪</span> Tạo Set nếm</div>
+    <div class="nav-item" data-tab="tab-summary"><span class="ico">📊</span> Tổng hợp &amp; Báo cáo</div>
+    <div class="nav-group">Tra cứu</div>
+    <div class="nav-item" data-tab="tab-lookup"><span class="ico">🔍</span> Truy xuất kết quả</div>
+    <div class="nav-group">Master Data</div>
+    <div class="nav-item" data-tab="tab-panellist"><span class="ico">👥</span> Quản lý Panellist</div>
+    <div class="nav-item" data-tab="tab-product"><span class="ico">📦</span> SP · Recipe · PO · Batch</div>
+    <div class="nav-item" data-tab="tab-items"><span class="ico">🔗</span> Items Code</div>
+    <div class="nav-group">Kiến thức</div>
+    <div class="nav-item" data-tab="tab-sensory"><span class="ico">☕</span> Sensory Guide</div>
+    <div class="nav-group">Hệ thống</div>
+    <div class="nav-item" data-tab="tab-guide"><span class="ico">📖</span> Hướng dẫn sử dụng</div>
+    <div class="nav-item" data-tab="tab-settings"><span class="ico">⚙️</span> Cài đặt</div>
+  </nav>
+
+  <!-- ===================== MAIN ===================== -->
+  <main>
+    <section class="panel active" id="tab-scoring">
+      <div class="page-head"><h1>Chấm điểm nếm</h1><span class="tag">Panellist · F.071</span><span class="form-code">QA.F.071 v4</span></div>
+      <div id="scoringBody"></div>
+    </section>
+    <section class="panel" id="tab-setup">
+      <div class="page-head"><h1>Tạo Set nếm</h1><span class="tag">QA · wizard 2 bước</span></div>
+      <div id="setupBody"></div>
+    </section>
+    <section class="panel" id="tab-summary">
+      <div class="page-head"><h1>Tổng hợp &amp; Báo cáo</h1><span class="tag">QA · F.072</span><span class="form-code">QA.F.072 v4</span></div>
+      <div id="summaryBody"></div>
+    </section>
+    <section class="panel" id="tab-lookup">
+      <div class="page-head"><h1>Truy xuất kết quả</h1><span class="tag">QA</span></div>
+      <div id="lookupBody"></div>
+    </section>
+    <section class="panel" id="tab-panellist">
+      <div class="page-head"><h1>Quản lý Panellist</h1><span class="tag">Master Data</span></div>
+      <div id="panellistBody"></div>
+    </section>
+    <section class="panel" id="tab-product">
+      <div class="page-head"><h1>Sản phẩm · Recipe · PO · Batch</h1><span class="tag">Master Data</span></div>
+      <div id="productBody"></div>
+    </section>
+    <section class="panel" id="tab-items">
+      <div class="page-head"><h1>Quản lý Items Code</h1><span class="tag">Master Data</span></div>
+      <div id="itemsBody"></div>
+    </section>
+    <section class="panel" id="tab-sensory">
+      <div class="page-head"><h1>Sensory Guide</h1><span class="tag">Kiến thức cảm quan</span>
+        <span class="form-code">Tóm tắt QA.P.009 · SOP.056/001/104</span></div>
+      <div id="sensoryBody"></div>
+    </section>
+    <section class="panel" id="tab-guide">
+      <div class="page-head"><h1>Hướng dẫn sử dụng</h1><span class="tag">QA</span></div>
+      <div id="guideBody"></div>
+    </section>
+    <section class="panel" id="tab-settings">
+      <div class="page-head"><h1>Cài đặt hệ thống</h1><span class="tag">Admin</span></div>
+      <div id="settingsBody"></div>
+    </section>
+  </main>
+</div>
+
+<footer class="noprint">
+  <span>iLD Sensory Entry · <b>Hoàn chỉnh P1–P5</b></span>
+  <span class="spacer"></span><span>Offline · PC &amp; iPad</span>
+  <span id="saveState">Tự lưu: —</span>
+</footer>
+
+<div id="printArea"></div>
+
+<!-- MODAL xác nhận -->
+<div class="overlay noprint" id="cfOverlay">
+  <div class="modal"><h3 id="cfTitle">Xác nhận</h3><p id="cfMsg"></p>
+    <div class="actions"><button class="btn sec" onclick="cfNo()">Huỷ</button><button class="btn" id="cfYes">Đồng ý</button></div></div>
+</div>
+<div id="toast" class="noprint"></div>
+
+<!-- input file ẩn cho import -->
+<input type="file" id="fileMaster" accept=".csv" style="display:none">
+<input type="file" id="fileBackup" accept=".json" style="display:none">
+<input type="file" id="fileSetSamples" accept=".csv" style="display:none">
+<input type="file" id="fileItems" accept=".xlsx,.xls,.csv" style="display:none">
+
+<script>
+/* ===================== [CONFIG] ===================== */
+const CONFIG = {
+  PASS_THRESHOLD:80, SCORE:{OUT:3,JUSTIN:0.5,IN:0},
+  MIN_PANELLIST:3, MAX_IMPORT_MB:3,
+  SAMPLE_TYPES:['Green coffee','Freeze-dried','Semi product','KQ','Complaint','Other'],
+  ERR_APPEARANCE:['màu sậm','hai màu','lumpy (lump dầu)','hạt cháy','bụi','bề mặt bị rổ','vụn'],
+  ERR_TASTE:['chemical','overdried','less aroma','more aroma','chua','đắng','cook']
+};
+const STORAGE_KEY='ild_sensory_v1', THEME_KEY='ild_sensory_theme';
+
+/* ===================== [STATE] ===================== */
+let STATE={panellists:[],products:[],recipes:[],pos:[],batches:[],itemCodes:[],sets:[],currentSetId:null,
+  currentPanellistId:null,audit:[]};
+
+/* ===================== [STORAGE] (P3) ===================== */
+function persist(){
+  try{
+    const data={panellists:STATE.panellists,products:STATE.products,recipes:STATE.recipes,
+      pos:STATE.pos,batches:STATE.batches,itemCodes:STATE.itemCodes,sets:STATE.sets,currentSetId:STATE.currentSetId,
+      audit:STATE.audit};
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+    const t=new Date().toLocaleTimeString('vi-VN');
+    const el=document.getElementById('saveState'); if(el)el.textContent='Tự lưu: '+t;
+  }catch(e){ toast('Lỗi lưu dữ liệu: '+e.message,'err'); }
+}
+function save(){ persist(); }               // alias dùng khắp nơi
+function loadState(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY); if(!raw)return false;
+    const d=JSON.parse(raw);
+    if(!d||typeof d!=='object'||!Array.isArray(d.sets))throw new Error('Cấu trúc không hợp lệ');
+    STATE.panellists=d.panellists||[];STATE.products=d.products||[];STATE.recipes=d.recipes||[];
+    STATE.pos=d.pos||[];STATE.batches=d.batches||[];STATE.itemCodes=d.itemCodes||[];STATE.sets=d.sets||[];
+    STATE.currentSetId=d.currentSetId||null;STATE.audit=d.audit||[];
+    return true;
+  }catch(e){ toast('Dữ liệu lưu bị lỗi, dùng dữ liệu mặc định','err'); return false; }
+}
+function resetAll(){ confirmAsk('Xoá TOÀN BỘ dữ liệu và nạp lại mẫu?','Xoá hết',()=>{
+  localStorage.removeItem(STORAGE_KEY); STATE={panellists:[],products:[],recipes:[],pos:[],batches:[],itemCodes:[],sets:[],currentSetId:null,currentPanellistId:null,audit:[]};
+  seed(); logAudit('Reset toàn bộ dữ liệu'); persist(); boot(); toast('Đã reset','ok'); }); }
+
+/* ===================== [UTIL] ===================== */
+const $=(s,el=document)=>el.querySelector(s);
+const uid=(p='id')=>p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const esc=s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const todayStr=()=>new Date().toISOString().slice(0,10);
+function toast(msg,type=''){const t=$('#toast');if(!t)return;t.textContent=msg;t.className='show '+type;clearTimeout(t._t);t._t=setTimeout(()=>t.className='',2400);}
+const curSet=()=>STATE.sets.find(s=>s.id===STATE.currentSetId)||null;
+function calcSample(set,no){
+  let IN=0,JI=0,OUT=0,total=0;
+  Object.values(set.scores).forEach(bp=>{const sc=bp[no];if(!sc||!sc.result)return;total++;
+    if(sc.result==='IN')IN++;else if(sc.result==='JUSTIN')JI++;else if(sc.result==='OUT')OUT++;});
+  const defect=total?(OUT*CONFIG.SCORE.OUT+JI*CONFIG.SCORE.JUSTIN)/(total*3):0;
+  const pct=total?(1-defect)*100:null;
+  return {IN,JI,OUT,total,pct,pass:pct!==null&&pct>=CONFIG.PASS_THRESHOLD};
+}
+/* modal xác nhận (P5) */
+let cfCb=null;
+function confirmAsk(msg,yesLabel,cb){ $('#cfMsg').textContent=msg; $('#cfYes').textContent=yesLabel||'Đồng ý'; cfCb=cb; $('#cfOverlay').classList.add('show'); }
+function cfNo(){ $('#cfOverlay').classList.remove('show'); cfCb=null; }
+$('#cfYes').addEventListener('click',()=>{ const c=cfCb; cfNo(); if(c)c(); });
+
+/* ===================== [AUDIT] (P5) ===================== */
+function logAudit(action){
+  STATE.audit.unshift({t:new Date().toLocaleString('vi-VN'),role:'User',action}); if(STATE.audit.length>500)STATE.audit.pop(); }
+
+/* ===================== [THEME] (P4) ===================== */
+function toggleTheme(){ const b=document.body; const dark=b.dataset.theme==='dark';
+  b.dataset.theme=dark?'light':'dark'; localStorage.setItem(THEME_KEY,b.dataset.theme); }
+
+/* ===================== [NAV] ===================== */
+const navItems=document.querySelectorAll('.nav-item');
+const panels=document.querySelectorAll('.panel');
+function switchTab(tabId){
+  panels.forEach(p=>p.classList.toggle('active',p.id===tabId));
+  navItems.forEach(n=>n.classList.toggle('active',n.dataset.tab===tabId));
+  $('#sidebar').classList.remove('open');
+  ({'tab-scoring':renderScoring,'tab-setup':renderSetup,'tab-summary':renderSummary,'tab-lookup':renderLookup,
+    'tab-panellist':renderPanellists,'tab-product':renderProducts,'tab-items':renderItems,'tab-sensory':renderSensory,'tab-guide':renderGuide,'tab-settings':renderSettings}[tabId]||(()=>{}))();
+}
+navItems.forEach(item=>item.addEventListener('click',()=>switchTab(item.dataset.tab)));
+function toggleMenu(){ $('#sidebar').classList.toggle('open'); }
+
+/* ===================== [SCORING] F.071 ===================== */
+function renderScoring(){
+  const box=$('#scoringBody'),set=curSet();
+  if(!set){ box.innerHTML=`<div class="ph"><span class="big">🧪</span>Chưa có Set nếm nào đang mở.<br>QA vào tab <b>Tạo Set nếm</b> để mở buổi nếm.</div>`; return; }
+  const opts=STATE.panellists.map(p=>`<option value="${p.id}" ${p.id===STATE.currentPanellistId?'selected':''}>${esc(p.name)} — ${esc(p.dept)}</option>`).join('');
+  const done=set.scores||{};
+  const doneList=STATE.panellists.map(p=>done[p.id]?`<span class="pill-done">✓ ${esc(p.name)}</span>`:`<span class="pill-wait">${esc(p.name)}</span>`).join('');
+  box.innerHTML=`<div class="card">
+    <div class="row c3">
+      <div><label class="f">Set đang chấm</label><input class="t" value="${esc(set.name)} · ${esc(set.date)} · ${set.shift} · ${esc(set.sampleType)}" disabled></div>
+      <div><label class="f">Panellist (người nếm)</label><select class="s" id="scPanel" onchange="scPickPanel()"><option value="">— chọn tên —</option>${opts}</select></div>
+      <div style="align-self:end"><span class="hint">Đã nộp: ${Object.keys(done).length}/${STATE.panellists.length} phiếu</span></div>
+    </div><div style="margin-top:4px">${doneList||'<span class="hint">Chưa có panellist — thêm ở Master Data</span>'}</div></div>
+    <div id="scGrid"></div>`;
+  renderScoreGrid();
+}
+function scPickPanel(){ STATE.currentPanellistId=$('#scPanel').value||null; renderScoreGrid(); }
+function renderScoreGrid(){
+  const wrap=$('#scGrid'),set=curSet(),pid=STATE.currentPanellistId;
+  if(!pid){ wrap.innerHTML=`<div class="hint">Chọn tên panellist để bắt đầu chấm.</div>`; return; }
+  scDraftInit();
+  const rows=set.samples.map(sm=>{
+    const sc=SC_DRAFT[sm.no];
+    const seg=(v,c,l)=>`<label class="${c} ${sc.result===v?'on':''}" onclick="scSet('${sm.no}','${v}')">${l}</label>`;
+    const showErr=(sc.result==='JUSTIN'||sc.result==='OUT');
+    const chip=(arr,list,kind)=>list.map(e=>`<span class="chip ${arr.includes(e)?'on':''}" onclick="scErr('${sm.no}','${kind}','${esc(e)}')">${esc(e)}</span>`).join('');
+    return `<tr><td>${sm.no}</td>
+      <td class="l"><b>${esc(sm.name)}</b><div class="hint">${esc(sm.batch||'')} ${sm.sscc?('· '+esc(sm.sscc)):''}</div></td>
+      <td><div class="seg">${seg('IN','in','IN')}${seg('JUSTIN','ji','Just In')}${seg('OUT','out','Out')}</div>
+        <div class="err-box ${showErr?'show':''}">
+          <div class="lab">Lỗi ngoại quan</div><div class="chips">${chip(sc.appearance,CONFIG.ERR_APPEARANCE,'appearance')}</div>
+          <div class="lab">Lỗi thử nếm</div><div class="chips">${chip(sc.taste,CONFIG.ERR_TASTE,'taste')}</div>
+          <input class="t" style="margin-top:6px" placeholder="Ghi chú thêm…" value="${esc(sc.note)}" onchange="scNote('${sm.no}',this.value)"></div>
+      </td></tr>`;}).join('');
+  wrap.innerHTML=`<div class="tbl-wrap"><table class="grid">
+    <thead><tr><th style="width:44px">No.</th><th class="l">Mẫu</th><th>Kết quả nếm (Just In/Out phải ghi lỗi)</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+    <div class="toolbar" style="margin-top:12px"><span class="hint" id="scStatus"></span><span class="spacer"></span>
+      <button class="btn" onclick="scSubmit()">💾 Nộp phiếu</button></div>`;
+  updateScStatus();
+}
+let SC_DRAFT={};
+function scDraftInit(){ const set=curSet(),pid=STATE.currentPanellistId;
+  SC_DRAFT=JSON.parse(JSON.stringify(set.scores[pid]||{}));
+  set.samples.forEach(sm=>{ if(!SC_DRAFT[sm.no])SC_DRAFT[sm.no]={result:'',appearance:[],taste:[],note:''}; }); }
+function scSet(no,v){ SC_DRAFT[no].result=v; if(v==='IN'){SC_DRAFT[no].appearance=[];SC_DRAFT[no].taste=[];SC_DRAFT[no].note='';} paintDraft(); }
+function scErr(no,kind,val){ const a=SC_DRAFT[no][kind],i=a.indexOf(val); i>=0?a.splice(i,1):a.push(val); paintDraft(); }
+function scNote(no,v){ SC_DRAFT[no].note=v; }
+function paintDraft(){ const set=curSet();
+  set.samples.forEach(sm=>{ const sc=SC_DRAFT[sm.no];
+    const tr=[...$('#scGrid').querySelectorAll('tbody tr')].find(r=>r.children[0].textContent==sm.no); if(!tr)return;
+    tr.querySelectorAll('.seg label').forEach(l=>l.classList.remove('on'));
+    if(sc.result==='IN')tr.querySelector('.seg .in').classList.add('on');
+    if(sc.result==='JUSTIN')tr.querySelector('.seg .ji').classList.add('on');
+    if(sc.result==='OUT')tr.querySelector('.seg .out').classList.add('on');
+    const eb=tr.querySelector('.err-box'); eb.classList.toggle('show',sc.result==='JUSTIN'||sc.result==='OUT');
+    eb.querySelectorAll('.chips')[0].querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',sc.appearance.includes(c.textContent)));
+    eb.querySelectorAll('.chips')[1].querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',sc.taste.includes(c.textContent))); });
+  updateScStatus();
+}
+function updateScStatus(){ const set=curSet(); const f=set.samples.filter(sm=>SC_DRAFT[sm.no].result).length;
+  const el=$('#scStatus'); if(el)el.textContent=`Đã chấm ${f}/${set.samples.length} mẫu`; }
+function scSubmit(){
+  const set=curSet(),pid=STATE.currentPanellistId; if(!pid)return toast('Chưa chọn panellist','err');
+  for(const sm of set.samples){ const sc=SC_DRAFT[sm.no];
+    if(!sc.result)return toast(`Mẫu ${sm.no} chưa chấm`,'err');
+    if((sc.result==='JUSTIN'||sc.result==='OUT')&&sc.appearance.length===0&&sc.taste.length===0&&!sc.note.trim())
+      return toast(`Mẫu ${sm.no} là ${sc.result} — phải ghi lỗi`,'err'); }
+  const doSubmit=()=>{ set.scores[pid]=JSON.parse(JSON.stringify(SC_DRAFT));
+    if(!set.attendees.includes(pid))set.attendees.push(pid);
+    logAudit('Nộp phiếu nếm · '+(STATE.panellists.find(p=>p.id===pid)?.name||pid)+' · '+set.name); save();
+    toast('Đã nộp phiếu ✓','ok'); renderScoring(); };
+  if(set.scores[pid]) confirmAsk('Panellist này đã có phiếu. Ghi đè phiếu cũ?','Ghi đè',doSubmit); else doSubmit();
+}
+
+/* ===================== [SETUP] wizard ===================== */
+let WIZ={step:1,meta:{},samples:[],nameAuto:true};
+/* Gợi ý số Set tiếp theo theo Ca/Ngày (đánh số lại cho mỗi ca) */
+function suggestSetName(date,shift){
+  const nums=STATE.sets.filter(s=>s.date===date&&s.shift===shift).map(s=>parseInt(s.name,10)).filter(n=>!isNaN(n));
+  return String((nums.length?Math.max(...nums):0)+1);
+}
+/* Khi đổi Ca/Ngày, cập nhật lại số gợi ý nếu người dùng chưa sửa tay */
+function wizMetaLive(){ WIZ.meta.shift=$('#wShift').value; WIZ.meta.date=$('#wDate').value;
+  if(WIZ.nameAuto)$('#wName').value=suggestSetName(WIZ.meta.date,WIZ.meta.shift); }
+/* nhãn hiển thị Set (kèm Ca/Ngày cho rõ vì tên có thể lặp) */
+function setLabel(s){ return s?(s.name+' · '+s.shift+' '+s.date):'— chưa mở —'; }
+function renderSetup(){
+  const box=$('#setupBody'),openSet=curSet();
+  const banner=openSet?`<div class="card"><h3>Set đang mở: ${esc(openSet.name)}</h3>
+    <p>${esc(openSet.date)} · ${openSet.shift} · ${esc(openSet.sampleType)} · ${openSet.samples.length} mẫu · ${Object.keys(openSet.scores).length} phiếu.
+    <button class="btn sm sec" style="margin-left:10px" onclick="closeSet()">Đóng Set này</button></p></div>`:'';
+  box.innerHTML=banner+(WIZ.step===1?wizStep1():wizStep2());
+}
+function wizStep1(){ const types=CONFIG.SAMPLE_TYPES.map(t=>`<option ${WIZ.meta.sampleType===t?'selected':''}>${t}</option>`).join('');
+  const date=WIZ.meta.date||todayStr(), shift=WIZ.meta.shift||'AM';
+  const suggested=WIZ.meta.name||suggestSetName(date,shift);
+  return `<div class="card"><h3>Bước ① — Thông tin buổi nếm</h3>
+    <div class="row c4">
+      <div><label class="f">Ca</label><select class="s" id="wShift" onchange="wizMetaLive()"><option ${shift==='AM'?'selected':''}>AM</option><option ${shift==='PM'?'selected':''}>PM</option></select></div>
+      <div><label class="f">Ngày</label><input class="t" type="date" id="wDate" value="${date}" onchange="wizMetaLive()"></div>
+      <div><label class="f">Tên Set (số thứ tự)</label><input class="t" id="wName" value="${esc(suggested)}" oninput="WIZ.nameAuto=false"></div>
+      <div><label class="f">Loại mẫu</label><select class="s" id="wType">${types}</select></div>
+    </div>
+    <p class="hint">Tên Set tự gợi ý số tiếp theo theo Ca/Ngày — có thể sửa tay. Số có thể lặp giữa các ca, nhưng <b>không trùng trong cùng 1 ca/ngày</b>.</p>
+    <div class="toolbar"><span class="spacer"></span><button class="btn" onclick="wizNext()">Tiếp → Thêm mẫu</button></div></div>`; }
+function wizStep2(){ const rows=WIZ.samples.map((s,i)=>`<tr><td>${i+1}</td>
+     <td class="l"><input class="t" value="${esc(s.name)}" onchange="wizEdit(${i},'name',this.value)"></td>
+     <td><input class="t" value="${esc(s.sscc||'')}" onchange="wizEdit(${i},'sscc',this.value)"></td>
+     <td><input class="t" value="${esc(s.batch||'')}" onchange="wizEdit(${i},'batch',this.value)"></td>
+     <td><button class="btn sm danger" onclick="wizDel(${i})">✕</button></td></tr>`).join('');
+  return `<div class="card"><h3>Bước ② — Danh sách mẫu (${esc(WIZ.meta.name)} · ${WIZ.meta.date} · ${WIZ.meta.shift} · ${esc(WIZ.meta.sampleType)})</h3>
+    <div class="toolbar"><span class="hint">Nhập từng mẫu bên dưới, hoặc nạp hàng loạt:</span><span class="spacer"></span>
+      <button class="btn sec sm" onclick="downloadSetTemplate()">⤓ Tải template CSV</button>
+      <button class="btn sm" onclick="document.getElementById('fileSetSamples').click()">⤒ Import mẫu CSV/Excel</button></div>
+    <div class="row c4">
+      <div><label class="f">Tên mẫu</label><input class="t" id="smName" placeholder="VD: Freeze-dried STD"></div>
+      <div><label class="f">SSCC/Hour</label><input class="t" id="smSscc" placeholder="VD: 09:00"></div>
+      <div><label class="f">Batch (Lô)</label><input class="t" id="smBatch" placeholder="VD: L2508"></div>
+      <div style="align-self:end"><button class="btn" onclick="wizAdd()">+ Thêm mẫu</button></div></div>
+    <div class="tbl-wrap" style="margin-top:6px"><table class="grid">
+      <thead><tr><th style="width:44px">STT</th><th class="l">Tên mẫu</th><th>SSCC/Hour</th><th>Batch</th><th style="width:56px"></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="5" class="hint" style="padding:14px">Chưa có mẫu nào</td></tr>'}</tbody></table></div>
+    <div class="toolbar" style="margin-top:12px"><button class="btn sec" onclick="wizBack()">← Quay lại</button><span class="spacer"></span>
+      <button class="btn" onclick="wizCreate()">✔ Tạo Set &amp; mở buổi nếm</button></div></div>`; }
+function wizNext(){ WIZ.meta={name:$('#wName').value.trim(),date:$('#wDate').value,shift:$('#wShift').value,sampleType:$('#wType').value};
+  if(!WIZ.meta.name)return toast('Nhập tên Set','err'); if(!WIZ.meta.date)return toast('Chọn ngày','err');
+  if(dupSetName(WIZ.meta))return toast('Đã có Set "'+WIZ.meta.name+'" trong ca '+WIZ.meta.shift+' ngày '+WIZ.meta.date,'err');
+  WIZ.step=2; renderSetup(); }
+/* true nếu đã tồn tại Set trùng tên trong cùng ngày+ca */
+function dupSetName(m){ return STATE.sets.some(s=>s.date===m.date&&s.shift===m.shift&&s.name.toLowerCase()===m.name.toLowerCase()); }
+function wizBack(){ WIZ.step=1; renderSetup(); }
+function wizAdd(){ const name=$('#smName').value.trim(); if(!name)return toast('Nhập tên mẫu','err');
+  WIZ.samples.push({name,sscc:$('#smSscc').value.trim(),batch:$('#smBatch').value.trim()}); renderSetup(); setTimeout(()=>$('#smName')?.focus(),30); }
+function wizEdit(i,k,v){ WIZ.samples[i][k]=v; }
+function wizDel(i){ WIZ.samples.splice(i,1); renderSetup(); }
+function wizCreate(){ if(WIZ.samples.length===0)return toast('Chưa có mẫu nào','err');
+  if(dupSetName(WIZ.meta))return toast('Trùng tên Set trong ca '+WIZ.meta.shift+' ngày '+WIZ.meta.date,'err');
+  const set={id:uid('set'),name:WIZ.meta.name,date:WIZ.meta.date,shift:WIZ.meta.shift,sampleType:WIZ.meta.sampleType,
+    creator:'QA',status:'open',samples:WIZ.samples.map((s,i)=>({no:i+1,name:s.name,sscc:s.sscc,batch:s.batch})),scores:{},attendees:[]};
+  STATE.sets.push(set); STATE.currentSetId=set.id; logAudit('Tạo Set: '+setLabel(set)+' ('+set.samples.length+' mẫu)'); save();
+  WIZ={step:1,meta:{},samples:[],nameAuto:true}; $('#hdrSet').textContent=setLabel(set); toast('Đã tạo Set ✓','ok'); switchTab('tab-scoring'); }
+function closeSet(){ const s=curSet(); if(!s)return; confirmAsk('Đóng Set "'+s.name+'"? (vẫn tra cứu được sau)','Đóng Set',()=>{
+  s.status='closed'; STATE.currentSetId=null; $('#hdrSet').textContent='— chưa mở —'; logAudit('Đóng Set: '+s.name); save(); toast('Đã đóng Set'); renderSetup(); }); }
+
+/* ===================== [SUMMARY] F.072 ===================== */
+function renderSummary(){
+  const box=$('#summaryBody'),set=curSet();
+  if(!set){ box.innerHTML=`<div class="ph"><span class="big">📊</span>Chưa có Set đang mở. Vào <b>Truy xuất</b> để chọn Set cũ.</div>`; return; }
+  const results=set.samples.map(sm=>({sm,...calcSample(set,sm.no)}));
+  const nPass=results.filter(r=>r.pass).length, nFail=results.filter(r=>r.pct!==null&&!r.pass).length;
+  const nAtt=Object.keys(set.scores).length;
+  const attWarn=nAtt<CONFIG.MIN_PANELLIST?`<span class="badge fail">⚠ &lt; ${CONFIG.MIN_PANELLIST} panellist</span>`:`<span class="badge pass">✓ ${nAtt} panellist</span>`;
+  const rows=results.map(r=>{ const errs=new Set();
+    Object.values(set.scores).forEach(bp=>{const sc=bp[r.sm.no];if(sc){(sc.appearance||[]).forEach(e=>errs.add(e));(sc.taste||[]).forEach(e=>errs.add(e));}});
+    const pctTxt=r.pct===null?'—':r.pct.toFixed(1)+'%';
+    const badge=r.pct===null?'<span class="badge gray">chưa đủ</span>':(r.pass?'<span class="badge pass">Passed</span>':'<span class="badge fail">Failed</span>');
+    return `<tr><td>${r.sm.no}</td><td class="l">${esc(r.sm.name)}</td><td>${esc(r.sm.batch||'')}</td>
+      <td>${r.IN}</td><td>${r.JI}</td><td>${r.OUT}</td><td>${r.total}</td><td><b>${pctTxt}</b></td><td>${badge}</td>
+      <td class="l">${[...errs].map(e=>esc(e)).join(', ')}</td></tr>`; }).join('');
+  box.innerHTML=`<div class="grid-3">
+      <div class="kpi"><div class="num">${set.samples.length}</div><div class="lbl">Tổng mẫu</div></div>
+      <div class="kpi ok"><div class="num">${nPass}</div><div class="lbl">Passed (≥${CONFIG.PASS_THRESHOLD}%)</div></div>
+      <div class="kpi fail"><div class="num">${nFail}</div><div class="lbl">Failed (&lt;${CONFIG.PASS_THRESHOLD}%)</div></div></div>
+    <div class="card"><div class="toolbar"><h3 style="margin:0">${esc(set.name)} · ${esc(set.date)} · ${set.shift} · ${esc(set.sampleType)} &nbsp;${attWarn}</h3>
+      <span class="spacer"></span>
+      <button class="btn sec sm" onclick="exportSummaryCSV()">⤓ Xuất Excel</button>
+      <button class="btn sec sm" onclick="printSummary()">🖨️ Xuất PDF</button></div>
+      <div class="tbl-wrap"><table class="grid">
+        <thead><tr><th>No.</th><th class="l">Tên mẫu</th><th>Batch</th><th>IN</th><th>Just In</th><th>Out</th><th>Total</th><th>Result %</th><th>Kết luận</th><th class="l">Lỗi ghi nhận</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>
+      <div class="hint">Result% = (1 − [(Out×3 + JustIn×0.5)/(Total×3)]) × 100 · Passed khi ≥ ${CONFIG.PASS_THRESHOLD}%.</div></div>`;
+}
+
+/* ===================== [LOOKUP] ===================== */
+let LK={q:'',type:''};
+function renderLookup(){
+  const box=$('#lookupBody');
+  if(STATE.sets.length===0){ box.innerHTML=`<div class="ph"><span class="big">🔍</span>Chưa có Set nào để tra cứu.</div>`; return; }
+  const typeOpts='<option value="">Tất cả loại</option>'+CONFIG.SAMPLE_TYPES.map(t=>`<option ${LK.type===t?'selected':''}>${t}</option>`).join('');
+  const list=STATE.sets.filter(s=>{
+    const okType=!LK.type||s.sampleType===LK.type;
+    const q=LK.q.toLowerCase();
+    const okQ=!q||s.name.toLowerCase().includes(q)||s.date.includes(q)||s.samples.some(sm=>(sm.name||'').toLowerCase().includes(q)||(sm.batch||'').toLowerCase().includes(q));
+    return okType&&okQ;
+  });
+  const rows=list.map(s=>{ const res=s.samples.map(sm=>calcSample(s,sm.no));
+    const pass=res.filter(r=>r.pass).length,fail=res.filter(r=>r.pct!==null&&!r.pass).length;
+    return `<tr><td class="l">${esc(s.name)}</td><td>${esc(s.date)}</td><td>${s.shift}</td><td>${esc(s.sampleType)}</td><td>${s.samples.length}</td>
+      <td><span class="badge pass">${pass}</span></td><td><span class="badge fail">${fail}</span></td>
+      <td>${s.status==='open'?'<span class="badge gray">đang mở</span>':'đã đóng'}</td>
+      <td><button class="btn sm sec" onclick="lookupOpen('${s.id}')">Xem</button></td></tr>`; }).join('');
+  box.innerHTML=`<div class="card"><div class="toolbar">
+      <input class="t" style="max-width:260px" placeholder="Tìm tên Set / ngày / mẫu / batch…" value="${esc(LK.q)}" oninput="LK.q=this.value;renderLookup()">
+      <select class="s" style="max-width:180px" onchange="LK.type=this.value;renderLookup()">${typeOpts}</select>
+      <span class="spacer"></span><span class="hint">${list.length} Set</span></div>
+    <div class="tbl-wrap"><table class="grid">
+      <thead><tr><th class="l">Tên Set</th><th>Ngày</th><th>Ca</th><th>Loại</th><th>Số mẫu</th><th>Passed</th><th>Failed</th><th>Trạng thái</th><th></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="9" class="hint" style="padding:14px">Không có kết quả</td></tr>'}</tbody></table></div></div>`;
+}
+function lookupOpen(id){ STATE.currentSetId=id; $('#hdrSet').textContent=setLabel(curSet()); switchTab('tab-summary'); }
+
+/* ===================== [MASTER] Panellist ===================== */
+function renderPanellists(){
+  const box=$('#panellistBody');
+  const rows=STATE.panellists.map(p=>`<tr><td class="l">${esc(p.name)}</td><td>${esc(p.dept)}</td>
+    <td><button class="btn sm danger" onclick="delPanel('${p.id}')">Xoá</button></td></tr>`).join('');
+  box.innerHTML=`<div class="card"><h3>Thêm Panellist</h3>
+    <div class="row c3"><div><label class="f">Tên</label><input class="t" id="pName" placeholder="Họ tên"></div>
+      <div><label class="f">Bộ phận</label><input class="t" id="pDept" placeholder="QA / Production / R&D"></div>
+      <div style="align-self:end"><button class="btn" onclick="addPanel()">+ Thêm</button></div></div></div>
+    <div class="card"><h3>Danh sách (${STATE.panellists.length})</h3>
+      <div class="tbl-wrap"><table class="grid"><thead><tr><th class="l">Tên</th><th>Bộ phận</th><th style="width:80px"></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="3" class="hint" style="padding:14px">Chưa có panellist</td></tr>'}</tbody></table></div></div>`;
+}
+function addPanel(){ const name=$('#pName').value.trim(); if(!name)return toast('Nhập tên','err');
+  if(STATE.panellists.some(p=>p.name.toLowerCase()===name.toLowerCase()))return toast('Panellist đã tồn tại','err');
+  STATE.panellists.push({id:uid('pnl'),name,dept:$('#pDept').value.trim()}); logAudit('Thêm panellist: '+name); save(); toast('Đã thêm','ok'); renderPanellists(); }
+function delPanel(id){ const p=STATE.panellists.find(x=>x.id===id);
+  confirmAsk('Xoá panellist "'+(p?.name||'')+'"?','Xoá',()=>{ STATE.panellists=STATE.panellists.filter(x=>x.id!==id); logAudit('Xoá panellist: '+(p?.name||id)); save(); renderPanellists(); }); }
+
+/* ===================== [MASTER] SP/Recipe/PO/Batch ===================== */
+function renderProducts(){
+  const box=$('#productBody');
+  const list=(arr,fn)=>arr.map(x=>`<tr><td class="l">${esc(x.name)}</td><td><button class="btn sm danger" onclick="${fn}('${x.id}')">Xoá</button></td></tr>`).join('');
+  box.innerHTML=`
+    <div class="card"><div class="toolbar"><h3 style="margin:0">Import / Template</h3><span class="spacer"></span>
+      <button class="btn sec sm" onclick="downloadMasterTemplate()">⤓ Tải template CSV</button>
+      <button class="btn sm" onclick="document.getElementById('fileMaster').click()">⤒ Import CSV/Excel</button></div>
+      <p class="hint">Template có 2 cột: <b>Type</b> (Product/Recipe/PO/Batch) và <b>Name</b>. Excel lưu dạng CSV (UTF-8) rồi import.</p></div>
+    <div class="row c2">
+      <div class="card"><h3>Sản phẩm</h3><div class="toolbar"><input class="t" id="prodName" placeholder="Tên sản phẩm"><button class="btn" onclick="addProd()">+ Thêm</button></div>
+        <div class="tbl-wrap"><table class="grid"><thead><tr><th class="l">Tên</th><th style="width:70px"></th></tr></thead><tbody>${list(STATE.products,'delProd')||emptyRow(2)}</tbody></table></div></div>
+      <div class="card"><h3>Recipe</h3><div class="toolbar"><input class="t" id="recName" placeholder="Tên recipe"><button class="btn" onclick="addRec()">+ Thêm</button></div>
+        <div class="tbl-wrap"><table class="grid"><thead><tr><th class="l">Tên</th><th style="width:70px"></th></tr></thead><tbody>${list(STATE.recipes,'delRec')||emptyRow(2)}</tbody></table></div></div></div>
+    <div class="row c2">
+      <div class="card"><h3>PO (Production Order)</h3><div class="toolbar"><input class="t" id="poName" placeholder="Số PO"><button class="btn" onclick="addPo()">+ Thêm</button></div>
+        <div class="tbl-wrap"><table class="grid"><thead><tr><th class="l">PO</th><th style="width:70px"></th></tr></thead><tbody>${list(STATE.pos,'delPo')||emptyRow(2)}</tbody></table></div></div>
+      <div class="card"><h3>Batch (Lô SX)</h3><div class="toolbar"><input class="t" id="batchName" placeholder="Mã lô"><button class="btn" onclick="addBatch()">+ Thêm</button></div>
+        <div class="tbl-wrap"><table class="grid"><thead><tr><th class="l">Batch</th><th style="width:70px"></th></tr></thead><tbody>${list(STATE.batches,'delBatch')||emptyRow(2)}</tbody></table></div></div></div>`;
+}
+const emptyRow=n=>`<tr><td colspan="${n}" class="hint" style="padding:12px">Chưa có dữ liệu</td></tr>`;
+function addProd(){const v=$('#prodName').value.trim();if(!v)return;STATE.products.push({id:uid('prd'),name:v});logAudit('Thêm SP: '+v);save();renderProducts();}
+function delProd(id){STATE.products=STATE.products.filter(x=>x.id!==id);save();renderProducts();}
+function addRec(){const v=$('#recName').value.trim();if(!v)return;STATE.recipes.push({id:uid('rcp'),name:v});save();renderProducts();}
+function delRec(id){STATE.recipes=STATE.recipes.filter(x=>x.id!==id);save();renderProducts();}
+function addPo(){const v=$('#poName').value.trim();if(!v)return;STATE.pos.push({id:uid('po'),name:v});save();renderProducts();}
+function delPo(id){STATE.pos=STATE.pos.filter(x=>x.id!==id);save();renderProducts();}
+function addBatch(){const v=$('#batchName').value.trim();if(!v)return;STATE.batches.push({id:uid('bat'),name:v});save();renderProducts();}
+function delBatch(id){STATE.batches=STATE.batches.filter(x=>x.id!==id);save();renderProducts();}
+
+/* ===================== [ITEMS] Items Code · Product · Recipe ===================== */
+let ITEM_UI={q:''};
+function renderItems(){
+  const box=$('#itemsBody'),q=ITEM_UI.q.trim().toLowerCase();
+  const list=STATE.itemCodes.filter(x=>!q||[x.group,x.item,x.name,x.recipe].some(v=>(v||'').toLowerCase().includes(q)));
+  const rows=list.map(x=>`<tr><td>${esc(x.group||'')}</td><td class="l"><b>${esc(x.item)}</b></td><td class="l">${esc(x.name)}</td><td>${esc(x.recipe)}</td>
+    <td><button class="btn sm danger" onclick="delItem('${x.id}')">Xoá</button></td></tr>`).join('');
+  box.innerHTML=`
+    <div class="card"><div class="toolbar"><h3 style="margin:0">Nhập / xuất dữ liệu</h3><span class="spacer"></span>
+      <button class="btn sec sm" onclick="downloadItemsTemplate()">⤓ Xuất template Excel</button>
+      <button class="btn sm" onclick="document.getElementById('fileItems').click()">⤒ Nhập Excel</button>
+      <button class="btn sec sm" onclick="exportItemsExcel()" ${STATE.itemCodes.length?'':'disabled'}>⤓ Xuất dữ liệu Excel</button></div>
+      <p class="hint">Hỗ trợ .xlsx, .xls và .csv. File nguồn dạng hai khối FGs CODE / RW CODE cũng được nhận diện tự động. Import sẽ thêm dữ liệu mới và bỏ qua dòng trùng hoàn toàn.</p></div>
+    <div class="card"><h3>Thêm liên kết Items Code</h3>
+      <div class="row c4"><div><label class="f">Nhóm</label><select class="s" id="itGroup"><option>FG</option><option>RW</option><option>Other</option></select></div>
+        <div><label class="f">Items Code</label><input class="t" id="itCode" placeholder="VD: 10100001"></div>
+        <div><label class="f">Tên sản phẩm</label><input class="t" id="itName" placeholder="Tên sản phẩm"></div>
+        <div><label class="f">Recipe</label><input class="t" id="itRecipe" placeholder="VD: 405"></div></div>
+      <div class="toolbar"><span class="spacer"></span><button class="btn" onclick="addItem()">+ Thêm</button></div></div>
+    <div class="card"><div class="toolbar"><h3 style="margin:0">Danh sách Items Code (${STATE.itemCodes.length})</h3><span class="spacer"></span>
+      <input class="t" style="max-width:300px" placeholder="Tìm Items Code / sản phẩm / Recipe…" value="${esc(ITEM_UI.q)}" oninput="ITEM_UI.q=this.value;renderItems()"></div>
+      <div class="tbl-wrap"><table class="grid"><thead><tr><th>Nhóm</th><th class="l">Items Code</th><th class="l">Tên sản phẩm</th><th>Recipe</th><th style="width:70px"></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="5" class="hint" style="padding:14px">Chưa có dữ liệu phù hợp</td></tr>'}</tbody></table></div></div>`;
+}
+function itemExactExists(x){ return STATE.itemCodes.some(y=>
+  (y.group||'').toLowerCase()===x.group.toLowerCase()&&y.item.toLowerCase()===x.item.toLowerCase()&&
+  y.name.toLowerCase()===x.name.toLowerCase()&&y.recipe.toLowerCase()===x.recipe.toLowerCase()); }
+function addItem(){
+  const x={group:$('#itGroup').value.trim(),item:$('#itCode').value.trim(),name:$('#itName').value.trim(),recipe:$('#itRecipe').value.trim()};
+  if(!x.item||!x.name||!x.recipe)return toast('Nhập đủ Items Code, tên sản phẩm và Recipe','err');
+  if(itemExactExists(x))return toast('Liên kết này đã tồn tại','err');
+  STATE.itemCodes.push({id:uid('itm'),...x});logAudit('Thêm Items Code: '+x.item);save();renderItems();toast('Đã thêm Items Code','ok');
+}
+function delItem(id){ const x=STATE.itemCodes.find(v=>v.id===id);if(!x)return;
+  confirmAsk('Xoá liên kết Items Code "'+x.item+'"?','Xoá',()=>{STATE.itemCodes=STATE.itemCodes.filter(v=>v.id!==id);logAudit('Xoá Items Code: '+x.item);save();renderItems();}); }
+function xmlCell(v){return `<Cell><Data ss:Type="String">${(v??'').toString().replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</Data></Cell>`;}
+function itemsWorkbook(rows){
+  const body=rows.map(r=>'<Row>'+r.map(xmlCell).join('')+'</Row>').join('');
+  return `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Items Code"><Table>${body}</Table></Worksheet></Workbook>`;
+}
+function downloadItemsTemplate(){ downloadFile('iLD_ItemsCode_Template.xls',itemsWorkbook([
+  ['Group','Items Code','Product Name','Recipe'],['FG','10100001','Freeze Dried Instant Coffee PCAF561B1 25kg','405'],['RW','11100028','Rework Freeze Dried Instant Coffee Bonita 14','405A']]),'application/vnd.ms-excel'); }
+function exportItemsExcel(){ const rows=[['Group','Items Code','Product Name','Recipe'],...STATE.itemCodes.map(x=>[x.group,x.item,x.name,x.recipe])];
+  downloadFile('iLD_ItemsCode_'+todayStr()+'.xls',itemsWorkbook(rows),'application/vnd.ms-excel');logAudit('Xuất Items Code: '+STATE.itemCodes.length+' dòng');save();toast('Đã xuất dữ liệu Excel','ok'); }
+
+function colIndex(ref){let n=0;for(const c of (ref.match(/[A-Z]+/i)||['A'])[0].toUpperCase())n=n*26+c.charCodeAt(0)-64;return n-1;}
+function xmlRows(text){
+  const doc=new DOMParser().parseFromString(text,'application/xml');if(doc.querySelector('parsererror'))throw new Error('File XML không hợp lệ');
+  return [...doc.getElementsByTagNameNS('*','Row')].map(row=>{let next=0,out=[];[...row.getElementsByTagNameNS('*','Cell')].forEach(c=>{
+    const idxAttr=c.getAttributeNS('urn:schemas-microsoft-com:office:spreadsheet','Index')||c.getAttribute('ss:Index');if(idxAttr)next=Number(idxAttr)-1;
+    const d=c.getElementsByTagNameNS('*','Data')[0];out[next++]=d?d.textContent:'';});return out;});
+}
+async function unzipXlsx(buffer){
+  const u=new Uint8Array(buffer),v=new DataView(buffer);let e=-1;for(let i=u.length-22;i>=Math.max(0,u.length-65557);i--)if(v.getUint32(i,true)===0x06054b50){e=i;break;}
+  if(e<0)throw new Error('Không tìm thấy cấu trúc XLSX');let p=v.getUint32(e+16,true),count=v.getUint16(e+10,true),files={};
+  for(let k=0;k<count;k++){if(v.getUint32(p,true)!==0x02014b50)throw new Error('XLSX bị lỗi');const method=v.getUint16(p+10,true),size=v.getUint32(p+20,true),nl=v.getUint16(p+28,true),xl=v.getUint16(p+30,true),cl=v.getUint16(p+32,true),lo=v.getUint32(p+42,true);
+    const name=new TextDecoder().decode(u.slice(p+46,p+46+nl));const lnl=v.getUint16(lo+26,true),lxl=v.getUint16(lo+28,true),data=u.slice(lo+30+lnl+lxl,lo+30+lnl+lxl+size);
+    let bytes=data;if(method===8){const stream=new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));bytes=new Uint8Array(await new Response(stream).arrayBuffer());}else if(method!==0)throw new Error('Kiểu nén XLSX chưa được hỗ trợ');files[name]=bytes;p+=46+nl+xl+cl;}
+  return files;
+}
+async function xlsxRows(buffer){
+  const files=await unzipXlsx(buffer),dec=new TextDecoder('utf-8');
+  const shared=files['xl/sharedStrings.xml']?[...new DOMParser().parseFromString(dec.decode(files['xl/sharedStrings.xml']),'application/xml').getElementsByTagNameNS('*','si')].map(si=>[...si.getElementsByTagNameNS('*','t')].map(t=>t.textContent).join('')):[];
+  const wb=new DOMParser().parseFromString(dec.decode(files['xl/workbook.xml']),'application/xml'),rels=new DOMParser().parseFromString(dec.decode(files['xl/_rels/workbook.xml.rels']),'application/xml');
+  const sheets=[...wb.getElementsByTagNameNS('*','sheet')],sheet=sheets.find(s=>s.getAttribute('name')==='CodeLink')||sheets[0];if(!sheet)throw new Error('Workbook không có sheet');
+  const rid=sheet.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id')||sheet.getAttribute('r:id');
+  const rel=[...rels.getElementsByTagNameNS('*','Relationship')].find(r=>r.getAttribute('Id')===rid);let target=rel?rel.getAttribute('Target'):'worksheets/sheet1.xml';target='xl/'+target.replace(/^\/?xl\//,'').replace(/^\.\//,'');
+  const raw=files[target];if(!raw)throw new Error('Không đọc được sheet dữ liệu');const doc=new DOMParser().parseFromString(dec.decode(raw),'application/xml');
+  return [...doc.getElementsByTagNameNS('*','row')].map(row=>{const out=[];[...row.getElementsByTagNameNS('*','c')].forEach(c=>{const i=colIndex(c.getAttribute('r')||'A1'),t=c.getAttribute('t'),ve=c.getElementsByTagNameNS('*','v')[0],inline=c.getElementsByTagNameNS('*','is')[0];let val='';
+    if(t==='s')val=shared[Number(ve?.textContent||0)]||'';else if(t==='inlineStr')val=[...(inline?.getElementsByTagNameNS('*','t')||[])].map(x=>x.textContent).join('');else val=ve?.textContent||'';out[i]=val;});return out;});
+}
+function normalizeItemRows(rows){
+  const clean=rows.map(r=>r.map(v=>(v??'').toString().trim()));let header=-1;
+  for(let i=0;i<clean.length;i++){const a=(clean[i][0]||'').toLowerCase(),b=(clean[i][1]||'').toLowerCase(),c=(clean[i][2]||'').toLowerCase();
+    if(((a==='item'||a.includes('items code'))&&(b==='name'||b.includes('product')))||(a.includes('group')&&b.includes('item')&&(c.includes('name')||c.includes('product')))){header=i;break;}}
+  if(header<0)throw new Error('Không tìm thấy tiêu đề Items Code / Product Name / Recipe');const h=clean[header].map(x=>x.toLowerCase());
+  const twoBlocks=h[0]==='item'&&h[1]==='name'&&h[2]==='recipe'&&h[4]==='item';const out=[];
+  const push=(r,g,offset)=>{const item=r[offset]||'',name=r[offset+1]||'',recipe=r[offset+2]||'';if(item&&name&&recipe)out.push({group:g,item,name,recipe});};
+  if(twoBlocks){clean.slice(header+1).forEach(r=>{push(r,'FG',0);push(r,'RW',4);});return out;}
+  const idx=(terms,fallback)=>{const i=h.findIndex(x=>terms.some(t=>x.includes(t)));return i>=0?i:fallback;},ig=idx(['group','nhóm','nhom'],0),ii=idx(['items code','item code','item'],1),inn=idx(['product name','tên sản phẩm','ten san pham','name'],2),ir=idx(['recipe'],3);
+  clean.slice(header+1).forEach(r=>{const x={group:r[ig]||'Other',item:r[ii]||'',name:r[inn]||'',recipe:r[ir]||''};if(x.item&&x.name&&x.recipe)out.push(x);});return out;
+}
+document.getElementById('fileItems').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn','err');
+  try{let rows;if(f.name.toLowerCase().endsWith('.xlsx'))rows=await xlsxRows(await f.arrayBuffer());else{const text=await f.text();rows=f.name.toLowerCase().endsWith('.csv')?parseCSV(text):xmlRows(text);}
+    const data=normalizeItemRows(rows);if(!data.length)throw new Error('Không có dòng dữ liệu hợp lệ');let added=0,skipped=0;data.forEach(x=>{if(itemExactExists(x)){skipped++;return;}STATE.itemCodes.push({id:uid('itm'),...x});added++;});
+    logAudit('Import Items Code: +'+added+' dòng, bỏ qua '+skipped);save();renderItems();toast('Đã nhập '+added+' dòng; bỏ qua '+skipped+' dòng trùng','ok');
+  }catch(err){toast('Import Items Code lỗi: '+err.message,'err');}});
+
+/* ===================== [IMPEXP] Import/Export (P3) ===================== */
+function downloadFile(name,content,mime){ const blob=new Blob([content],{type:mime});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); }
+const csvCell=v=>{ v=(v??'').toString(); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+const toCSV=rows=>'﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n'); // BOM để Excel đọc UTF-8
+function parseCSV(text){ // parser CSV tối giản, hỗ trợ dấu ngoặc kép
+  const rows=[];let i=0,f='',row=[],q=false;text=text.replace(/^﻿/,'');
+  while(i<text.length){const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;}else q=false; } else f+=c; }
+    else { if(c==='"')q=true; else if(c===','){row.push(f);f='';} else if(c==='\n'){row.push(f);rows.push(row);row=[];f='';}
+      else if(c==='\r'){} else f+=c; }
+    i++; }
+  if(f!==''||row.length){row.push(f);rows.push(row);} return rows.filter(r=>r.some(x=>x!==''));
+}
+function downloadMasterTemplate(){ downloadFile('iLD_MasterData_Template.csv',
+  toCSV([['Type','Name'],['Product','Freeze-dried Coffee'],['Recipe','Standard 100%'],['PO','PO-2508-01'],['Batch','L2508A']]),'text/csv'); }
+
+/* Template + import danh sách mẫu cho Set (dùng ở wizard bước ②) */
+function downloadSetTemplate(){ downloadFile('iLD_SetSamples_Template.csv',
+  toCSV([['Ten mau','SSCC/Hour','Batch'],['FD STD','08:00','L2508A'],['FD Mau 1','09:00','L2508A'],['FD Mau 2','10:00','L2508B']]),'text/csv'); }
+document.getElementById('fileSetSamples').addEventListener('change',e=>{ const f=e.target.files[0]; e.target.value=''; if(!f)return;
+  if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn','err');
+  const rd=new FileReader();
+  rd.onload=()=>{ try{
+    const rows=parseCSV(rd.result); if(rows.length<2)throw new Error('File rỗng');
+    const head=rows[0].map(h=>h.trim().toLowerCase());
+    // linh hoạt tên cột: tên mẫu / name ; sscc/hour ; batch/lo
+    const find=keys=>head.findIndex(h=>keys.some(k=>h.includes(k)));
+    const iName=find(['ten mau','tên mẫu','name','mau','mẫu']),
+          iSscc=find(['sscc','hour','giờ','gio']),
+          iBatch=find(['batch','lo','lô']);
+    if(iName<0)throw new Error('Thiếu cột Tên mẫu');
+    let n=0; rows.slice(1).forEach(r=>{ const name=(r[iName]||'').trim(); if(!name)return;
+      WIZ.samples.push({name,sscc:iSscc>=0?(r[iSscc]||'').trim():'',batch:iBatch>=0?(r[iBatch]||'').trim():''}); n++; });
+    if(n===0)throw new Error('Không có dòng mẫu hợp lệ');
+    renderSetup(); toast('Đã nạp '+n+' mẫu','ok');
+  }catch(err){ toast('Import lỗi: '+err.message,'err'); } };
+  rd.onerror=()=>toast('Không đọc được file','err'); rd.readAsText(f,'UTF-8'); });
+$('#fileMaster').addEventListener('change',e=>{ const f=e.target.files[0]; e.target.value=''; if(!f)return;
+  if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn (>'+CONFIG.MAX_IMPORT_MB+'MB)','err');
+  const rd=new FileReader();
+  rd.onload=()=>{ try{
+    const rows=parseCSV(rd.result); if(rows.length<2)throw new Error('File rỗng');
+    const head=rows[0].map(h=>h.trim().toLowerCase()); const iType=head.indexOf('type'),iName=head.indexOf('name');
+    if(iType<0||iName<0)throw new Error('Thiếu cột Type/Name');
+    let n=0; rows.slice(1).forEach(r=>{ const type=(r[iType]||'').trim().toLowerCase(),name=(r[iName]||'').trim(); if(!name)return;
+      const map={product:['products','prd'],recipe:['recipes','rcp'],po:['pos','po'],batch:['batches','bat']};
+      const key={product:'products',recipe:'recipes',po:'pos',batch:'batches'}[type]; if(!key)return;
+      if(STATE[key].some(x=>x.name.toLowerCase()===name.toLowerCase()))return;
+      STATE[key].push({id:uid(type),name}); n++; });
+    logAudit('Import Master Data: +'+n+' dòng'); save(); renderProducts(); toast('Đã import '+n+' dòng','ok');
+  }catch(err){ toast('Import lỗi: '+err.message,'err'); } };
+  rd.onerror=()=>toast('Không đọc được file','err'); rd.readAsText(f,'UTF-8'); });
+
+function exportSummaryCSV(){ const set=curSet(); if(!set)return toast('Chưa có Set','err');
+  const rows=[['iLD SUMMARY TASTING RESULT'],['Set',set.name,'Ngày',set.date,'Ca',set.shift,'Loại',set.sampleType],[],
+    ['No.','Tên mẫu','SSCC/Hour','Batch','IN','Just In','Out','Total','Result %','Kết luận','Lỗi']];
+  set.samples.forEach(sm=>{ const r=calcSample(set,sm.no); const errs=new Set();
+    Object.values(set.scores).forEach(bp=>{const sc=bp[sm.no];if(sc){(sc.appearance||[]).forEach(e=>errs.add(e));(sc.taste||[]).forEach(e=>errs.add(e));}});
+    rows.push([sm.no,sm.name,sm.sscc||'',sm.batch||'',r.IN,r.JI,r.OUT,r.total,r.pct===null?'':r.pct.toFixed(1),
+      r.pct===null?'chưa đủ':(r.pass?'Passed':'Failed'),[...errs].join('; ')]); });
+  downloadFile('Summary_'+set.name.replace(/\s+/g,'_')+'.csv',toCSV(rows),'text/csv');
+  logAudit('Xuất Excel: '+set.name); toast('Đã xuất Excel (CSV)','ok'); }
+
+/* ===================== [PRINT] Xuất PDF ===================== */
+function printSummary(){ const set=curSet(); if(!set)return toast('Chưa có Set','err');
+  const rows=set.samples.map(sm=>{ const r=calcSample(set,sm.no); const errs=new Set();
+    Object.values(set.scores).forEach(bp=>{const sc=bp[sm.no];if(sc){(sc.appearance||[]).forEach(e=>errs.add(e));(sc.taste||[]).forEach(e=>errs.add(e));}});
+    const concl=r.pct===null?'chưa đủ':(r.pass?'Passed':'Failed');
+    return `<tr><td>${sm.no}</td><td class="l">${esc(sm.name)}</td><td>${esc(sm.batch||'')}</td><td>${r.IN}</td><td>${r.JI}</td><td>${r.OUT}</td><td>${r.total}</td><td>${r.pct===null?'—':r.pct.toFixed(1)+'%'}</td><td>${concl}</td><td class="l">${[...errs].map(esc).join(', ')}</td></tr>`; }).join('');
+  $('#printArea').innerHTML=`<h2>iLD — SUMMARY TASTING RESULT (QA.F.072)</h2>
+    <div class="meta">Set: <b>${esc(set.name)}</b> · Ngày: ${esc(set.date)} · Ca: ${set.shift} · Loại: ${esc(set.sampleType)} · Số phiếu: ${Object.keys(set.scores).length}</div>
+    <table><thead><tr><th>No.</th><th>Tên mẫu</th><th>Batch</th><th>IN</th><th>Just In</th><th>Out</th><th>Total</th><th>Result %</th><th>Kết luận</th><th>Lỗi</th></tr></thead><tbody>${rows}</tbody></table>
+    <p style="font-size:11px;margin-top:10px">Result% = (1 − [(Out×3 + JustIn×0.5)/(Total×3)]) × 100 · Passed ≥ ${CONFIG.PASS_THRESHOLD}%. &nbsp;&nbsp; Check by: ____________</p>`;
+  logAudit('Xuất PDF (in): '+set.name); window.print(); }
+
+/* ===================== [SENSORY] Kiến thức cảm quan (rút gọn từ iLD Sensory Guide) ===================== */
+function renderSensory(){
+  const box=$('#sensoryBody');
+  box.innerHTML=`
+  <div class="card">
+    <h3>☕ Sensory là gì</h3>
+    <p>Đánh giá In/Out là <b>bắt buộc</b> để release Nguyên liệu, Bán thành phẩm, Thành phẩm; và cho KQT, mẫu khiếu nại.
+    Mỗi mẫu so với <b>mẫu chuẩn</b>, tối thiểu <b>3 panellist</b>, chấm <b>độc lập</b>.</p>
+  </div>
+
+  <div class="card">
+    <h3>1 · Quy tắc phòng nếm</h3>
+    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
+      <li>Sạch, yên tĩnh, không mùi lạ; khu chuẩn bị tách khỏi khu nếm.</li>
+      <li>Không hút thuốc, không nước hoa/xà phòng thơm/kem cạo râu.</li>
+      <li>Người dị ứng/không dung nạp <b>không</b> nếm mẫu gây rủi ro sức khoẻ.</li>
+      <li>Nước pha nếm: độ cứng <b>50–175 ppm CaCO₃</b>, không mùi vị lạ; nếm nước 1 lần/ngày.</li>
+      <li>Dụng cụ sạch, không nhiễm mùi; cân chính xác 0,1 g, kiểm tra hàng ngày.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>2 · Mẫu chuẩn &amp; mẫu chèn</h3>
+    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
+      <li><b>Mẫu chuẩn (STD):</b> không mùi vị lạ, làm chuẩn so sánh. Thay định kỳ <b>3 tháng</b>.
+        Bảo quản cà phê bột / dịch: <b>−20 ± 2 °C</b>; mẫu nếm hằng ngày: tủ mát <b>4 ± 2 °C</b>. Dán nhãn recipe, NSX, HSD.</li>
+      <li><b>Mẫu chèn (Spike):</b> cài ẩn để kiểm tra năng lực panellist — ít nhất 1 lần/quý (green bean ~1 lần/tuần).</li>
+      <li>Pha nếm phải nếm STD trước để chắc chuẩn không hư.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>3 · Tạo &amp; bố trí set nếm</h3>
+    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
+      <li>Ghi thông tin &amp; code mẫu; thứ tự trên phiếu <b>khớp</b> thứ tự trên bàn nếm.</li>
+      <li>Cân/đong theo dụng cụ đã hiệu chuẩn — <b>không</b> theo khối lượng in trên bao bì.</li>
+      <li>Sắp <b>STD trước, bên trái</b> → mẫu đánh giá → mẫu Out (nếu có) ở trên.</li>
+      <li>Mẫu mùi/vị <b>mạnh</b> để riêng, nếm <b>sau cùng</b>. Tối đa 20–25 mẫu/đợt (kể cả STD).</li>
+      <li>Nếm sớm nhất sau khi pha (~20 phút với mẫu nước nóng). Green bean nếm ở <b>50–55 °C</b>.</li>
+      <li><b>Complaint:</b> mẫu còn niêm → nếm so STD + mẫu tham khảo cùng lô; mất niêm → chỉ đánh giá ngoại quan.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>4 · Công thức pha nếm (phụ lục)</h3>
+    <div class="tbl-wrap"><table class="grid">
+      <thead><tr><th class="l">Nhóm / Sản phẩm</th><th class="l">Công thức</th></tr></thead>
+      <tbody>
+        <tr><td class="l">Cà phê xanh (rang)</td><td class="l">8,25 g + 200 ml nước nóng</td></tr>
+        <tr><td class="l">Cà phê bột — chuẩn</td><td class="l">2,0 g + 150 ml nước nóng</td></tr>
+        <tr><td class="l">Cà phê bột — Less bitter (Just In)</td><td class="l">1,8 g + 150 ml</td></tr>
+        <tr><td class="l">Cà phê bột — Less bitter (Out)</td><td class="l">1,6 g + 150 ml</td></tr>
+        <tr><td class="l">Dịch cà phê — chuẩn</td><td class="l">Lượng = (2 / %TC × 100) g dịch + 150 ml</td></tr>
+      </tbody></table></div>
+    <p class="hint">"Nước nóng" = nước vừa đun sôi. %TC = % tổng chất khô của dịch.</p>
+  </div>
+
+  <div class="card">
+    <h3>5 · Thang điểm &amp; tính kết quả</h3>
+    <div class="tbl-wrap"><table class="grid">
+      <thead><tr><th>Thang</th><th class="l">Ý nghĩa</th><th>Điểm</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge pass">IN</span></td><td class="l">Không sai khác so với chuẩn</td><td>0</td></tr>
+        <tr><td><span class="badge" style="background:#fdf3e0;color:var(--warn)">JUST IN</span></td><td class="l">Sai khác nhỏ 1 vài thuộc tính</td><td>0,5</td></tr>
+        <tr><td><span class="badge fail">OUT</span></td><td class="l">Sai khác trung bình/lớn</td><td>3</td></tr>
+      </tbody></table></div>
+    <p style="margin-top:10px"><b>Defect</b> = [(Out×3 + JustIn×0,5) / (Total×3)] &nbsp;·&nbsp;
+      <b>Result% (%IN)</b> = (1 − Defect) × 100</p>
+    <p><b>Kết luận:</b> Result% ≥ <b>${CONFIG.PASS_THRESHOLD}%</b> → <span class="badge pass">Passed</span> ·
+      &lt; ${CONFIG.PASS_THRESHOLD}% → <span class="badge fail">Failed</span>.</p>
+    <p class="hint">RM: thang IN/OUT · Finished/KQ/Complaint: IN/Just In/Out. App tự tính đúng công thức này.</p>
+  </div>
+
+  <div class="card">
+    <h3>6 · Danh mục lỗi thường gặp</h3>
+    <p><b>Lỗi ngoại quan:</b> ${CONFIG.ERR_APPEARANCE.map(esc).join(' · ')}.</p>
+    <p style="margin-top:6px"><b>Lỗi thử nếm:</b> ${CONFIG.ERR_TASTE.map(esc).join(' · ')}.</p>
+    <p style="margin-top:6px"><b>Thuật ngữ cà phê:</b> Coffee aroma, Robusta flavour, Body (độ đậm), Bitter (đắng),
+      Woody/Rubbery; lỗi: Green/Grassy, Fermented, Musty/Mouldy, Chemical/Phenolic, Earthy.</p>
+  </div>
+
+  <div class="card">
+    <h3>7 · Biểu mẫu &amp; tài liệu gốc</h3>
+    <p>QA.F.071 (phiếu chấm cá nhân) · QA.F.072 (tổng hợp) · QA.F.075 (green coffee) · OP.R&amp;D.F.002.
+    Nguồn: QA.P.009, QA.SOP.056/001/104 · ISO 8586, 5492, 6658, 8589, 9998.</p>
+    <p class="hint">Đây là bản tóm tắt tra cứu nhanh. Khi có mâu thuẫn, ưu tiên SOP/Procedure gốc đã APPROVED.</p>
+  </div>`;
+}
+
+/* ===================== [GUIDE] Hướng dẫn sử dụng (QA) ===================== */
+function renderGuide(){
+  const box=$('#guideBody');
+  box.innerHTML=`
+  <div class="card">
+    <h3>📖 Tổng quan</h3>
+    <p>App số hoá phiếu chấm cá nhân (QA.F.071) và bảng tổng hợp (QA.F.072). Mở app vào thẳng
+    <b>Chấm điểm nếm</b>. Mọi tab dùng tự do, không cần mật khẩu.
+    Dữ liệu <b>tự lưu trong máy</b>; nên <b>Sao lưu JSON</b> định kỳ (tab Cài đặt).</p>
+  </div>
+
+  <div class="card">
+    <h3>① Tạo Set nếm</h3>
+    <p style="margin-bottom:8px">Mở một buổi nếm để panellist chấm.</p>
+    <ol style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
+      <li>Vào tab <b>Tạo Set nếm</b>.</li>
+      <li><b>Bước ①</b>: chọn <b>Ca · Ngày</b>, <b>Tên Set</b> (tự đánh số theo ca, sửa được), <b>Loại mẫu</b> → bấm <b>Tiếp</b>. Không trùng tên trong cùng ca/ngày.</li>
+      <li><b>Bước ②</b>: thêm từng mẫu (<b>Tên mẫu · SSCC/Hour · Batch</b>) → bấm <b>+ Thêm mẫu</b>. Xoá bằng nút ✕.
+        Hoặc <b>Import CSV/Excel</b>: bấm <b>⤓ Tải template</b>, điền danh sách mẫu rồi <b>⤒ Import mẫu</b> để nạp hàng loạt.</li>
+      <li>Bấm <b>✔ Tạo Set &amp; mở buổi nếm</b> → app tự chuyển sang màn Chấm điểm.</li>
+      <li>Khi nếm xong, quay lại tab này bấm <b>Đóng Set</b> (vẫn tra cứu được sau).</li>
+    </ol>
+    <p class="hint">Thứ tự mẫu (STT) trên app khớp thứ tự trên bàn nếm — sắp mẫu chuẩn (STD) trước theo SOP.</p>
+  </div>
+
+  <div class="card">
+    <h3>✍️ Panellist chấm điểm (F.071)</h3>
+    <ol style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
+      <li>Chọn <b>tên panellist</b> ở ô người nếm.</li>
+      <li>Mỗi mẫu tick <b>IN / Just In / Out</b>. Nếu Just In hoặc Out, <b>bắt buộc</b> chọn chip lỗi (ngoại quan / thử nếm) hoặc ghi chú.</li>
+      <li>Bấm <b>💾 Nộp phiếu</b>. Danh sách trên cùng hiện ✓ những người đã nộp.</li>
+    </ol>
+    <p class="hint">Cần tối thiểu ${CONFIG.MIN_PANELLIST} panellist/mẫu. Nộp lại sẽ hỏi xác nhận ghi đè phiếu cũ.</p>
+  </div>
+
+  <div class="card">
+    <h3>② Tổng hợp &amp; Báo cáo (F.072)</h3>
+    <p style="margin-bottom:8px">Vào tab <b>Tổng hợp &amp; Báo cáo</b> để xem kết quả Set đang mở.</p>
+    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
+      <li>3 thẻ KPI: <b>Tổng mẫu · Passed · Failed</b>.</li>
+      <li>Bảng đếm <b>IN/Just In/Out</b>, <b>Total</b> và <b>Result %</b> tự tính:
+        <b>Result% = (1 − [(Out×3 + JustIn×0.5)/(Total×3)]) × 100</b>. Passed khi ≥ ${CONFIG.PASS_THRESHOLD}%.</li>
+      <li>Badge <span class="badge pass">Passed</span> / <span class="badge fail">Failed</span> / <span class="badge gray">chưa đủ</span> (khi thiếu phiếu).</li>
+      <li>Cảnh báo đỏ nếu < ${CONFIG.MIN_PANELLIST} panellist.</li>
+      <li><b>⤓ Xuất Excel</b> (file CSV mở bằng Excel) · <b>🖨️ Xuất PDF</b> (in bảng, có ô "Check by").</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>🔍 Truy xuất kết quả</h3>
+    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
+      <li>Xem danh sách tất cả Set (đang mở &amp; đã đóng) kèm số Passed/Failed.</li>
+      <li>Ô tìm kiếm theo <b>tên Set · ngày · tên mẫu · batch</b>; lọc theo <b>loại mẫu</b>.</li>
+      <li>Bấm <b>Xem</b> để mở Set đó sang tab Tổng hợp (xuất Excel/PDF lại được).</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>👥 Quản lý Panellist</h3>
+    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
+      <li>Thêm panellist: nhập <b>Tên · Bộ phận</b> → <b>+ Thêm</b> (chặn trùng tên).</li>
+      <li><b>Xoá</b> panellist (có xác nhận). Danh sách này hiện ở ô chọn người nếm khi chấm.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>📦 Quản lý Sản phẩm · Recipe · PO · Batch</h3>
+    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
+      <li>Bốn danh mục nhập tay: <b>Sản phẩm · Recipe · PO · Batch</b> (nút + Thêm / Xoá).</li>
+      <li><b>⤓ Tải template CSV</b>: file mẫu 2 cột <b>Type</b> (Product/Recipe/PO/Batch) và <b>Name</b>.</li>
+      <li><b>⤒ Import CSV/Excel</b>: điền vào template rồi import để nạp danh sách hàng loạt (bỏ qua dòng trùng).</li>
+    </ul>
+    <p class="hint">Excel: lưu file dạng <b>CSV UTF-8</b> trước khi import để không lỗi dấu tiếng Việt.</p>
+  </div>
+
+  <div class="card">
+    <h3>🔗 Quản lý Items Code</h3>
+    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
+      <li>Mỗi dòng liên kết <b>Nhóm · Items Code · Tên sản phẩm · Recipe</b>. Một Items Code có thể xuất hiện ở nhiều liên kết khác nhau.</li>
+      <li><b>Xuất template Excel</b> để lấy đúng cấu trúc nhập liệu; app hỗ trợ file <b>.xlsx, .xls và .csv</b>.</li>
+      <li>File hai khối <b>FGs CODE / RW CODE</b> như danh sách nguồn cũng được nhận diện tự động.</li>
+      <li>Import sẽ thêm dòng mới và bỏ qua dòng trùng hoàn toàn. Dùng ô tìm kiếm để lọc theo code, sản phẩm hoặc Recipe.</li>
+      <li><b>Xuất dữ liệu Excel</b> để tải toàn bộ danh sách hiện tại.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>⚙️ Cài đặt (Admin) &amp; mẹo</h3>
+    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
+      <li><b>Sao lưu / Phục hồi JSON</b>: chuyển dữ liệu giữa các máy hoặc lưu trữ dài hạn.</li>
+      <li>Xem <b>Nhật ký thao tác</b> · <b>Xoá toàn bộ dữ liệu</b> (thận trọng).</li>
+      <li>Nút <b>🌓</b> đổi giao diện Sáng/Tối. Trên iPad dùng nút <b>☰</b> mở menu.</li>
+    </ul>
+    <p class="hint">⚠ Luôn sao lưu JSON trước khi xoá/phục hồi dữ liệu.</p>
+  </div>`;
+}
+
+/* ===================== [SETTINGS] (P3/P5) ===================== */
+function renderSettings(){
+  const box=$('#settingsBody');
+  const auditRows=STATE.audit.slice(0,80).map(a=>`<div><b>${esc(a.role)}</b> · ${esc(a.t)} — ${esc(a.action)}</div>`).join('')||'<div>Chưa có nhật ký</div>';
+  box.innerHTML=`
+    <div class="card"><h3>Thông số hệ thống</h3>
+      <p>Ngưỡng đạt: <b>${CONFIG.PASS_THRESHOLD}%</b> · Điểm Out=3, Just In=0.5, In=0 · Tối thiểu <b>${CONFIG.MIN_PANELLIST}</b> panellist/mẫu.</p></div>
+    <div class="row c2">
+      <div class="card"><h3>Sao lưu JSON</h3>
+        <button class="btn" onclick="exportBackup()">⤓ Sao lưu JSON</button>
+        <p class="hint">Sao lưu toàn bộ dữ liệu (Set, phiếu, Master Data, nhật ký) ra 1 file để chuyển máy hoặc lưu trữ dài hạn.</p></div>
+      <div class="card"><h3>Phục hồi JSON</h3>
+        <button class="btn sec" onclick="document.getElementById('fileBackup').click()">⤒ Phục hồi JSON</button>
+        <p class="hint">Nạp lại từ file sao lưu — sẽ thay thế toàn bộ dữ liệu hiện tại (có xác nhận).</p></div>
+    </div>
+    <div class="card"><div class="toolbar"><h3 style="margin:0">Nhật ký thao tác (Audit log)</h3><span class="spacer"></span>
+        <button class="btn danger sm" onclick="resetAll()">Xoá toàn bộ dữ liệu</button></div>
+      <div class="audit">${auditRows}</div></div>`;
+}
+function exportBackup(){ const data={_app:'iLD Sensory Entry',_v:1,_at:new Date().toISOString(),
+    panellists:STATE.panellists,products:STATE.products,recipes:STATE.recipes,pos:STATE.pos,batches:STATE.batches,itemCodes:STATE.itemCodes,
+    sets:STATE.sets,currentSetId:STATE.currentSetId,audit:STATE.audit};
+  downloadFile('iLD_Sensory_Backup_'+todayStr()+'.json',JSON.stringify(data,null,2),'application/json');
+  logAudit('Sao lưu JSON'); toast('Đã sao lưu','ok'); }
+$('#fileBackup').addEventListener('change',e=>{ const f=e.target.files[0]; e.target.value=''; if(!f)return;
+  if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn','err');
+  const rd=new FileReader(); rd.onload=()=>{ try{ const d=JSON.parse(rd.result);
+    if(!d||!Array.isArray(d.sets))throw new Error('Không phải file sao lưu hợp lệ');
+    confirmAsk('Phục hồi sẽ THAY THẾ toàn bộ dữ liệu hiện tại. Tiếp tục?','Phục hồi',()=>{
+      STATE.panellists=d.panellists||[];STATE.products=d.products||[];STATE.recipes=d.recipes||[];STATE.pos=d.pos||[];
+      STATE.batches=d.batches||[];STATE.itemCodes=d.itemCodes||[];STATE.sets=d.sets||[];STATE.currentSetId=d.currentSetId||null;STATE.audit=d.audit||[];
+      logAudit('Phục hồi từ JSON'); persist(); boot(); toast('Đã phục hồi','ok'); });
+  }catch(err){ toast('Phục hồi lỗi: '+err.message,'err'); } }; rd.readAsText(f,'UTF-8'); });
+
+/* ===================== [SEED] dữ liệu mẫu (chỉ khi trống) ===================== */
+function seed(){
+  STATE.panellists=[{id:'pnl_a',name:'Nguyễn Văn A',dept:'QA'},{id:'pnl_b',name:'Trần Thị B',dept:'Production'},
+    {id:'pnl_c',name:'Lê Văn C',dept:'R&D'},{id:'pnl_d',name:'Phạm Thị D',dept:'QA'}];
+  STATE.products=[{id:'prd1',name:'Freeze-dried Coffee'},{id:'prd2',name:'Spray-dried Coffee'}];
+  STATE.recipes=[{id:'rcp1',name:'Standard 100%'},{id:'rcp2',name:'Less bitter'}];
+  STATE.pos=[{id:'po1',name:'PO-2508-01'}]; STATE.batches=[{id:'bat1',name:'L2508A'},{id:'bat2',name:'L2508B'}];
+  const set={id:'set_demo',name:'Set Demo',date:todayStr(),shift:'AM',sampleType:'Freeze-dried',creator:'QA',status:'open',
+    attendees:['pnl_a','pnl_b','pnl_c'],
+    samples:[{no:1,name:'FD STD',sscc:'08:00',batch:'L2508A'},{no:2,name:'FD Mẫu 1',sscc:'09:00',batch:'L2508A'},{no:3,name:'FD Mẫu 2',sscc:'10:00',batch:'L2508B'}],
+    scores:{ pnl_a:{1:{result:'IN',appearance:[],taste:[],note:''},2:{result:'JUSTIN',appearance:[],taste:['less aroma'],note:''},3:{result:'IN',appearance:[],taste:[],note:''}},
+             pnl_b:{1:{result:'IN',appearance:[],taste:[],note:''},2:{result:'IN',appearance:[],taste:[],note:''},3:{result:'OUT',appearance:['hai màu'],taste:[],note:''}},
+             pnl_c:{1:{result:'IN',appearance:[],taste:[],note:''},2:{result:'JUSTIN',appearance:[],taste:['less aroma'],note:''},3:{result:'IN',appearance:[],taste:[],note:''}} }};
+  STATE.sets=[set]; STATE.currentSetId=set.id; STATE.audit=[{t:new Date().toLocaleString('vi-VN'),role:'QA',action:'Khởi tạo dữ liệu mẫu'}];
+}
+
+/* ===================== [BOOT] ===================== */
+function boot(){
+  $('#hdrSet').textContent=setLabel(curSet());
+  switchTab('tab-scoring');
+}
+(function init(){
+  document.body.dataset.theme=localStorage.getItem(THEME_KEY)||'light';
+  const loaded=loadState(); if(!loaded){ seed(); persist(); }
+  boot();
+})();
+</script>
+</body>
+</html>
