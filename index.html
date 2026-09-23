@@ -934,7 +934,7 @@ const CLOUD_SYNC_DEFAULT={bases:{},outbox:[],conflicts:[],watermark:0};
 function cloudLoadSync(){try{return {...CLOUD_SYNC_DEFAULT,...JSON.parse(localStorage.getItem(CLOUD_SYNC_KEY)||'{}')};}catch{return {...CLOUD_SYNC_DEFAULT};}}
 const CLOUD={ready:false,loading:true,error:'',user:null,db:null,auth:null,m:null,unsubs:[],timer:null,retryTimer:null,remoteTimer:null,
   applying:false,localDirty:false,lastSync:'',auto:localStorage.getItem(CLOUD_AUTO_KEY)==='1',pendingRemote:false,
-  clientId:localStorage.getItem(CLOUD_CLIENT_KEY)||uid('client'),sync:cloudLoadSync(),editorPrimary:true,lockRelease:null};
+  clientId:localStorage.getItem(CLOUD_CLIENT_KEY)||uid('client'),sync:cloudLoadSync(),editorPrimary:true,lockRelease:null,lockRetryTimer:null,lockChecking:false};
 localStorage.setItem(CLOUD_CLIENT_KEY,CLOUD.clientId);
 function cloudSaveSync(){localStorage.setItem(CLOUD_SYNC_KEY,JSON.stringify(CLOUD.sync));}
 function cloudMeta(){return {schemaVersion:2,panellists:STATE.panellists,products:STATE.products,recipes:STATE.recipes,
@@ -958,12 +958,24 @@ function cloudStatus(){if(CLOUD.loading)return 'Đang nạp Firebase…';if(CLOU
     (CLOUD.auto?' · Tự động bật':'')+(CLOUD.sync.outbox.length?' · Chờ gửi '+CLOUD.sync.outbox.length:'')+(CLOUD.sync.conflicts.length?' · Xung đột '+CLOUD.sync.conflicts.length:'');}
 function cloudRefreshSettings(){if($('#tab-settings').classList.contains('active'))renderSettings();}
 function cloudUiBusy(){const a=document.activeElement;return !!(a&&['INPUT','TEXTAREA','SELECT'].includes(a.tagName))||$('#cfOverlay')?.classList.contains('show');}
-async function acquireEditorLock(){if(!navigator.locks)return;let obtained=false;
-  navigator.locks.request(CLOUD_LOCK_KEY,{ifAvailable:true},async lock=>{if(!lock){CLOUD.editorPrimary=false;showEditorLock();return;}obtained=true;CLOUD.editorPrimary=true;
-    await new Promise(resolve=>CLOUD.lockRelease=resolve);});await new Promise(r=>setTimeout(r,30));if(!obtained){CLOUD.editorPrimary=false;showEditorLock();}}
+async function acquireEditorLock(){
+  if(!navigator.locks||CLOUD.lockChecking||CLOUD.lockRelease)return;
+  CLOUD.lockChecking=true;
+  const obtained=await new Promise(resolve=>{
+    navigator.locks.request(CLOUD_LOCK_KEY,{ifAvailable:true},lock=>{
+      if(!lock){resolve(false);return;}
+      CLOUD.editorPrimary=true;resolve(true);
+      return new Promise(release=>CLOUD.lockRelease=release);
+    }).catch(()=>resolve(false));
+  });
+  CLOUD.lockChecking=false;
+  if(obtained){clearInterval(CLOUD.lockRetryTimer);CLOUD.lockRetryTimer=null;$('#editorLockBanner')?.remove();cloudRefreshSettings();return;}
+  CLOUD.editorPrimary=false;showEditorLock();
+  if(!CLOUD.lockRetryTimer)CLOUD.lockRetryTimer=setInterval(acquireEditorLock,1500);
+}
 function showEditorLock(){let el=$('#editorLockBanner');if(!el){el=document.createElement('div');el.id='editorLockBanner';el.className='noprint';
   el.style.cssText='position:fixed;inset:58px 0 0 0;background:rgba(15,18,22,.86);z-index:49;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;font-size:16px';
-  el.innerHTML='<div><b>App đang được chỉnh sửa trong một tab khác.</b><br><span style="font-size:13px;color:#cfd6df">Đóng tab kia rồi tải lại trang để chỉnh sửa an toàn.</span></div>';document.body.appendChild(el);}}
+  el.innerHTML='<div><b>App đang được chỉnh sửa trong một tab khác.</b><br><span style="font-size:13px;color:#cfd6df">Đóng tab kia; trang này sẽ tự mở khóa trong vài giây.</span></div>';document.body.appendChild(el);}}
 async function firebaseInit(){try{await acquireEditorLock();const [appM,authM,fsM]=await Promise.all([
     import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js'),import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js'),import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js')]);
   const app=appM.initializeApp(FIREBASE_CONFIG);CLOUD.auth=authM.getAuth(app);CLOUD.db=fsM.getFirestore(app);CLOUD.m={...authM,...fsM};
