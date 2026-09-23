@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSensoryOwner() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == 'binhdangthanh94@gmail.com';
+    }
+
+    // Legacy snapshot: retained temporarily for migration/rollback.
+    match /ild_sensory/shared_state {
+      allow read, write: if isSensoryOwner();
+    }
+
+    // v2: small independent documents with revision-based transactions.
+    match /ild_sensory_v2/{documentId} {
+      allow read, write: if isSensoryOwner();
+    }
+
+    match /ild_sensory_sets/{setId} {
+      allow read, write: if isSensoryOwner();
+    }
+
+    match /ild_sensory_scores/{scoreId} {
+      allow read, write: if isSensoryOwner();
+    }
+  }
+}
