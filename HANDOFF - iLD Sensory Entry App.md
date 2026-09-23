@@ -3,7 +3,7 @@
 > Tài liệu bàn giao để tiếp tục phát triển ứng dụng nhập và tổng hợp kết quả nếm cảm quan của ILD Coffee Vietnam.
 > Đọc toàn bộ file này trước, sau đó mở `index.html` để xem code.
 >
-> Cập nhật: 2026-09-22  
+> Cập nhật: 2026-09-23
 > Chủ dự án: Đặng Thanh Bình — QA, ILD Coffee Vietnam
 
 ---
@@ -12,7 +12,8 @@
 
 - File ứng dụng duy nhất: `C:\Apps\Sensory App\index.html`.
 - HTML/CSS/JavaScript thuần trong một file, responsive cho PC và iPad.
-- Dữ liệu lưu cục bộ bằng LocalStorage và có thể đồng bộ Firebase/Cloud Firestore.
+- Dữ liệu hiển thị từ cache LocalStorage và đồng bộ lâu dài lên Firebase/Cloud Firestore v2.
+- Sync v2 có outbox offline, revision/transaction chống ghi đè, conflict UI và khóa một tab chỉnh sửa.
 - Đã bổ sung tab **Items Code** quản lý quan hệ `Nhóm · Items Code · Tên sản phẩm · Recipe`.
 - Tab Items Code hỗ trợ thêm/xóa/tìm kiếm, tải template, nhập `.xlsx/.xls/.csv`, xuất `.xls`.
 - Firebase Authentication đã bật Email/Password và Google Sign-In.
@@ -191,6 +192,7 @@ ild_sensory_v1             dữ liệu chính
 ild_sensory_theme          giao diện sáng/tối
 ild_sensory_cloud_auto     bật/tắt tự đồng bộ
 ild_sensory_cloud_client   ID thiết bị để tránh nhận lại chính bản ghi vừa gửi
+ild_sensory_cloud_sync_v2  bases, revision, outbox và conflict đang chờ xử lý
 ```
 
 - `save()` là alias của `persist()`.
@@ -220,11 +222,14 @@ Nếu email khác đăng nhập, client tự sign out. Đây chỉ là lớp UI;
 ```text
 Database: (default)
 Location: asia-southeast3 (Bangkok)
-Document: ild_sensory/shared_state
-Schema version: 1
+Legacy document: ild_sensory/shared_state
+Meta document: ild_sensory_v2/meta
+Sets: ild_sensory_sets/{setId}
+Scores: ild_sensory_scores/{setId}__{panellistId}
+Schema version: 2
 ```
 
-Toàn bộ `STATE` dùng chung nằm trong **một document**. `cloudPush()` chặn payload lớn hơn 900.000 byte để tránh sát giới hạn 1 MiB/document.
+Document legacy được giữ tạm để migration/rollback. Bản v2 tách Meta, Set và Score để một thay đổi nhỏ không ghi lại toàn bộ STATE và không còn phụ thuộc giới hạn 1 MiB của một snapshot lớn.
 
 ### Firestore Rules đang Publish
 
@@ -233,10 +238,15 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /ild_sensory/shared_state {
-      allow read, write: if request.auth != null
+    function isSensoryOwner() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
         && request.auth.token.email == 'binhdangthanh94@gmail.com';
     }
+    match /ild_sensory/shared_state { allow read, write: if isSensoryOwner(); }
+    match /ild_sensory_v2/{id} { allow read, write: if isSensoryOwner(); }
+    match /ild_sensory_sets/{id} { allow read, write: if isSensoryOwner(); }
+    match /ild_sensory_scores/{id} { allow read, write: if isSensoryOwner(); }
   }
 }
 ```
@@ -247,13 +257,16 @@ Mọi document khác mặc định không được cấp quyền.
 
 - `firebaseInit()` tải SDK và theo dõi Auth state.
 - `cloudSignIn()` dùng Google popup với email gợi ý.
-- `cloudPush(true)` ghi đè toàn bộ document dùng chung.
-- `cloudPull()` đọc document rồi xác nhận trước khi thay STATE local.
-- `cloudToggleAuto()` bật listener realtime và tự push sau debounce 1,2 giây.
-- `clientId` giúp listener bỏ qua cập nhật do chính thiết bị hiện tại gửi.
+- `cloudPush(true)` tạo entity diff rồi gửi tuần tự từ outbox.
+- Mỗi entity được ghi bằng Firestore transaction, kiểm tra `baseRevision` và tăng `revision`.
+- Revision lệch tạo conflict; không tự động chọn bên thắng.
+- `cloudPull()` ưu tiên schema v2 và tự đọc legacy nếu v2 chưa có.
+- Listener theo dõi riêng Meta, Sets và Scores; thay đổi được hoãn nếu người dùng đang nhập.
+- Web Locks API chỉ cho một tab làm tab chỉnh sửa chính.
+- Retry dùng exponential backoff; outbox không bị xóa khi lỗi mạng.
 - LocalStorage luôn được giữ làm fallback.
 
-Rủi ro: mô hình một document là **last-write-wins**. Hai thiết bị chỉnh gần đồng thời có thể ghi đè toàn bộ STATE của nhau.
+Giới hạn còn lại: audit vẫn do client tạo. Muốn audit bất biến cần Callable Cloud Function và thường phải dùng gói Blaze.
 
 ---
 
@@ -323,7 +336,9 @@ Không push nhầm dữ liệu demo từ một trình duyệt mới trước khi
 
 - Từ GitHub Pages, đăng nhập đúng email thành công.
 - Email khác bị sign out và không đọc/ghi được Firestore.
-- Push và kiểm tra document `ild_sensory/shared_state`.
+- Push và kiểm tra `ild_sensory_v2/meta`, `ild_sensory_sets` và `ild_sensory_scores`.
+- Mở hai thiết bị, sửa cùng entity từ cùng revision và kiểm tra conflict được giữ lại để người dùng quyết định.
+- Thử offline, tạo thay đổi, kiểm tra outbox còn nguyên và tự gửi khi online.
 - Pull trên thiết bị khác; so số Set, panellist và Items Code.
 - Bật auto-sync, sửa dữ liệu nhỏ, xác nhận thiết bị còn lại nhận được.
 - Thử offline: phần local vẫn dùng được và không mất dữ liệu.
@@ -332,15 +347,15 @@ Không push nhầm dữ liệu demo từ một trình duyệt mới trước khi
 
 ## 13. Backlog ưu tiên
 
-1. Deploy `index.html` mới lên GitHub Pages và push dữ liệu đầu tiên lên Firestore.
-2. Tách cloud data thành nhiều document/collection để tránh giới hạn 1 MiB và xung đột last-write-wins.
-3. Thêm conflict/version handling bằng `updatedAt` hoặc transaction.
-4. Liên kết Items Code trực tiếp với Product/Recipe và mẫu trong Set.
-5. Xuất `.xlsx` thật cho mọi báo cáo nếu chấp nhận thêm thư viện hoặc tự viết workbook đầy đủ.
-6. Xuất PDF giống form QA.F.072, có ô kiểm tra và chữ ký.
-7. Thang 1–5 riêng cho Green Bean nếu nghiệp vụ phê duyệt.
-8. Mẫu Spike ẩn và thống kê năng lực panellist.
-9. Thống kê tỷ lệ tham gia panellist theo tháng.
+1. Publish `firestore.rules`, deploy `index.html`, tải legacy rồi push lần đầu để tạo schema v2.
+2. Theo dõi migration và chỉ xóa `ild_sensory/shared_state` sau khi backup/đối chiếu hoàn tất.
+3. Bổ sung Firebase App Check cho domain GitHub Pages.
+4. Chuyển audit quan trọng sang Callable Cloud Function nếu nâng lên Blaze.
+5. Liên kết Items Code trực tiếp với Product/Recipe và mẫu trong Set.
+6. Xuất `.xlsx` thật cho mọi báo cáo nếu chấp nhận thêm thư viện hoặc tự viết workbook đầy đủ.
+7. Xuất PDF giống form QA.F.072, có ô kiểm tra và chữ ký.
+8. Thang 1–5 riêng cho Green Bean nếu nghiệp vụ phê duyệt.
+9. Mẫu Spike ẩn và thống kê năng lực panellist.
 10. Nếu mở cho nhiều tài khoản, đổi Rules và thiết kế role; không chỉ sửa `CLOUD_ALLOWED_EMAIL`.
 
 ---

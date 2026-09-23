@@ -251,7 +251,8 @@ const FIREBASE_CONFIG={apiKey:'AIzaSyCe9LogdqmyrQla7lJxxDxhXkMf_WjLRfI',authDoma
   projectId:'sensory-app-72a44',storageBucket:'sensory-app-72a44.firebasestorage.app',messagingSenderId:'846967567706',
   appId:'1:846967567706:web:70166fa047ff6e57f66f63'};
 const CLOUD_ALLOWED_EMAIL='binhdangthanh94@gmail.com';
-const STORAGE_KEY='ild_sensory_v1', THEME_KEY='ild_sensory_theme', CLOUD_AUTO_KEY='ild_sensory_cloud_auto', CLOUD_CLIENT_KEY='ild_sensory_cloud_client';
+const STORAGE_KEY='ild_sensory_v1', THEME_KEY='ild_sensory_theme', CLOUD_AUTO_KEY='ild_sensory_cloud_auto', CLOUD_CLIENT_KEY='ild_sensory_cloud_client',
+  CLOUD_SYNC_KEY='ild_sensory_cloud_sync_v2', CLOUD_LOCK_KEY='ild_sensory_editor_lock';
 
 /* ===================== [STATE] ===================== */
 let STATE={panellists:[],products:[],recipes:[],pos:[],batches:[],itemCodes:[],sets:[],currentSetId:null,
@@ -929,85 +930,109 @@ function renderGuide(){
 }
 
 /* ===================== [CLOUD] Firebase Auth + Firestore ===================== */
-const CLOUD={ready:false,loading:true,error:'',user:null,db:null,auth:null,m:null,unsub:null,timer:null,
-  applying:false,localDirty:false,lastSync:'',auto:localStorage.getItem(CLOUD_AUTO_KEY)==='1',
-  clientId:localStorage.getItem(CLOUD_CLIENT_KEY)||uid('client')};
+const CLOUD_SYNC_DEFAULT={bases:{},outbox:[],conflicts:[],watermark:0};
+function cloudLoadSync(){try{return {...CLOUD_SYNC_DEFAULT,...JSON.parse(localStorage.getItem(CLOUD_SYNC_KEY)||'{}')};}catch{return {...CLOUD_SYNC_DEFAULT};}}
+const CLOUD={ready:false,loading:true,error:'',user:null,db:null,auth:null,m:null,unsubs:[],timer:null,retryTimer:null,remoteTimer:null,
+  applying:false,localDirty:false,lastSync:'',auto:localStorage.getItem(CLOUD_AUTO_KEY)==='1',pendingRemote:false,
+  clientId:localStorage.getItem(CLOUD_CLIENT_KEY)||uid('client'),sync:cloudLoadSync(),editorPrimary:true,lockRelease:null};
 localStorage.setItem(CLOUD_CLIENT_KEY,CLOUD.clientId);
-function cloudData(){return {schemaVersion:1,panellists:STATE.panellists,products:STATE.products,recipes:STATE.recipes,
-  pos:STATE.pos,batches:STATE.batches,itemCodes:STATE.itemCodes,sets:STATE.sets,currentSetId:STATE.currentSetId,audit:STATE.audit};}
-function cloudStatus(){
-  if(CLOUD.loading)return 'Đang nạp Firebase…';
-  if(CLOUD.error)return 'Lỗi Firebase: '+CLOUD.error;
-  if(!CLOUD.user)return 'Chưa đăng nhập';
-  return 'Đã đăng nhập: '+CLOUD.user.email+(CLOUD.lastSync?' · Đồng bộ '+CLOUD.lastSync:'')+(CLOUD.auto?' · Tự động bật':'');
-}
+function cloudSaveSync(){localStorage.setItem(CLOUD_SYNC_KEY,JSON.stringify(CLOUD.sync));}
+function cloudMeta(){return {schemaVersion:2,panellists:STATE.panellists,products:STATE.products,recipes:STATE.recipes,
+  pos:STATE.pos,batches:STATE.batches,itemCodes:STATE.itemCodes,currentSetId:STATE.currentSetId,audit:STATE.audit};}
+function cloudEntityKey(type,id='main'){return type+':'+id;}
+function cloudRef(key){const [type,...rest]=key.split(':'),id=rest.join(':');
+  if(type==='meta')return CLOUD.m.doc(CLOUD.db,'ild_sensory_v2','meta');
+  if(type==='set')return CLOUD.m.doc(CLOUD.db,'ild_sensory_sets',id);
+  if(type==='score')return CLOUD.m.doc(CLOUD.db,'ild_sensory_scores',id);
+  throw new Error('Cloud entity không hợp lệ: '+key);}
+function cloudEntities(){const out=new Map([[cloudEntityKey('meta'),cloudMeta()]]);
+  STATE.sets.forEach(s=>{const {scores,...setData}=s;out.set(cloudEntityKey('set',s.id),setData);
+    Object.entries(scores||{}).forEach(([pid,data])=>out.set(cloudEntityKey('score',s.id+'__'+pid),{setId:s.id,panellistId:pid,scores:data}));});return out;}
+function stableJSON(v){const sort=x=>Array.isArray(x)?x.map(sort):(x&&typeof x==='object'?Object.keys(x).sort().reduce((o,k)=>(o[k]=sort(x[k]),o),{}):x);return JSON.stringify(sort(v));}
+function cloudQueueEntities(){if(CLOUD.applying)return;const now=cloudEntities(),queued=new Map(CLOUD.sync.outbox.map(x=>[x.key,x]));
+  now.forEach((data,key)=>{const base=CLOUD.sync.bases[key];if(!base||stableJSON(base.data)!==stableJSON(data))queued.set(key,{key,op:'upsert',data,baseRevision:base?.revision??null,retryCount:0});});
+  Object.keys(CLOUD.sync.bases).forEach(key=>{if(!now.has(key)&&!key.startsWith('legacy:'))queued.set(key,{key,op:'delete',data:null,baseRevision:CLOUD.sync.bases[key].revision,retryCount:0});});
+  CLOUD.sync.outbox=[...queued.values()];cloudSaveSync();cloudRefreshSettings();}
+function cloudStatus(){if(CLOUD.loading)return 'Đang nạp Firebase…';if(CLOUD.error)return 'Lỗi Firebase: '+CLOUD.error;
+  if(!CLOUD.user)return 'Chưa đăng nhập';return 'Đã đăng nhập: '+CLOUD.user.email+(CLOUD.lastSync?' · Đồng bộ '+CLOUD.lastSync:'')+
+    (CLOUD.auto?' · Tự động bật':'')+(CLOUD.sync.outbox.length?' · Chờ gửi '+CLOUD.sync.outbox.length:'')+(CLOUD.sync.conflicts.length?' · Xung đột '+CLOUD.sync.conflicts.length:'');}
 function cloudRefreshSettings(){if($('#tab-settings').classList.contains('active'))renderSettings();}
-async function firebaseInit(){
-  try{
-    const [appM,authM,fsM]=await Promise.all([
-      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js'),
-      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js'),
-      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js')]);
-    const app=appM.initializeApp(FIREBASE_CONFIG);CLOUD.auth=authM.getAuth(app);CLOUD.db=fsM.getFirestore(app);CLOUD.m={...authM,...fsM};
-    await authM.setPersistence(CLOUD.auth,authM.browserLocalPersistence);
-    authM.onAuthStateChanged(CLOUD.auth,async user=>{
-      if(user&&user.email?.toLowerCase()!==CLOUD_ALLOWED_EMAIL){await authM.signOut(CLOUD.auth);CLOUD.error='Tài khoản không được cấp quyền';toast(CLOUD.error,'err');return;}
-      CLOUD.user=user||null;CLOUD.ready=true;CLOUD.loading=false;CLOUD.error='';
-      if(CLOUD.user&&CLOUD.auto)cloudStartListener();else cloudStopListener();cloudRefreshSettings();
-    });
-  }catch(e){CLOUD.loading=false;CLOUD.error=e.message||'Không tải được SDK';cloudRefreshSettings();}
-}
-async function cloudSignIn(){
-  if(!CLOUD.ready||!CLOUD.auth)return toast('Firebase chưa sẵn sàng','err');
-  try{const p=new CLOUD.m.GoogleAuthProvider();p.setCustomParameters({login_hint:CLOUD_ALLOWED_EMAIL,prompt:'select_account'});
-    await CLOUD.m.signInWithPopup(CLOUD.auth,p);toast('Đã đăng nhập Firebase','ok');}
-  catch(e){if(e.code!=='auth/popup-closed-by-user')toast('Đăng nhập lỗi: '+e.message,'err');}
-}
+function cloudUiBusy(){const a=document.activeElement;return !!(a&&['INPUT','TEXTAREA','SELECT'].includes(a.tagName))||$('#cfOverlay')?.classList.contains('show');}
+async function acquireEditorLock(){if(!navigator.locks)return;let obtained=false;
+  navigator.locks.request(CLOUD_LOCK_KEY,{ifAvailable:true},async lock=>{if(!lock){CLOUD.editorPrimary=false;showEditorLock();return;}obtained=true;CLOUD.editorPrimary=true;
+    await new Promise(resolve=>CLOUD.lockRelease=resolve);});await new Promise(r=>setTimeout(r,30));if(!obtained){CLOUD.editorPrimary=false;showEditorLock();}}
+function showEditorLock(){let el=$('#editorLockBanner');if(!el){el=document.createElement('div');el.id='editorLockBanner';el.className='noprint';
+  el.style.cssText='position:fixed;inset:58px 0 0 0;background:rgba(15,18,22,.86);z-index:49;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;font-size:16px';
+  el.innerHTML='<div><b>App đang được chỉnh sửa trong một tab khác.</b><br><span style="font-size:13px;color:#cfd6df">Đóng tab kia rồi tải lại trang để chỉnh sửa an toàn.</span></div>';document.body.appendChild(el);}}
+async function firebaseInit(){try{await acquireEditorLock();const [appM,authM,fsM]=await Promise.all([
+    import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js'),import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js'),import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js')]);
+  const app=appM.initializeApp(FIREBASE_CONFIG);CLOUD.auth=authM.getAuth(app);CLOUD.db=fsM.getFirestore(app);CLOUD.m={...authM,...fsM};
+  await authM.setPersistence(CLOUD.auth,authM.browserLocalPersistence);authM.onAuthStateChanged(CLOUD.auth,async user=>{
+    if(user&&(!user.emailVerified||user.email?.toLowerCase()!==CLOUD_ALLOWED_EMAIL)){await authM.signOut(CLOUD.auth);CLOUD.error='Tài khoản chưa xác minh hoặc không được cấp quyền';toast(CLOUD.error,'err');return;}
+    CLOUD.user=user||null;CLOUD.ready=true;CLOUD.loading=false;CLOUD.error='';if(CLOUD.user){setInterval(()=>CLOUD.user?.getIdToken(true).catch(()=>{}),30*60*1000);
+      if(CLOUD.auto){cloudStartListener();cloudQueuePush();}}else cloudStopListener();cloudRefreshSettings();});
+  window.addEventListener('online',()=>{if(CLOUD.user){cloudFlushOutbox();if(CLOUD.auto)cloudStartListener();}});window.addEventListener('offline',cloudRefreshSettings);
+  }catch(e){CLOUD.loading=false;CLOUD.error=e.message||'Không tải được SDK';cloudRefreshSettings();}}
+async function cloudSignIn(){if(!CLOUD.ready||!CLOUD.auth)return toast('Firebase chưa sẵn sàng','err');try{const p=new CLOUD.m.GoogleAuthProvider();
+  p.setCustomParameters({login_hint:CLOUD_ALLOWED_EMAIL,prompt:'select_account'});await CLOUD.m.signInWithPopup(CLOUD.auth,p);toast('Đã đăng nhập Firebase','ok');}
+  catch(e){if(e.code!=='auth/popup-closed-by-user')toast('Đăng nhập lỗi: '+e.message,'err');}}
 async function cloudSignOut(){if(CLOUD.auth){cloudStopListener();await CLOUD.m.signOut(CLOUD.auth);toast('Đã đăng xuất Firebase');}}
-function cloudDoc(){return CLOUD.m.doc(CLOUD.db,'ild_sensory','shared_state');}
-function cloudQueuePush(){
-  if(CLOUD.applying||!CLOUD.auto||!CLOUD.user)return;CLOUD.localDirty=true;clearTimeout(CLOUD.timer);
-  CLOUD.timer=setTimeout(()=>cloudPush(false),1200);
+function cloudQueuePush(){if(CLOUD.applying||!CLOUD.auto||!CLOUD.user||!CLOUD.editorPrimary)return;CLOUD.localDirty=true;clearTimeout(CLOUD.timer);
+  CLOUD.timer=setTimeout(()=>{cloudQueueEntities();cloudFlushOutbox();},1200);}
+async function cloudWriteEntity(item){const ref=cloudRef(item.key),m=CLOUD.m;return m.runTransaction(CLOUD.db,async tx=>{const snap=await tx.get(ref),remote=snap.exists()?snap.data():null,remoteRev=remote?.revision||0;
+  if(item.baseRevision===null&&snap.exists())throw Object.assign(new Error('CONFLICT'),{remote,remoteRev});
+  if(item.baseRevision!==null&&remoteRev!==item.baseRevision)throw Object.assign(new Error('CONFLICT'),{remote,remoteRev});
+  if(item.op==='delete'){if(snap.exists())tx.delete(ref);return {revision:remoteRev+1,data:null};}
+  const revision=remoteRev+1,payload={...item.data,revision,updatedAt:m.serverTimestamp(),updatedBy:CLOUD.user.email,clientId:CLOUD.clientId};tx.set(ref,payload,{merge:false});return {revision,data:item.data};});}
+async function cloudFlushOutbox(){if(!CLOUD.user||!navigator.onLine||CLOUD.applying||!CLOUD.editorPrimary||!CLOUD.sync.outbox.length)return;
+  clearTimeout(CLOUD.retryTimer);CLOUD.localDirty=true;while(CLOUD.sync.outbox.length){const item=CLOUD.sync.outbox[0];try{const result=await cloudWriteEntity(item);
+      if(result.data===null)delete CLOUD.sync.bases[item.key];else CLOUD.sync.bases[item.key]={revision:result.revision,data:result.data};CLOUD.sync.outbox.shift();cloudSaveSync();}
+    catch(e){if(e.message==='CONFLICT'){CLOUD.sync.conflicts.push({key:item.key,local:item.data,remote:e.remote||null,remoteRevision:e.remoteRev||0,at:new Date().toISOString()});CLOUD.sync.outbox.shift();cloudSaveSync();toast('Có xung đột dữ liệu: '+item.key,'err');break;}
+      item.retryCount=(item.retryCount||0)+1;cloudSaveSync();const delay=Math.min(60000,2000*Math.pow(2,item.retryCount));CLOUD.retryTimer=setTimeout(cloudFlushOutbox,delay);CLOUD.error=e.message;break;}}
+  CLOUD.localDirty=false;CLOUD.lastSync=new Date().toLocaleTimeString('vi-VN');cloudRefreshSettings();}
+async function cloudPush(manual=true){if(!CLOUD.user)return toast('Đăng nhập Firebase trước','err');if(!CLOUD.editorPrimary)return toast('Tab này chỉ đọc','err');
+  if(manual){logAudit('Đẩy dữ liệu lên Firebase v2');persist(true);}cloudQueueEntities();await cloudFlushOutbox();if(!CLOUD.sync.conflicts.length&&manual)toast('Đã đồng bộ dữ liệu lên Firebase','ok');}
+function cloudApplyAll(meta,sets,scores,bases){if(!meta||!Array.isArray(sets))throw new Error('Dữ liệu cloud không hợp lệ');CLOUD.applying=true;
+  STATE.panellists=meta.panellists||[];STATE.products=meta.products||[];STATE.recipes=meta.recipes||[];STATE.pos=meta.pos||[];STATE.batches=meta.batches||[];STATE.itemCodes=meta.itemCodes||[];
+  const byId=new Map(sets.map(s=>[s.id,{...s,scores:{}}]));scores.forEach(x=>{const s=byId.get(x.setId);if(s)s.scores[x.panellistId]=x.scores||{};});STATE.sets=[...byId.values()];
+  STATE.currentSetId=meta.currentSetId||null;STATE.currentPanellistId=null;STATE.audit=meta.audit||[];CLOUD.sync.bases=bases;CLOUD.sync.outbox=[];CLOUD.sync.conflicts=[];cloudSaveSync();persist(true);
+  CLOUD.applying=false;CLOUD.lastSync=new Date().toLocaleTimeString('vi-VN');$('#hdrSet').textContent=setLabel(curSet());switchTab($('.panel.active')?.id||'tab-scoring');cloudRefreshSettings();}
+async function cloudFetchV2(){const m=CLOUD.m,metaSnap=await m.getDoc(cloudRef('meta:main'));if(!metaSnap.exists())return null;
+  const [setSnap,scoreSnap]=await Promise.all([m.getDocs(m.collection(CLOUD.db,'ild_sensory_sets')),m.getDocs(m.collection(CLOUD.db,'ild_sensory_scores'))]);const bases={};
+  const strip=d=>{const {revision,updatedAt,updatedBy,clientId,...data}=d;return {revision:revision||0,data};};let x=strip(metaSnap.data());bases['meta:main']=x;const meta=x.data;
+  const sets=setSnap.docs.map(d=>{const y=strip(d.data());bases['set:'+d.id]=y;return y.data;});const scores=scoreSnap.docs.map(d=>{const y=strip(d.data());bases['score:'+d.id]=y;return y.data;});return {meta,sets,scores,bases};}
+async function cloudPull(){if(!CLOUD.user)return toast('Đăng nhập Firebase trước','err');try{let pack=await cloudFetchV2();if(!pack){const legacy=await CLOUD.m.getDoc(CLOUD.m.doc(CLOUD.db,'ild_sensory','shared_state'));
+    if(!legacy.exists())return toast('Firebase chưa có dữ liệu','err');const d=legacy.data(),sets=(d.sets||[]).map(s=>{const {scores,...rest}=s;return rest;}),scores=[];(d.sets||[]).forEach(s=>Object.entries(s.scores||{}).forEach(([pid,sc])=>scores.push({setId:s.id,panellistId:pid,scores:sc})));
+    pack={meta:{...d,sets:undefined,schemaVersion:2},sets,scores,bases:{}};}
+  confirmAsk('Tải từ Firebase sẽ thay thế cache trên máy. Tiếp tục?','Tải xuống',()=>{cloudApplyAll(pack.meta,pack.sets,pack.scores,pack.bases);toast('Đã tải dữ liệu từ Firebase','ok');});}
+  catch(e){toast('Tải dữ liệu lỗi: '+e.message,'err');}}
+function cloudStopListener(){CLOUD.unsubs.forEach(f=>f());CLOUD.unsubs=[];}
+function cloudRemoteChanged(){
+  if(CLOUD.localDirty)return;
+  if(cloudUiBusy()){CLOUD.pendingRemote=true;cloudRefreshSettings();return;}
+  clearTimeout(CLOUD.remoteTimer);
+  CLOUD.remoteTimer=setTimeout(()=>cloudPullSilent(),500);
 }
-async function cloudPush(manual=true){
-  if(!CLOUD.user)return toast('Đăng nhập Firebase trước','err');
-  clearTimeout(CLOUD.timer);CLOUD.localDirty=true;
-  try{
-    if(manual){logAudit('Đẩy dữ liệu lên Firebase');persist(true);}
-    const data=cloudData(),bytes=new Blob([JSON.stringify(data)]).size;if(bytes>900000)throw new Error('Dữ liệu gần vượt giới hạn 1 MB của một document');
-    await CLOUD.m.setDoc(cloudDoc(),{...data,updatedAt:CLOUD.m.serverTimestamp(),updatedBy:CLOUD.user.email,clientId:CLOUD.clientId},{merge:false});
-    CLOUD.localDirty=false;CLOUD.lastSync=new Date().toLocaleTimeString('vi-VN');cloudRefreshSettings();if(manual)toast('Đã đẩy dữ liệu lên Firebase','ok');
-  }catch(e){CLOUD.localDirty=false;CLOUD.error=e.message;cloudRefreshSettings();toast('Đồng bộ lỗi: '+e.message,'err');}
-}
-function cloudApply(d){
-  if(!d||!Array.isArray(d.sets))throw new Error('Dữ liệu cloud không hợp lệ');CLOUD.applying=true;
-  STATE.panellists=d.panellists||[];STATE.products=d.products||[];STATE.recipes=d.recipes||[];STATE.pos=d.pos||[];
-  STATE.batches=d.batches||[];STATE.itemCodes=d.itemCodes||[];STATE.sets=d.sets||[];STATE.currentSetId=d.currentSetId||null;
-  STATE.currentPanellistId=null;STATE.audit=d.audit||[];persist(true);CLOUD.applying=false;CLOUD.lastSync=new Date().toLocaleTimeString('vi-VN');
-  $('#hdrSet').textContent=setLabel(curSet());const active=$('.panel.active')?.id||'tab-scoring';switchTab(active);cloudRefreshSettings();
-}
-async function cloudPull(){
-  if(!CLOUD.user)return toast('Đăng nhập Firebase trước','err');
-  try{const snap=await CLOUD.m.getDoc(cloudDoc());if(!snap.exists())return toast('Firebase chưa có dữ liệu','err');
-    confirmAsk('Tải từ Firebase sẽ thay thế dữ liệu đang có trên máy. Tiếp tục?','Tải xuống',()=>{try{cloudApply(snap.data());toast('Đã tải dữ liệu từ Firebase','ok');}catch(e){toast(e.message,'err');}});
-  }catch(e){toast('Tải dữ liệu lỗi: '+e.message,'err');}
-}
-function cloudStopListener(){if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null;}}
-function cloudStartListener(){
-  cloudStopListener();if(!CLOUD.user||!CLOUD.auto)return;
-  CLOUD.unsub=CLOUD.m.onSnapshot(cloudDoc(),snap=>{if(!snap.exists()||CLOUD.localDirty)return;const d=snap.data();
-    if(d.clientId===CLOUD.clientId)return;try{cloudApply(d);toast('Đã nhận dữ liệu mới từ Firebase','ok');}catch(e){toast(e.message,'err');}},
-    e=>{CLOUD.error=e.message;cloudRefreshSettings();});
-}
-function cloudToggleAuto(){
-  if(!CLOUD.user)return toast('Đăng nhập Firebase trước','err');CLOUD.auto=!CLOUD.auto;localStorage.setItem(CLOUD_AUTO_KEY,CLOUD.auto?'1':'0');
-  if(CLOUD.auto){cloudStartListener();cloudPush(false);}else cloudStopListener();cloudRefreshSettings();toast(CLOUD.auto?'Đã bật tự động đồng bộ':'Đã tắt tự động đồng bộ','ok');
-}
+async function cloudPullSilent(){try{const pack=await cloudFetchV2();if(pack){cloudApplyAll(pack.meta,pack.sets,pack.scores,pack.bases);toast('Đã nhận dữ liệu mới từ Firebase','ok');}}catch(e){CLOUD.error=e.message;cloudRefreshSettings();}}
+function cloudApplyPending(){CLOUD.pendingRemote=false;cloudPullSilent();}
+function cloudStartListener(){cloudStopListener();if(!CLOUD.user||!CLOUD.auto)return;const m=CLOUD.m,opts={includeMetadataChanges:false};
+  CLOUD.unsubs.push(m.onSnapshot(cloudRef('meta:main'),opts,s=>{if(s.exists()&&s.data().clientId!==CLOUD.clientId)cloudRemoteChanged();},e=>{CLOUD.error=e.message;cloudRefreshSettings();}));
+  CLOUD.unsubs.push(m.onSnapshot(m.collection(CLOUD.db,'ild_sensory_sets'),opts,s=>{if(s.docChanges().some(c=>c.doc.data()?.clientId!==CLOUD.clientId))cloudRemoteChanged();}));
+  CLOUD.unsubs.push(m.onSnapshot(m.collection(CLOUD.db,'ild_sensory_scores'),opts,s=>{if(s.docChanges().some(c=>c.doc.data()?.clientId!==CLOUD.clientId))cloudRemoteChanged();}));}
+function cloudToggleAuto(){if(!CLOUD.user)return toast('Đăng nhập Firebase trước','err');CLOUD.auto=!CLOUD.auto;localStorage.setItem(CLOUD_AUTO_KEY,CLOUD.auto?'1':'0');
+  if(CLOUD.auto){cloudStartListener();cloudQueuePush();}else cloudStopListener();cloudRefreshSettings();toast(CLOUD.auto?'Đã bật tự động đồng bộ':'Đã tắt tự động đồng bộ','ok');}
+function cloudUseRemoteConflict(i){const c=CLOUD.sync.conflicts[i];if(!c)return;if(c.remote){CLOUD.sync.bases[c.key]={revision:c.remoteRevision,data:(()=>{const {revision,updatedAt,updatedBy,clientId,...d}=c.remote;return d;})()};}
+  CLOUD.sync.conflicts.splice(i,1);cloudSaveSync();cloudPullSilent();}
+function cloudRetryLocalConflict(i){const c=CLOUD.sync.conflicts[i];if(!c)return;CLOUD.sync.bases[c.key]={revision:c.remoteRevision,data:c.remote?((()=>{const {revision,updatedAt,updatedBy,clientId,...d}=c.remote;return d;})()):{}};
+  CLOUD.sync.outbox.push({key:c.key,op:'upsert',data:c.local,baseRevision:c.remoteRevision,retryCount:0});CLOUD.sync.conflicts.splice(i,1);cloudSaveSync();cloudFlushOutbox();}
 
 /* ===================== [SETTINGS] (P3/P5) ===================== */
 function renderSettings(){
   const box=$('#settingsBody');
   const auditRows=STATE.audit.slice(0,80).map(a=>`<div><b>${esc(a.role)}</b> · ${esc(a.t)} — ${esc(a.action)}</div>`).join('')||'<div>Chưa có nhật ký</div>';
+  const conflictRows=CLOUD.sync.conflicts.map((c,i)=>`<tr><td class="l"><b>${esc(c.key)}</b></td><td>${esc(new Date(c.at).toLocaleString('vi-VN'))}</td><td>
+    <button class="btn sec sm" onclick="cloudUseRemoteConflict(${i})">Dùng Firebase</button>
+    <button class="btn sm" onclick="cloudRetryLocalConflict(${i})">Ghi bản trên máy</button></td></tr>`).join('');
   box.innerHTML=`
     <div class="card"><h3>Thông số hệ thống</h3>
       <p>Ngưỡng đạt: <b>${CONFIG.PASS_THRESHOLD}%</b> · Điểm Out=3, Just In=0.5, In=0 · Tối thiểu <b>${CONFIG.MIN_PANELLIST}</b> panellist/mẫu.</p></div>
@@ -1018,7 +1043,9 @@ function renderSettings(){
         <button class="btn sm" onclick="cloudPush(true)" ${CLOUD.user?'':'disabled'}>↑ Đẩy dữ liệu lên Firebase</button>
         <button class="btn sec sm" onclick="cloudPull()" ${CLOUD.user?'':'disabled'}>↓ Tải dữ liệu từ Firebase</button>
         <button class="btn sec sm" onclick="cloudToggleAuto()" ${CLOUD.user?'':'disabled'}>${CLOUD.auto?'Tắt':'Bật'} tự động đồng bộ</button></div>
-      <p class="hint">LocalStorage vẫn là bản dự phòng offline. Lần đầu hãy đẩy dữ liệu lên Firebase, sau đó bật tự động đồng bộ giữa các thiết bị.</p></div>
+      ${CLOUD.pendingRemote?`<div class="toolbar"><span class="badge fail">Có dữ liệu mới đang chờ</span><button class="btn sec sm" onclick="cloudApplyPending()">Áp dụng sau khi nhập xong</button></div>`:''}
+      <p class="hint">LocalStorage là cache offline; Firebase là nơi lưu dài hạn. Thay đổi được xếp hàng và gửi nền khi có mạng.</p>
+      ${conflictRows?`<h3 style="margin-top:16px">Xung đột cần xử lý</h3><div class="tbl-wrap"><table class="grid"><thead><tr><th class="l">Bản ghi</th><th>Thời điểm</th><th>Lựa chọn</th></tr></thead><tbody>${conflictRows}</tbody></table></div>`:''}</div>
     <div class="row c2">
       <div class="card"><h3>Sao lưu JSON</h3>
         <button class="btn" onclick="exportBackup()">⤓ Sao lưu JSON</button>
