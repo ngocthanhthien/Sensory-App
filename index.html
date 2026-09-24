@@ -592,17 +592,18 @@ function delBatch(id){STATE.batches=STATE.batches.filter(x=>x.id!==id);save();re
 
 /* ===================== [ITEMS] Items Code · Product · Recipe ===================== */
 let ITEM_UI={filters:{group:'',item:'',name:'',recipe:''},sortKey:'item',sortDir:1,filterTimer:null};
+const itemType=v=>/^rw$/i.test((v||'').trim())?'RW':(/^fgs?$/i.test((v||'').trim())?'FGs':'Other');
 function itemSort(key){if(ITEM_UI.sortKey===key)ITEM_UI.sortDir*=-1;else{ITEM_UI.sortKey=key;ITEM_UI.sortDir=1;}renderItems();}
 function itemFilter(key,value,pos){ITEM_UI.filters[key]=value;clearTimeout(ITEM_UI.filterTimer);ITEM_UI.filterTimer=setTimeout(()=>{renderItems();requestAnimationFrame(()=>{const el=$('#itemFilter_'+key);if(el){el.focus();if(el.setSelectionRange)el.setSelectionRange(pos??value.length,pos??value.length);}});},180);}
 function editItem(id,key,value){const x=STATE.itemCodes.find(v=>v.id===id);if(!x||!['group','item','name','recipe'].includes(key))return;x[key]=value.trim();logAudit('Sửa Items Code: '+(x.item||x.name));save();}
 function renderItems(){
   const box=$('#itemsBody'),f=ITEM_UI.filters;
   const includes=(v,q)=>(v||'').toLowerCase().includes((q||'').trim().toLowerCase());
-  const list=STATE.itemCodes.filter(x=>(!f.group||x.group===f.group)&&includes(x.item,f.item)&&includes(x.name,f.name)&&includes(x.recipe,f.recipe))
-    .slice().sort((a,b)=>(a[ITEM_UI.sortKey]||'').localeCompare(b[ITEM_UI.sortKey]||'','vi',{numeric:true})*ITEM_UI.sortDir);
+  const list=STATE.itemCodes.filter(x=>(!f.group||itemType(x.group)===f.group)&&includes(x.item,f.item)&&includes(x.name,f.name)&&includes(x.recipe,f.recipe))
+    .slice().sort((a,b)=>((ITEM_UI.sortKey==='group'?itemType(a.group):a[ITEM_UI.sortKey])||'').localeCompare((ITEM_UI.sortKey==='group'?itemType(b.group):b[ITEM_UI.sortKey])||'','vi',{numeric:true})*ITEM_UI.sortDir);
   const arrow=k=>ITEM_UI.sortKey===k?(ITEM_UI.sortDir>0?'▲':'▼'):'↕';
   const rows=list.map(x=>`<tr>
-    <td><select class="s edit-cell" onchange="editItem('${x.id}','group',this.value)"><option ${x.group==='FG'?'selected':''}>FG</option><option ${x.group==='RW'?'selected':''}>RW</option><option ${x.group==='Other'?'selected':''}>Other</option></select></td>
+    <td><select class="s edit-cell" onchange="editItem('${x.id}','group',this.value)"><option ${itemType(x.group)==='FGs'?'selected':''}>FGs</option><option ${itemType(x.group)==='RW'?'selected':''}>RW</option></select></td>
     <td><input class="t edit-cell" value="${esc(x.item)}" onchange="editItem('${x.id}','item',this.value)"></td>
     <td><input class="t edit-cell" value="${esc(x.name)}" onchange="editItem('${x.id}','name',this.value)"></td>
     <td><input class="t edit-cell" value="${esc(x.recipe)}" onchange="editItem('${x.id}','recipe',this.value)"></td>
@@ -616,21 +617,21 @@ function renderItems(){
       <p class="hint">Hỗ trợ .xlsx, .xls và .csv. Import thêm dòng mới, bỏ qua dòng trùng; file hai khối FGs CODE / RW CODE được nhận diện tự động.</p></div>
     <div class="card"><div class="toolbar"><h3 style="margin:0">Danh sách Items Code</h3><span class="spacer"></span><span class="badge gray">Hiển thị ${list.length}/${STATE.itemCodes.length}</span></div>
       <div class="tbl-wrap"><table class="grid item-table"><thead>
-        <tr><th class="${ITEM_UI.sortKey==='group'?'sorted':''}" onclick="itemSort('group')">Nhóm <span class="sort-arrow">${arrow('group')}</span></th>
-          <th class="l ${ITEM_UI.sortKey==='item'?'sorted':''}" onclick="itemSort('item')">Items Code <span class="sort-arrow">${arrow('item')}</span></th>
+        <tr><th class="${ITEM_UI.sortKey==='group'?'sorted':''}" onclick="itemSort('group')">Loại (FGs/RW) <span class="sort-arrow">${arrow('group')}</span></th>
+          <th class="l ${ITEM_UI.sortKey==='item'?'sorted':''}" onclick="itemSort('item')">Item Code <span class="sort-arrow">${arrow('item')}</span></th>
           <th class="l ${ITEM_UI.sortKey==='name'?'sorted':''}" onclick="itemSort('name')">Tên sản phẩm <span class="sort-arrow">${arrow('name')}</span></th>
           <th class="${ITEM_UI.sortKey==='recipe'?'sorted':''}" onclick="itemSort('recipe')">Recipe <span class="sort-arrow">${arrow('recipe')}</span></th><th></th></tr>
-        <tr class="filter-row"><th><select class="s" id="itemFilter_group" onchange="itemFilter('group',this.value)"><option value="">Tất cả</option><option ${f.group==='FG'?'selected':''}>FG</option><option ${f.group==='RW'?'selected':''}>RW</option><option ${f.group==='Other'?'selected':''}>Other</option></select></th>
+        <tr class="filter-row"><th><select class="s" id="itemFilter_group" onchange="itemFilter('group',this.value)"><option value="">Tất cả</option><option ${f.group==='FGs'?'selected':''}>FGs</option><option ${f.group==='RW'?'selected':''}>RW</option></select></th>
           <th><input class="t" id="itemFilter_item" placeholder="Lọc mã…" value="${esc(f.item)}" oninput="itemFilter('item',this.value,this.selectionStart)"></th>
           <th><input class="t" id="itemFilter_name" placeholder="Lọc sản phẩm…" value="${esc(f.name)}" oninput="itemFilter('name',this.value,this.selectionStart)"></th>
           <th><input class="t" id="itemFilter_recipe" placeholder="Lọc Recipe…" value="${esc(f.recipe)}" oninput="itemFilter('recipe',this.value,this.selectionStart)"></th><th></th></tr></thead>
-        <tbody><tr class="add-row"><td><select class="s" id="itGroup"><option>FG</option><option>RW</option><option>Other</option></select></td>
+        <tbody><tr class="add-row"><td><select class="s" id="itGroup"><option>FGs</option><option>RW</option></select></td>
           <td><input class="t" id="itCode" placeholder="VD: 10100001"></td><td><input class="t" id="itName" placeholder="Tên sản phẩm"></td>
           <td><input class="t" id="itRecipe" placeholder="VD: 405"></td><td><button class="btn sm" onclick="addItem()">＋ Thêm</button></td></tr>
           ${rows||'<tr><td colspan="5" class="hint" style="padding:16px">Không có Items Code nào khớp bộ lọc.</td></tr>'}</tbody></table></div></div>`;
 }
 function itemExactExists(x){ return STATE.itemCodes.some(y=>
-  (y.group||'').toLowerCase()===x.group.toLowerCase()&&y.item.toLowerCase()===x.item.toLowerCase()&&
+  itemType(y.group)===itemType(x.group)&&y.item.toLowerCase()===x.item.toLowerCase()&&
   y.name.toLowerCase()===x.name.toLowerCase()&&y.recipe.toLowerCase()===x.recipe.toLowerCase()); }
 function addItem(){
   const x={group:$('#itGroup').value.trim(),item:$('#itCode').value.trim(),name:$('#itName').value.trim(),recipe:$('#itRecipe').value.trim()};
@@ -646,8 +647,8 @@ function itemsWorkbook(rows){
   return `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Items Code"><Table>${body}</Table></Worksheet></Workbook>`;
 }
 function downloadItemsTemplate(){ downloadFile('iLD_ItemsCode_Template.xls',itemsWorkbook([
-  ['Group','Items Code','Product Name','Recipe'],['FG','10100001','Freeze Dried Instant Coffee PCAF561B1 25kg','405'],['RW','11100028','Rework Freeze Dried Instant Coffee Bonita 14','405A']]),'application/vnd.ms-excel'); }
-function exportItemsExcel(){ const rows=[['Group','Items Code','Product Name','Recipe'],...STATE.itemCodes.map(x=>[x.group,x.item,x.name,x.recipe])];
+  ['Loại (FGs/RW)','Item Code','Tên sản phẩm','Recipe'],['FGs','10100001','Freeze Dried Instant Coffee PCAF561B1 25kg','405'],['RW','11100028','Rework Freeze Dried Instant Coffee Bonita 14','405A']]),'application/vnd.ms-excel'); }
+function exportItemsExcel(){ const rows=[['Loại (FGs/RW)','Item Code','Tên sản phẩm','Recipe'],...STATE.itemCodes.map(x=>[itemType(x.group),x.item,x.name,x.recipe])];
   downloadFile('iLD_ItemsCode_'+todayStr()+'.xls',itemsWorkbook(rows),'application/vnd.ms-excel');logAudit('Xuất Items Code: '+STATE.itemCodes.length+' dòng');save();toast('Đã xuất dữ liệu Excel','ok'); }
 
 function colIndex(ref){let n=0;for(const c of (ref.match(/[A-Z]+/i)||['A'])[0].toUpperCase())n=n*26+c.charCodeAt(0)-64;return n-1;}
@@ -679,13 +680,13 @@ async function xlsxRows(buffer){
 function normalizeItemRows(rows){
   const clean=rows.map(r=>r.map(v=>(v??'').toString().trim()));let header=-1;
   for(let i=0;i<clean.length;i++){const a=(clean[i][0]||'').toLowerCase(),b=(clean[i][1]||'').toLowerCase(),c=(clean[i][2]||'').toLowerCase();
-    if(((a==='item'||a.includes('items code'))&&(b==='name'||b.includes('product')))||(a.includes('group')&&b.includes('item')&&(c.includes('name')||c.includes('product')))){header=i;break;}}
-  if(header<0)throw new Error('Không tìm thấy tiêu đề Items Code / Product Name / Recipe');const h=clean[header].map(x=>x.toLowerCase());
+    if(((a==='item'||a.includes('items code'))&&(b==='name'||b.includes('product')))||((a.includes('group')||a.includes('type')||a.includes('loại')||a.includes('loai'))&&b.includes('item')&&(c.includes('name')||c.includes('product')||c.includes('tên')||c.includes('ten')))){header=i;break;}}
+  if(header<0)throw new Error('Không tìm thấy tiêu đề Loại / Item Code / Tên sản phẩm / Recipe');const h=clean[header].map(x=>x.toLowerCase());
   const twoBlocks=h[0]==='item'&&h[1]==='name'&&h[2]==='recipe'&&h[4]==='item';const out=[];
   const push=(r,g,offset)=>{const item=r[offset]||'',name=r[offset+1]||'',recipe=r[offset+2]||'';if(item&&name&&recipe)out.push({group:g,item,name,recipe});};
-  if(twoBlocks){clean.slice(header+1).forEach(r=>{push(r,'FG',0);push(r,'RW',4);});return out;}
-  const idx=(terms,fallback)=>{const i=h.findIndex(x=>terms.some(t=>x.includes(t)));return i>=0?i:fallback;},ig=idx(['group','nhóm','nhom'],0),ii=idx(['items code','item code','item'],1),inn=idx(['product name','tên sản phẩm','ten san pham','name'],2),ir=idx(['recipe'],3);
-  clean.slice(header+1).forEach(r=>{const x={group:r[ig]||'Other',item:r[ii]||'',name:r[inn]||'',recipe:r[ir]||''};if(x.item&&x.name&&x.recipe)out.push(x);});return out;
+  if(twoBlocks){clean.slice(header+1).forEach(r=>{push(r,'FGs',0);push(r,'RW',4);});return out;}
+  const idx=(terms,fallback)=>{const i=h.findIndex(x=>terms.some(t=>x.includes(t)));return i>=0?i:fallback;},ig=idx(['group','type','nhóm','nhom','loại','loai'],0),ii=idx(['items code','item code','item'],1),inn=idx(['product name','tên sản phẩm','ten san pham','name'],2),ir=idx(['recipe'],3);
+  clean.slice(header+1).forEach(r=>{const x={group:itemType(r[ig]),item:r[ii]||'',name:r[inn]||'',recipe:r[ir]||''};if(x.item&&x.name&&x.recipe)out.push(x);});return out;
 }
 document.getElementById('fileItems').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn','err');
   try{let rows;if(f.name.toLowerCase().endsWith('.xlsx'))rows=await xlsxRows(await f.arrayBuffer());else{const text=await f.text();rows=f.name.toLowerCase().endsWith('.csv')?parseCSV(text):xmlRows(text);}
@@ -936,7 +937,7 @@ function renderGuide(){
   <div class="card">
     <h3>🔗 Quản lý Items Code</h3>
     <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
-      <li>Mỗi dòng liên kết <b>Nhóm · Items Code · Tên sản phẩm · Recipe</b>. Một Items Code có thể xuất hiện ở nhiều liên kết khác nhau.</li>
+      <li>Mỗi dòng liên kết <b>Loại (FGs/RW) · Item Code · Tên sản phẩm · Recipe</b>. Một Item Code có thể xuất hiện ở nhiều liên kết khác nhau.</li>
       <li><b>Xuất template Excel</b> để lấy đúng cấu trúc nhập liệu; app hỗ trợ file <b>.xlsx, .xls và .csv</b>.</li>
       <li>File hai khối <b>FGs CODE / RW CODE</b> như danh sách nguồn cũng được nhận diện tự động.</li>
       <li>Import sẽ thêm dòng mới và bỏ qua dòng trùng hoàn toàn. Dùng ô tìm kiếm để lọc theo code, sản phẩm hoặc Recipe.</li>
