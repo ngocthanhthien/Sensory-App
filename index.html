@@ -114,6 +114,9 @@ body[data-theme="dark"] .item-table .add-row td{background:#173d24!important}
 .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .err-box{margin-top:8px;display:none}.err-box.show{display:block}
 .err-box .lab{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 2px}
+.remark-box{display:none;min-width:230px}.remark-box.show{display:block}
+.remark-box .t{margin-top:6px}.remark-na{color:var(--muted);font-size:12px}
+.score-table th:nth-child(3){min-width:210px}.score-table th:nth-child(4){min-width:260px}
 .overlay{position:fixed;inset:0;background:rgba(15,18,22,.55);display:none;align-items:center;justify-content:center;z-index:50}
 .overlay.show{display:flex}
 .modal{background:var(--panel);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3);width:380px;max-width:92vw;padding:22px}
@@ -364,17 +367,18 @@ function renderScoreGrid(){
     const sc=SC_DRAFT[sm.no];
     const seg=(v,c,l)=>`<label class="${c} ${sc.result===v?'on':''}" onclick="scSet('${sm.no}','${v}')">${l}</label>`;
     const showErr=(sc.result==='JUSTIN'||sc.result==='OUT');
-    const chip=(arr,list,kind)=>list.map(e=>`<span class="chip ${arr.includes(e)?'on':''}" onclick="scErr('${sm.no}','${kind}','${esc(e)}')">${esc(e)}</span>`).join('');
+    const current=scRemarkValue(sc);
+    const opts=(list,prefix)=>list.map(e=>`<option value="${prefix}:${esc(e)}" ${current===prefix+':'+e?'selected':''}>${esc(e)}</option>`).join('');
     return `<tr><td>${sm.no}</td>
       <td class="l"><b>${esc(sm.name)}</b><div class="hint">${esc(sm.batch||'')} ${sm.sscc?('· '+esc(sm.sscc)):''}</div></td>
-      <td><div class="seg">${seg('IN','in','IN')}${seg('JUSTIN','ji','Just In')}${seg('OUT','out','Out')}</div>
-        <div class="err-box ${showErr?'show':''}">
-          <div class="lab">Lỗi ngoại quan</div><div class="chips">${chip(sc.appearance,CONFIG.ERR_APPEARANCE,'appearance')}</div>
-          <div class="lab">Lỗi thử nếm</div><div class="chips">${chip(sc.taste,CONFIG.ERR_TASTE,'taste')}</div>
-          <input class="t" style="margin-top:6px" placeholder="Ghi chú thêm…" value="${esc(sc.note)}" onchange="scNote('${sm.no}',this.value)"></div>
-      </td></tr>`;}).join('');
-  wrap.innerHTML=`<div class="tbl-wrap"><table class="grid">
-    <thead><tr><th style="width:44px">No.</th><th class="l">Mẫu</th><th>Kết quả nếm (Just In/Out phải ghi lỗi)</th></tr></thead>
+      <td><div class="seg">${seg('IN','in','IN')}${seg('JUSTIN','ji','Just In')}${seg('OUT','out','Out')}</div></td>
+      <td><span class="remark-na" style="display:${showErr?'none':'inline'}">—</span><div class="remark-box ${showErr?'show':''}">
+        <select class="s remark-select" onchange="scRemark('${sm.no}',this.value)"><option value="">— Chọn tình huống —</option>
+          <optgroup label="Lỗi ngoại quan">${opts(CONFIG.ERR_APPEARANCE,'A')}</optgroup>
+          <optgroup label="Lỗi thử nếm">${opts(CONFIG.ERR_TASTE,'T')}</optgroup></select>
+        <input class="t remark-note" placeholder="Ghi chú khác…" value="${esc(sc.note)}" onchange="scNote('${sm.no}',this.value)"></div></td></tr>`;}).join('');
+  wrap.innerHTML=`<div class="tbl-wrap"><table class="grid score-table">
+    <thead><tr><th style="width:44px">No.</th><th class="l">Mẫu</th><th>Kết quả nếm</th><th class="l">Remark (Just In/Out)</th></tr></thead>
     <tbody>${rows}</tbody></table></div>
     <div class="toolbar" style="margin-top:12px"><span class="hint" id="scStatus"></span><span class="spacer"></span>
       <button class="btn" onclick="scSubmit()">💾 Nộp phiếu</button></div>`;
@@ -383,9 +387,11 @@ function renderScoreGrid(){
 let SC_DRAFT={};
 function scDraftInit(){ const set=curSet(),pid=STATE.currentPanellistId;
   SC_DRAFT=JSON.parse(JSON.stringify(set.scores[pid]||{}));
-  set.samples.forEach(sm=>{ if(!SC_DRAFT[sm.no])SC_DRAFT[sm.no]={result:'',appearance:[],taste:[],note:''}; }); }
+  set.samples.forEach(sm=>{if(!SC_DRAFT[sm.no])SC_DRAFT[sm.no]={result:'',appearance:[],taste:[],note:''};
+    const sc=SC_DRAFT[sm.no];sc.appearance=Array.isArray(sc.appearance)?sc.appearance:[];sc.taste=Array.isArray(sc.taste)?sc.taste:[];sc.note=sc.note||'';}); }
 function scSet(no,v){ SC_DRAFT[no].result=v; if(v==='IN'){SC_DRAFT[no].appearance=[];SC_DRAFT[no].taste=[];SC_DRAFT[no].note='';} paintDraft(); }
-function scErr(no,kind,val){ const a=SC_DRAFT[no][kind],i=a.indexOf(val); i>=0?a.splice(i,1):a.push(val); paintDraft(); }
+function scRemarkValue(sc){if(sc.appearance?.length)return 'A:'+sc.appearance[0];if(sc.taste?.length)return 'T:'+sc.taste[0];return '';}
+function scRemark(no,value){const sc=SC_DRAFT[no];sc.appearance=[];sc.taste=[];if(value.startsWith('A:'))sc.appearance=[value.slice(2)];if(value.startsWith('T:'))sc.taste=[value.slice(2)];updateScStatus();}
 function scNote(no,v){ SC_DRAFT[no].note=v; }
 function paintDraft(){ const set=curSet();
   set.samples.forEach(sm=>{ const sc=SC_DRAFT[sm.no];
@@ -394,9 +400,9 @@ function paintDraft(){ const set=curSet();
     if(sc.result==='IN')tr.querySelector('.seg .in').classList.add('on');
     if(sc.result==='JUSTIN')tr.querySelector('.seg .ji').classList.add('on');
     if(sc.result==='OUT')tr.querySelector('.seg .out').classList.add('on');
-    const eb=tr.querySelector('.err-box'); eb.classList.toggle('show',sc.result==='JUSTIN'||sc.result==='OUT');
-    eb.querySelectorAll('.chips')[0].querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',sc.appearance.includes(c.textContent)));
-    eb.querySelectorAll('.chips')[1].querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',sc.taste.includes(c.textContent))); });
+    const showErr=sc.result==='JUSTIN'||sc.result==='OUT',rb=tr.querySelector('.remark-box'),na=tr.querySelector('.remark-na');
+    rb.classList.toggle('show',showErr);na.style.display=showErr?'none':'inline';rb.querySelector('.remark-select').value=scRemarkValue(sc);
+    if(!showErr)rb.querySelector('.remark-note').value=''; });
   updateScStatus();
 }
 function updateScStatus(){ const set=curSet(); const f=set.samples.filter(sm=>SC_DRAFT[sm.no].result).length;
@@ -493,7 +499,7 @@ function renderSummary(){
   const nAtt=Object.keys(set.scores).length;
   const attWarn=nAtt<CONFIG.MIN_PANELLIST?`<span class="badge fail">⚠ &lt; ${CONFIG.MIN_PANELLIST} panellist</span>`:`<span class="badge pass">✓ ${nAtt} panellist</span>`;
   const rows=results.map(r=>{ const errs=new Set();
-    Object.values(set.scores).forEach(bp=>{const sc=bp[r.sm.no];if(sc){(sc.appearance||[]).forEach(e=>errs.add(e));(sc.taste||[]).forEach(e=>errs.add(e));}});
+    Object.values(set.scores).forEach(bp=>{const sc=bp[r.sm.no];if(sc){(sc.appearance||[]).forEach(e=>errs.add(e));(sc.taste||[]).forEach(e=>errs.add(e));if(sc.note?.trim())errs.add(sc.note.trim());}});
     const pctTxt=r.pct===null?'—':r.pct.toFixed(1)+'%';
     const badge=r.pct===null?'<span class="badge gray">chưa đủ</span>':(r.pass?'<span class="badge pass">Passed</span>':'<span class="badge fail">Failed</span>');
     return `<tr><td>${r.sm.no}</td><td class="l">${esc(r.sm.name)}</td><td>${esc(r.sm.batch||'')}</td>
@@ -752,7 +758,7 @@ function exportSummaryCSV(){ const set=curSet(); if(!set)return toast('Chưa có
   const rows=[['iLD SUMMARY TASTING RESULT'],['Set',set.name,'Ngày',set.date,'Ca',set.shift,'Loại',set.sampleType],[],
     ['No.','Tên mẫu','SSCC/Hour','Batch','IN','Just In','Out','Total','Result %','Kết luận','Lỗi']];
   set.samples.forEach(sm=>{ const r=calcSample(set,sm.no); const errs=new Set();
-    Object.values(set.scores).forEach(bp=>{const sc=bp[sm.no];if(sc){(sc.appearance||[]).forEach(e=>errs.add(e));(sc.taste||[]).forEach(e=>errs.add(e));}});
+    Object.values(set.scores).forEach(bp=>{const sc=bp[sm.no];if(sc){(sc.appearance||[]).forEach(e=>errs.add(e));(sc.taste||[]).forEach(e=>errs.add(e));if(sc.note?.trim())errs.add(sc.note.trim());}});
     rows.push([sm.no,sm.name,sm.sscc||'',sm.batch||'',r.IN,r.JI,r.OUT,r.total,r.pct===null?'':r.pct.toFixed(1),
       r.pct===null?'chưa đủ':(r.pass?'Passed':'Failed'),[...errs].join('; ')]); });
   downloadFile('Summary_'+set.name.replace(/\s+/g,'_')+'.csv',toCSV(rows),'text/csv');
@@ -761,7 +767,7 @@ function exportSummaryCSV(){ const set=curSet(); if(!set)return toast('Chưa có
 /* ===================== [PRINT] Xuất PDF ===================== */
 function printSummary(){ const set=curSet(); if(!set)return toast('Chưa có Set','err');
   const rows=set.samples.map(sm=>{ const r=calcSample(set,sm.no); const errs=new Set();
-    Object.values(set.scores).forEach(bp=>{const sc=bp[sm.no];if(sc){(sc.appearance||[]).forEach(e=>errs.add(e));(sc.taste||[]).forEach(e=>errs.add(e));}});
+    Object.values(set.scores).forEach(bp=>{const sc=bp[sm.no];if(sc){(sc.appearance||[]).forEach(e=>errs.add(e));(sc.taste||[]).forEach(e=>errs.add(e));if(sc.note?.trim())errs.add(sc.note.trim());}});
     const concl=r.pct===null?'chưa đủ':(r.pass?'Passed':'Failed');
     return `<tr><td>${sm.no}</td><td class="l">${esc(sm.name)}</td><td>${esc(sm.batch||'')}</td><td>${r.IN}</td><td>${r.JI}</td><td>${r.OUT}</td><td>${r.total}</td><td>${r.pct===null?'—':r.pct.toFixed(1)+'%'}</td><td>${concl}</td><td class="l">${[...errs].map(esc).join(', ')}</td></tr>`; }).join('');
   $('#printArea').innerHTML=`<h2>iLD — SUMMARY TASTING RESULT (QA.F.072)</h2>
@@ -888,7 +894,7 @@ function renderGuide(){
     <h3>✍️ Panellist chấm điểm (F.071)</h3>
     <ol style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
       <li>Chọn <b>tên panellist</b> ở ô người nếm.</li>
-      <li>Mỗi mẫu tick <b>IN / Just In / Out</b>. Nếu Just In hoặc Out, <b>bắt buộc</b> chọn chip lỗi (ngoại quan / thử nếm) hoặc ghi chú.</li>
+      <li>Mỗi mẫu chọn <b>IN / Just In / Out</b>. Nếu Just In hoặc Out, cột <b>Remark</b> tự hiện droplist tình huống (ngoại quan / thử nếm); chọn một tình huống hoặc nhập ghi chú khác.</li>
       <li>Bấm <b>💾 Nộp phiếu</b>. Danh sách trên cùng hiện ✓ những người đã nộp.</li>
     </ol>
     <p class="hint">Cần tối thiểu ${CONFIG.MIN_PANELLIST} panellist/mẫu. Nộp lại sẽ hỏi xác nhận ghi đè phiếu cũ.</p>
