@@ -44,15 +44,16 @@ body[data-theme="dark"] header{background:#0b0d10}
 .hbtn{background:var(--ild-red);color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer}
 .hbtn.ghost{background:transparent;border:1px solid #3a404a;color:#cfd6df}
 .hbtn:hover{background:var(--ild-red-dark)}.hbtn.ghost:hover{background:var(--bg-dark-2)}
-.shell{display:flex;flex:1;min-height:0}
-nav.side{width:250px;background:var(--bg-dark);color:#cfd6df;flex:none;overflow-y:auto;padding:10px 0}
-.nav-group{padding:14px 18px 6px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#69707c}
-.nav-item{display:flex;align-items:center;gap:12px;padding:11px 18px;cursor:pointer;font-size:14px;
-  border-left:3px solid transparent;color:#cfd6df;user-select:none}
-.nav-item .ico{width:22px;text-align:center;font-size:16px}
+.shell{display:flex;flex-direction:column;flex:1;min-height:0}
+nav.side{width:100%;height:50px;background:var(--bg-dark);color:#cfd6df;flex:none;display:flex;align-items:stretch;
+  overflow-x:auto;overflow-y:hidden;padding:0 12px;scrollbar-width:thin;scrollbar-color:#4a515c transparent}
+.nav-group{display:none}
+.nav-item{display:flex;align-items:center;justify-content:center;gap:7px;padding:0 14px;cursor:pointer;font-size:13px;
+  border-bottom:3px solid transparent;color:#cfd6df;user-select:none;white-space:nowrap;flex:none}
+.nav-item .ico{width:auto;text-align:center;font-size:15px}
 .nav-item .lock{margin-left:auto;font-size:11px;opacity:.6}
 .nav-item:hover{background:var(--bg-dark-2)}
-.nav-item.active{background:var(--bg-dark-2);border-left-color:var(--ild-red);color:#fff;font-weight:600}
+.nav-item.active{background:var(--bg-dark-2);border-bottom-color:var(--ild-red);color:#fff;font-weight:600}
 main{flex:1;min-width:0;overflow-y:auto;padding:22px 26px}
 .panel{display:none}.panel.active{display:block;animation:fade .18s ease}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -120,12 +121,15 @@ footer .spacer{flex:1}
 .audit div{padding:5px 0;border-bottom:1px solid var(--line);color:var(--muted)}
 .audit b{color:var(--text)}
 @media(max-width:860px){
-  nav.side{position:fixed;left:0;top:58px;bottom:0;z-index:15;transform:translateX(-100%);transition:.2s}
-  nav.side.open{transform:none}.menu-toggle{display:inline-flex!important}
+  header{padding:0 10px;gap:8px}.logo{font-size:18px}.app-title{font-size:14px}
+  .set-badge{max-width:42vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:6px 9px}
+  nav.side{height:48px;padding:0 6px}
+  .nav-item{padding:0 12px;font-size:12.5px}
+  main{padding:16px 12px}
   .grid-3{grid-template-columns:1fr}.row.c2,.row.c3,.row.c4{grid-template-columns:1fr}
   .app-title small{display:none}
 }
-.menu-toggle{display:none;background:transparent;border:1px solid #3a404a;color:#fff;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:16px}
+.menu-toggle{display:none}
 /* ===================== [PRINT] xuất PDF ===================== */
 #printArea{display:none}
 @media print{
@@ -143,7 +147,6 @@ footer .spacer{flex:1}
 
 <!-- ===================== HEADER ===================== -->
 <header class="noprint">
-  <button class="menu-toggle" onclick="toggleMenu()">☰</button>
   <span class="logo">iLD</span>
   <div class="app-title">Sensory Entry<small>Nhập &amp; tổng hợp kết quả nếm · ILD Coffee Vietnam</small></div>
   <div class="header-spacer"></div>
@@ -152,8 +155,8 @@ footer .spacer{flex:1}
 </header>
 
 <div class="shell noprint">
-  <!-- ===================== SIDEBAR ===================== -->
-  <nav class="side" id="sidebar">
+  <!-- ===================== HORIZONTAL TABS ===================== -->
+  <nav class="side" id="sidebar" aria-label="Điều hướng chức năng">
     <div class="nav-group">Tác nghiệp</div>
     <div class="nav-item active" data-tab="tab-scoring"><span class="ico">✍️</span> Chấm điểm nếm</div>
     <div class="nav-item" data-tab="tab-setup"><span class="ico">🧪</span> Tạo Set nếm</div>
@@ -321,12 +324,11 @@ const panels=document.querySelectorAll('.panel');
 function switchTab(tabId){
   panels.forEach(p=>p.classList.toggle('active',p.id===tabId));
   navItems.forEach(n=>n.classList.toggle('active',n.dataset.tab===tabId));
-  $('#sidebar').classList.remove('open');
+  document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
   ({'tab-scoring':renderScoring,'tab-setup':renderSetup,'tab-summary':renderSummary,'tab-lookup':renderLookup,
     'tab-panellist':renderPanellists,'tab-product':renderProducts,'tab-items':renderItems,'tab-sensory':renderSensory,'tab-guide':renderGuide,'tab-settings':renderSettings}[tabId]||(()=>{}))();
 }
 navItems.forEach(item=>item.addEventListener('click',()=>switchTab(item.dataset.tab)));
-function toggleMenu(){ $('#sidebar').classList.toggle('open'); }
 
 /* ===================== [SCORING] F.071 ===================== */
 function renderScoring(){
