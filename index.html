@@ -346,6 +346,8 @@ function toggleTheme(){ const b=document.body; const dark=b.dataset.theme==='dar
 const navItems=document.querySelectorAll('.nav-item');
 const panels=document.querySelectorAll('.panel');
 function switchTab(tabId){
+  const previousTab=document.querySelector('.panel.active')?.id;
+  if(tabId==='tab-scoring'&&previousTab!=='tab-scoring'&&typeof SC_SESSION!=='undefined'){SC_SESSION={setId:'',panelId:''};STATE.currentPanellistId=null;SC_DRAFT={};}
   panels.forEach(p=>p.classList.toggle('active',p.id===tabId));
   navItems.forEach(n=>n.classList.toggle('active',n.dataset.tab===tabId));
   document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
@@ -355,25 +357,39 @@ function switchTab(tabId){
 navItems.forEach(item=>item.addEventListener('click',()=>switchTab(item.dataset.tab)));
 
 /* ===================== [SCORING] F.071 ===================== */
+let SC_SESSION={setId:'',panelId:''};
+const scoringSet=()=>STATE.sets.find(s=>s.id===SC_SESSION.setId)||null;
 function renderScoring(){
-  const box=$('#scoringBody'),set=curSet();
-  if(!set){ box.innerHTML=`<div class="ph"><span class="big">🧪</span>Chưa có Set nếm nào đang mở.<br>QA vào tab <b>Tạo Set nếm</b> để mở buổi nếm.</div>`; return; }
-  const opts=STATE.panellists.map(p=>`<option value="${p.id}" ${p.id===STATE.currentPanellistId?'selected':''}>${esc(p.name)} — ${esc(p.dept)}</option>`).join('');
-  const done=set.scores||{};
-  const doneList=STATE.panellists.map(p=>done[p.id]?`<span class="pill-done">✓ ${esc(p.name)}</span>`:`<span class="pill-wait">${esc(p.name)}</span>`).join('');
+  const box=$('#scoringBody'),set=scoringSet(),person=STATE.panellists.find(p=>p.id===SC_SESSION.panelId)||null;
+  const setOpts=STATE.sets.filter(s=>s.status==='open').map(s=>`<option value="${s.id}" ${s.id===SC_SESSION.setId?'selected':''}>${esc(setLabel(s))} · ${esc(s.sampleType)}</option>`).join('');
+  const opts=STATE.panellists.map(p=>`<option value="${p.id}" ${p.id===SC_SESSION.panelId?'selected':''}>${esc(p.name)}</option>`).join('');
+  const done=set?.scores||{};
+  const doneList=set?STATE.panellists.map(p=>done[p.id]?`<span class="pill-done">✓ ${esc(p.name)}</span>`:`<span class="pill-wait">${esc(p.name)}</span>`).join(''):'';
   box.innerHTML=`<div class="card">
-    <div class="row c3">
-      <div><label class="f">Set đang chấm</label><input class="t" value="${esc(set.name)} · ${esc(set.date)} · ${set.shift} · ${esc(set.sampleType)}" disabled></div>
-      <div><label class="f">Panellist (người nếm)</label><select class="s" id="scPanel" onchange="scPickPanel()"><option value="">— chọn tên —</option>${opts}</select></div>
-      <div style="align-self:end"><span class="hint">Đã nộp: ${Object.keys(done).length}/${STATE.panellists.length} phiếu</span></div>
-    </div><div style="margin-top:4px">${doneList||'<span class="hint">Chưa có panellist — thêm ở Master Data</span>'}</div></div>
+    <div class="row c4">
+      <div><label class="f">Set nếm</label><select class="s" id="scSet" onchange="scPickSet()"><option value="">— chọn Set nếm —</option>${setOpts}</select></div>
+      <div><label class="f">Người nếm</label><select class="s" id="scPanel" onchange="scPickPanel()" ${set?'':'disabled'}><option value="">— chọn tên —</option>${opts}</select></div>
+      <div><label class="f">Bộ phận</label><input class="t" value="${esc(person?.dept||'')}" placeholder="Tự động theo người nếm" disabled></div>
+      <div style="align-self:end"><span class="hint">${set?'Đã nộp: '+Object.keys(done).length+'/'+STATE.panellists.length+' phiếu':'Chọn Set và người nếm để bắt đầu'}</span></div>
+    </div><div style="margin-top:4px">${doneList}</div></div>
     <div id="scGrid"></div>`;
   renderScoreGrid();
 }
-function scPickPanel(){ STATE.currentPanellistId=$('#scPanel').value||null; renderScoreGrid(); }
+function scPickSet(){SC_SESSION.setId=$('#scSet').value||'';SC_SESSION.panelId='';STATE.currentPanellistId=null;SC_DRAFT={};renderScoring();}
+function scPickPanel(){SC_SESSION.panelId=$('#scPanel').value||'';STATE.currentPanellistId=SC_SESSION.panelId||null;SC_DRAFT={};renderScoring();}
+function renderBlankScoreSheet(){
+  const blankRows=Array.from({length:5},(_,i)=>`<tr><td>${i+1}</td><td class="l">&nbsp;</td><td>□</td><td>□</td><td>□</td><td class="remark-na">&nbsp;</td></tr>`).join('');
+  return `<div class="score-sheet score-sheet-empty"><div class="score-form-head"><div class="score-form-title">Sensory - In/Out Score Sheet for Finished Goods<br>and Semi-Finished Goods</div>
+    <div class="score-form-sub">Phiếu chấm điểm cảm quan IN / Just In / OUT</div>
+    <div class="score-meta"><div><b>Name / Tên</b><span>&nbsp;</span></div><div><b>Dept. / Bộ phận</b><span>&nbsp;</span></div><div><b>Date / Ngày</b><span>&nbsp;</span></div><div><b>Set</b><span>&nbsp;</span></div><div><b>Shift / Ca</b><span>&nbsp;</span></div></div></div>
+    <div class="tbl-wrap"><table class="grid score-table"><thead><tr><th rowspan="2" style="width:44px">No.</th><th rowspan="2" class="l">Mẫu</th><th colspan="3">Cupping results <i>(Kết quả thử nếm)</i></th><th rowspan="2" class="l remark-col">Remark<br><small>Nếu Just In/Out, chọn tình huống hoặc ghi chú khác</small></th></tr>
+      <tr><th class="result-col">IN<small>Đạt</small></th><th class="result-col">Just In<small>Chấp nhận</small></th><th class="result-col">OUT<small>Không đạt</small></th></tr></thead><tbody>${blankRows}</tbody></table></div>
+    <div class="score-instructions"><b>* Hướng dẫn:</b><br>1. Lỗi ngoại quan: ${CONFIG.ERR_APPEARANCE.map(esc).join(', ')}.<br>2. Lỗi thử nếm: ${CONFIG.ERR_TASTE.map(esc).join(', ')}.</div></div>
+    <div class="hint" style="margin-top:10px;text-align:center">Chọn Set nếm và người nếm để bắt đầu chấm điểm.</div>`;
+}
 function renderScoreGrid(){
-  const wrap=$('#scGrid'),set=curSet(),pid=STATE.currentPanellistId;
-  if(!pid){ wrap.innerHTML=`<div class="hint">Chọn tên panellist để bắt đầu chấm.</div>`; return; }
+  const wrap=$('#scGrid'),set=scoringSet(),pid=SC_SESSION.panelId;
+  if(!set||!pid){wrap.innerHTML=renderBlankScoreSheet();return;}
   const person=STATE.panellists.find(p=>p.id===pid)||{name:'',dept:''};
   scDraftInit();
   const rows=set.samples.map(sm=>{
@@ -408,7 +424,7 @@ function renderScoreGrid(){
   updateScStatus();
 }
 let SC_DRAFT={};
-function scDraftInit(){ const set=curSet(),pid=STATE.currentPanellistId;
+function scDraftInit(){ const set=scoringSet(),pid=SC_SESSION.panelId;
   SC_DRAFT=JSON.parse(JSON.stringify(set.scores[pid]||{}));
   set.samples.forEach(sm=>{if(!SC_DRAFT[sm.no])SC_DRAFT[sm.no]={result:'',appearance:[],taste:[],note:''};
     const sc=SC_DRAFT[sm.no];sc.appearance=Array.isArray(sc.appearance)?sc.appearance:[];sc.taste=Array.isArray(sc.taste)?sc.taste:[];sc.note=sc.note||'';}); }
@@ -416,7 +432,7 @@ function scSet(no,v){ SC_DRAFT[no].result=v; if(v==='IN'){SC_DRAFT[no].appearanc
 function scRemarkValue(sc){if(sc.appearance?.length)return 'A:'+sc.appearance[0];if(sc.taste?.length)return 'T:'+sc.taste[0];return '';}
 function scRemark(no,value){const sc=SC_DRAFT[no];sc.appearance=[];sc.taste=[];if(value.startsWith('A:'))sc.appearance=[value.slice(2)];if(value.startsWith('T:'))sc.taste=[value.slice(2)];updateScStatus();}
 function scNote(no,v){ SC_DRAFT[no].note=v; }
-function paintDraft(){ const set=curSet();
+function paintDraft(){ const set=scoringSet();
   set.samples.forEach(sm=>{ const sc=SC_DRAFT[sm.no];
     const tr=[...$('#scGrid').querySelectorAll('tbody tr')].find(r=>r.children[0].textContent==sm.no); if(!tr)return;
     tr.querySelectorAll('.seg label').forEach(l=>l.classList.remove('on'));
@@ -428,10 +444,10 @@ function paintDraft(){ const set=curSet();
     if(!showErr)rb.querySelector('.remark-note').value=''; });
   updateScStatus();
 }
-function updateScStatus(){ const set=curSet(); const f=set.samples.filter(sm=>SC_DRAFT[sm.no].result).length;
+function updateScStatus(){ const set=scoringSet();if(!set)return;const f=set.samples.filter(sm=>SC_DRAFT[sm.no].result).length;
   const el=$('#scStatus'); if(el)el.textContent=`Đã chấm ${f}/${set.samples.length} mẫu`; }
 function scSubmit(){
-  const set=curSet(),pid=STATE.currentPanellistId; if(!pid)return toast('Chưa chọn panellist','err');
+  const set=scoringSet(),pid=SC_SESSION.panelId;if(!set)return toast('Chưa chọn Set nếm','err');if(!pid)return toast('Chưa chọn người nếm','err');
   for(const sm of set.samples){ const sc=SC_DRAFT[sm.no];
     if(!sc.result)return toast(`Mẫu ${sm.no} chưa chấm`,'err');
     if((sc.result==='JUSTIN'||sc.result==='OUT')&&sc.appearance.length===0&&sc.taste.length===0&&!sc.note.trim())
@@ -439,7 +455,7 @@ function scSubmit(){
   const doSubmit=()=>{ set.scores[pid]=JSON.parse(JSON.stringify(SC_DRAFT));
     if(!set.attendees.includes(pid))set.attendees.push(pid);
     logAudit('Nộp phiếu nếm · '+(STATE.panellists.find(p=>p.id===pid)?.name||pid)+' · '+set.name); save();
-    toast('Đã nộp phiếu ✓','ok'); renderScoring(); };
+    SC_SESSION.panelId='';STATE.currentPanellistId=null;SC_DRAFT={};toast('Đã nộp phiếu ✓','ok'); renderScoring(); };
   if(set.scores[pid]) confirmAsk('Panellist này đã có phiếu. Ghi đè phiếu cũ?','Ghi đè',doSubmit); else doSubmit();
 }
 
