@@ -116,7 +116,19 @@ body[data-theme="dark"] .item-table .add-row td{background:#173d24!important}
 .err-box .lab{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 2px}
 .remark-box{display:none;min-width:230px}.remark-box.show{display:block}
 .remark-box .t{margin-top:6px}.remark-na{color:var(--muted);font-size:12px}
-.score-table th:nth-child(3){min-width:210px}.score-table th:nth-child(4){min-width:260px}
+.score-sheet{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.score-form-head{padding:16px 18px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.score-form-title{text-align:center;font-family:Georgia,'Times New Roman',serif;font-weight:800;font-size:17px;line-height:1.2;text-transform:uppercase}
+.score-form-sub{text-align:center;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:13px;margin-top:3px}
+.score-meta{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr .7fr;gap:12px;margin-top:14px;font-size:12px}
+.score-meta span{display:block;border-bottom:1px dotted var(--muted);padding:3px 2px}.score-meta b{display:block;font-size:10px;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.score-sheet .tbl-wrap{border:0;border-radius:0;max-height:55vh}.score-table{min-width:920px}
+.score-table thead th{font-family:Georgia,'Times New Roman',serif}.score-table thead small{display:block;font-size:10px;font-style:italic;margin-top:2px}
+.score-table th.result-col{width:78px}.score-table th.remark-col{min-width:300px}
+.score-table .seg{border:0}.score-table .seg label{border:1px solid var(--line);border-radius:6px!important;min-width:48px;padding:8px 9px}
+.score-instructions{padding:10px 18px 14px;border-top:1px solid var(--line);font-family:Georgia,'Times New Roman',serif;font-size:12px;font-style:italic;line-height:1.55}
+.score-actions{padding:12px 0}
+@media(max-width:860px){.score-meta{grid-template-columns:1fr 1fr}.score-form-title{font-size:15px}}
 .overlay{position:fixed;inset:0;background:rgba(15,18,22,.55);display:none;align-items:center;justify-content:center;z-index:50}
 .overlay.show{display:flex}
 .modal{background:var(--panel);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3);width:380px;max-width:92vw;padding:22px}
@@ -362,6 +374,7 @@ function scPickPanel(){ STATE.currentPanellistId=$('#scPanel').value||null; rend
 function renderScoreGrid(){
   const wrap=$('#scGrid'),set=curSet(),pid=STATE.currentPanellistId;
   if(!pid){ wrap.innerHTML=`<div class="hint">Chọn tên panellist để bắt đầu chấm.</div>`; return; }
+  const person=STATE.panellists.find(p=>p.id===pid)||{name:'',dept:''};
   scDraftInit();
   const rows=set.samples.map(sm=>{
     const sc=SC_DRAFT[sm.no];
@@ -371,16 +384,26 @@ function renderScoreGrid(){
     const opts=(list,prefix)=>list.map(e=>`<option value="${prefix}:${esc(e)}" ${current===prefix+':'+e?'selected':''}>${esc(e)}</option>`).join('');
     return `<tr><td>${sm.no}</td>
       <td class="l"><b>${esc(sm.name)}</b><div class="hint">${esc(sm.batch||'')} ${sm.sscc?('· '+esc(sm.sscc)):''}</div></td>
-      <td><div class="seg">${seg('IN','in','IN')}${seg('JUSTIN','ji','Just In')}${seg('OUT','out','Out')}</div></td>
+      <td><div class="seg">${seg('IN','in','IN')}</div></td>
+      <td><div class="seg">${seg('JUSTIN','ji','Just In')}</div></td>
+      <td><div class="seg">${seg('OUT','out','Out')}</div></td>
       <td><span class="remark-na" style="display:${showErr?'none':'inline'}">—</span><div class="remark-box ${showErr?'show':''}">
         <select class="s remark-select" onchange="scRemark('${sm.no}',this.value)"><option value="">— Chọn tình huống —</option>
           <optgroup label="Lỗi ngoại quan">${opts(CONFIG.ERR_APPEARANCE,'A')}</optgroup>
           <optgroup label="Lỗi thử nếm">${opts(CONFIG.ERR_TASTE,'T')}</optgroup></select>
         <input class="t remark-note" placeholder="Ghi chú khác…" value="${esc(sc.note)}" onchange="scNote('${sm.no}',this.value)"></div></td></tr>`;}).join('');
-  wrap.innerHTML=`<div class="tbl-wrap"><table class="grid score-table">
-    <thead><tr><th style="width:44px">No.</th><th class="l">Mẫu</th><th>Kết quả nếm</th><th class="l">Remark (Just In/Out)</th></tr></thead>
-    <tbody>${rows}</tbody></table></div>
-    <div class="toolbar" style="margin-top:12px"><span class="hint" id="scStatus"></span><span class="spacer"></span>
+  wrap.innerHTML=`<div class="score-sheet">
+    <div class="score-form-head"><div class="score-form-title">Sensory - In/Out Score Sheet for Finished Goods<br>and Semi-Finished Goods</div>
+      <div class="score-form-sub">Phiếu chấm điểm cảm quan IN / Just In / OUT</div>
+      <div class="score-meta"><div><b>Name / Tên</b><span>${esc(person.name)}</span></div><div><b>Dept. / Bộ phận</b><span>${esc(person.dept||'—')}</span></div>
+        <div><b>Date / Ngày</b><span>${esc(set.date)}</span></div><div><b>Set</b><span>${esc(set.name)}</span></div><div><b>Shift / Ca</b><span>${esc(set.shift)}</span></div></div></div>
+    <div class="tbl-wrap"><table class="grid score-table"><thead>
+      <tr><th rowspan="2" style="width:44px">No.</th><th rowspan="2" class="l">Mẫu</th><th colspan="3">Cupping results <i>(Kết quả thử nếm)</i></th>
+        <th rowspan="2" class="l remark-col">Remark<br><small>Nếu Just In/Out, chọn tình huống hoặc ghi chú khác</small></th></tr>
+      <tr><th class="result-col">IN<small>Đạt</small></th><th class="result-col">Just In<small>Chấp nhận</small></th><th class="result-col">OUT<small>Không đạt</small></th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <div class="score-instructions"><b>* Hướng dẫn:</b><br>1. Lỗi ngoại quan: ${CONFIG.ERR_APPEARANCE.map(esc).join(', ')}.<br>2. Lỗi thử nếm: ${CONFIG.ERR_TASTE.map(esc).join(', ')}.</div></div>
+    <div class="toolbar score-actions"><span class="hint" id="scStatus"></span><span class="spacer"></span>
       <button class="btn" onclick="scSubmit()">💾 Nộp phiếu</button></div>`;
   updateScStatus();
 }
