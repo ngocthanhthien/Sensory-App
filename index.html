@@ -1254,7 +1254,7 @@ function cloudApplyAll(meta,sets,scores,bases){if(!meta||!Array.isArray(sets))th
   STATE.panellists=meta.panellists||[];STATE.products=meta.products||[];STATE.recipes=meta.recipes||[];STATE.pos=meta.pos||[];STATE.batches=meta.batches||[];STATE.itemCodes=meta.itemCodes||[];
   const byId=new Map(sets.map(s=>[s.id,{...s,scores:{}}]));scores.forEach(x=>{const s=byId.get(x.setId);if(s)s.scores[x.panellistId]=x.scores||{};});STATE.sets=[...byId.values()];
   STATE.currentSetId=meta.currentSetId||null;STATE.currentPanellistId=null;STATE.audit=meta.audit||[];CLOUD.sync.bases=bases;CLOUD.sync.outbox=[];CLOUD.sync.conflicts=[];cloudSaveSync();persist(true);
-  CLOUD.applying=false;purgeDemoPanellists();CLOUD.lastSync=new Date().toLocaleTimeString('vi-VN');$('#hdrSet').textContent=setLabel(curSet());switchTab($('.panel.active')?.id||'tab-scoring');cloudRefreshSettings();}
+  CLOUD.applying=false;purgeDemoPanellists();mergeDefaultPanellists();CLOUD.lastSync=new Date().toLocaleTimeString('vi-VN');$('#hdrSet').textContent=setLabel(curSet());switchTab($('.panel.active')?.id||'tab-scoring');cloudRefreshSettings();}
 async function cloudFetchV2(){const m=CLOUD.m,metaSnap=await m.getDoc(cloudRef('meta:main'));if(!metaSnap.exists())return null;
   const [setSnap,scoreSnap]=await Promise.all([m.getDocs(m.collection(CLOUD.db,'ild_sensory_sets')),m.getDocs(m.collection(CLOUD.db,'ild_sensory_scores'))]);const bases={};
   const strip=d=>{const {revision,updatedAt,updatedBy,clientId,...data}=d;return {revision:revision||0,data};};let x=strip(metaSnap.data());bases['meta:main']=x;const meta=x.data;
@@ -1331,6 +1331,70 @@ $('#fileBackup').addEventListener('change',e=>{ const f=e.target.files[0]; e.tar
       logAudit('Phục hồi từ JSON'); persist(); purgeDemoPanellists(); boot(); toast('Đã phục hồi','ok'); });
   }catch(err){ toast('Phục hồi lỗi: '+err.message,'err'); } }; rd.readAsText(f,'UTF-8'); });
 
+/* Danh sách Panellist chuẩn (nguồn: Panenlist.xlsx, 49 người) — [Mã NV, Họ tên, Chức năng, Bộ phận].
+   Nạp bổ sung một lần cho mỗi thiết bị; không ghi đè/xoá người đã có, không nạp lại người đã bị xoá sau đó. */
+const DEFAULT_PANELLISTS=[
+  ['ILD0006','Mai Tiến Đức','Manager','OP'],
+  ['ILD0150','Lê Minh Hải','Manager','OP'],
+  ['ILD0007','Trần Thị Tuyết Dung','Manager','QA'],
+  ['ILD0025','Trần Minh Vũ','R&D','OP'],
+  ['ILD0048','Lê Minh Trung','Production','OP'],
+  ['ILD0010','Phạm Quang Duy','Production','OP'],
+  ['ILD0011','Vũ Văn Quang','Production','OP'],
+  ['ILD0017','Lê Trọng Thanh Duy','Production','OP'],
+  ['ILD0018','Lê Hữu Anh Vũ','Production','OP'],
+  ['ILD0019','Nguyễn Xuân Quyết','Production','OP'],
+  ['ILD0031','Phan Đình Triều','Production','OP'],
+  ['ILD0033','Hoàng Thế Luân','Production','OP'],
+  ['ILD0034','Nguyễn Minh Tiến','Production','OP'],
+  ['ILD0040','Phạm Minh Phong','Production','OP'],
+  ['ILD0041','Nguyễn Trương Tuấn Kiệt','Production','OP'],
+  ['ILD0042','Dương Văn Huy','Production','OP'],
+  ['ILD0043','Huỳnh Hoài Sơn','Production','OP'],
+  ['ILD0047','Phạm Duy Tân Anh','Production','OP'],
+  ['ILD0054','Trần Minh Tiến','Production','OP'],
+  ['ILD0060','Nguyễn Duy Quang','Production','OP'],
+  ['ILD0062','Võ Khánh Minh','Production','OP'],
+  ['ILD0070','Nguyễn Thọ Đức','Production','OP'],
+  ['ILD0071','Cao Duy Hiếu','Production','OP'],
+  ['ILD0072','Hoàng Quốc Khánh','Production','OP'],
+  ['ILD0079','Lê Tuấn','Production','OP'],
+  ['ILD0091','Lê Văn Được','Production','OP'],
+  ['ILD0097','Đặng Đức Triều','Production','OP'],
+  ['ILD0102','Nguyễn Công Danh','Production','OP'],
+  ['ILD0103','Kiều Ngọc Tết','Production','OP'],
+  ['ILD0106','Hoàng Quốc Đạt','Production','OP'],
+  ['ILD0110','Nguyễn Ân Tịnh Nhân','Production','OP'],
+  ['ILD0111','Nguyễn Đình Tuấn','Production','OP'],
+  ['ILD0112','Nguyễn Thanh Huy','Production','OP'],
+  ['ILD0116','Huỳnh Minh Đăng','Production','OP'],
+  ['ILD0126','Bùi Văn Hiền','Production','OP'],
+  ['ILD0144','Huỳnh Ngọc Duy','Production','OP'],
+  ['ILD0149','Cao Nhựt Đông','Production','OP'],
+  ['ILD0157','Phạm Văn Tâm','Production','OP'],
+  ['ILD0162','Trần Quốc Vũ','Production','OP'],
+  ['ILD0016','Đặng Thanh Bình','Hygiene','QA'],
+  ['ILD0064','Nguyễn Ngọc Trang','Hygiene','QA'],
+  ['ILD0022','Đỗ Thị Mộng Cầm','Lab','QA'],
+  ['ILD0063','Phạm Đông Triều','Lab','QA'],
+  ['ILD0030','Thái Hoàng Minh','QA','QA'],
+  ['ILD0013','Nguyễn Nguyệt Quế','QA','QA'],
+  ['ILD0094','Lê Thị Bích Thảo','QA','QA'],
+  ['ILD0141','Trần Thị Diễm Trân','QA','QA'],
+  ['ILD0142','Nguyễn Võ Hồng Huy','QA','QA'],
+  ['ILD0120','Ôn Lê Quang Định','RM/PM','QA']
+];
+const PNL_DEFAULT_KEY='ild_sensory_pnl_default_v1';
+function mergeDefaultPanellists(force=false){
+  let done=false;try{done=localStorage.getItem(PNL_DEFAULT_KEY)==='1';}catch{}
+  if(done&&!force&&STATE.panellists.some(p=>p.code))return 0;
+  let n=0;DEFAULT_PANELLISTS.forEach(([code,name,func,dept])=>{
+    const p=STATE.panellists.find(y=>(y.code||'').toLowerCase()===code.toLowerCase())||STATE.panellists.find(y=>!y.code&&y.name.toLowerCase()===name.toLowerCase());
+    if(p){if(!p.code){Object.assign(p,{code,func:p.func||func,dept:p.dept||dept});n++;}return;}
+    STATE.panellists.push({id:'pnl_'+code.toLowerCase(),code,name,func,dept});n++;});
+  try{localStorage.setItem(PNL_DEFAULT_KEY,'1');}catch{}
+  if(n){logAudit('Nạp danh sách Panellist chuẩn: '+n+' người');save();}return n;}
+
 /* Panellist mô phỏng của bản demo cũ (không có Mã NV) → tự loại khỏi Master Data; điểm trong Set Demo vẫn giữ. */
 const DEMO_PANELLISTS={pnl_a:'Nguyễn Văn A',pnl_b:'Trần Thị B',pnl_c:'Lê Văn C',pnl_d:'Phạm Thị D'};
 function purgeDemoPanellists(){const before=STATE.panellists.length;
@@ -1359,7 +1423,7 @@ function boot(){
 }
 (function init(){
   document.body.dataset.theme=localStorage.getItem(THEME_KEY)||'light';
-  const loaded=loadState(); if(!loaded){ seed(); persist(); } purgeDemoPanellists();
+  const loaded=loadState(); if(!loaded){ seed(); persist(); } purgeDemoPanellists(); mergeDefaultPanellists();
   boot();firebaseInit();
 })();
 </script>
