@@ -105,7 +105,7 @@ Object toàn cục `STATE`:
   itemCodes:  [{ id, group, item, name, recipe }],
   sets: [{
     id, name, date, shift, sampleType, creator, status,
-    samples: [{ no, name, sscc, batch }],
+    samples: [{ no, code, name, sscc, batch }],   // code = Tên mã hóa (mẫu mù); thiếu → dùng no
     scores: {
       [panellistId]: {
         [sampleNo]: { result, appearance: [], taste: [], note }

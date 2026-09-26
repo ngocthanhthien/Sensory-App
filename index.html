@@ -277,6 +277,7 @@ footer .spacer{flex:1}
 .sf-table thead tr:first-child th.sf-cmt-h{font-size:9.5px;font-weight:400;line-height:1.35;text-align:left}.sf-table th.sf-cmt-h b{font-weight:700}
 .sf-table tbody td{height:24px}.sf-table tbody td:first-child{font-weight:700}
 .sf-table td.c{text-align:center}.sf-cmt{font-size:11px;line-height:1.3}
+.sf-code{display:block;font-size:9.5px;color:#666}
 .sf-pass{color:var(--ok)}.sf-fail{color:var(--fail)}
 .sf-foot{display:flex;justify-content:space-between;align-items:flex-start;margin-top:10px;font-size:10.5px;font-style:italic;line-height:1.6}
 .sf-rule{font-style:normal;color:#555}
@@ -538,7 +539,7 @@ function renderScoreGrid(){
     const current=scRemarkValue(sc);
     const opts=(list,prefix)=>list.map(e=>`<option value="${prefix}:${esc(e)}" ${current===prefix+':'+e?'selected':''}>${esc(e)}</option>`).join('');
     return `<tr><td data-label="No.">${sm.no}</td>
-      <td class="l" data-label="Mẫu"><b>${esc(sm.name)}</b><div class="hint">${esc(sm.batch||'')} ${sm.sscc?('· '+esc(sm.sscc)):''}</div></td>
+      <td class="l" data-label="Mẫu"><b class="blind-code">${esc(sampleCode(sm))}</b></td>
       <td data-label="IN"><div class="seg">${seg('IN','in','IN')}</div></td>
       <td data-label="Just In"><div class="seg">${seg('JUSTIN','ji','Just In')}</div></td>
       <td data-label="OUT"><div class="seg">${seg('OUT','out','Out')}</div></td>
@@ -608,6 +609,14 @@ function suggestSetName(date,shift){
 /* Khi đổi Ca/Ngày, cập nhật lại số gợi ý nếu người dùng chưa sửa tay */
 function wizMetaLive(){ WIZ.meta.shift=$('#wShift').value; WIZ.meta.date=$('#wDate').value;
   if(WIZ.nameAuto)$('#wName').value=suggestSetName(WIZ.meta.date,WIZ.meta.shift); }
+/* Mã hóa mẫu (blind code) — panellist chỉ thấy mã này khi chấm. Set cũ chưa có mã → dùng số thứ tự. */
+const sampleCode=sm=>(sm.code||'').toString().trim()||String(sm.no);
+function wizNextCode(){ const codes=WIZ.samples.map(x=>(x.code||'').trim()),last=codes[codes.length-1]||'';
+  const m=last.match(/^(.*?)(\d+)$/); let c=m?m[1]+(Number(m[2])+1):String(WIZ.samples.length+1);
+  while(codes.includes(c)){const k=c.match(/^(.*?)(\d+)$/);c=k?k[1]+(Number(k[2])+1):c+'_';}
+  return c; }
+function wizRecode(){ const pre=($('#smPrefix').value||'').replace(/\s+$/,''); if(!WIZ.samples.length)return toast('Chưa có mẫu','err');
+  WIZ.samples.forEach((x,i)=>x.code=(pre?pre+' ':'')+(i+1)); renderSetup(); toast('Đã đánh mã '+WIZ.samples.length+' mẫu','ok'); }
 /* nhãn hiển thị Set (kèm Ca/Ngày cho rõ vì tên có thể lặp) */
 function setLabel(s){ return s?(s.name+' · '+s.shift+' '+s.date):'— chưa mở —'; }
 function renderSetup(){
@@ -631,6 +640,7 @@ function wizStep1(){ const curType=WIZ.meta.sampleType||CONFIG.DEFAULT_SAMPLE_TY
     <p class="hint">Tên Set tự gợi ý số tiếp theo theo Ca/Ngày — có thể sửa tay. Số có thể lặp giữa các ca, nhưng <b>không trùng trong cùng 1 ca/ngày</b>.</p>
     <div class="toolbar"><span class="spacer"></span><button class="btn" onclick="wizNext()">Tiếp → Thêm mẫu</button></div></div>`; }
 function wizStep2(){ const rows=WIZ.samples.map((s,i)=>`<tr><td>${i+1}</td>
+     <td><input class="t" style="font-weight:700;text-align:center" value="${esc(s.code||'')}" placeholder="${i+1}" onchange="wizEdit(${i},'code',this.value.trim())"></td>
      <td class="l"><input class="t" value="${esc(s.name)}" onchange="wizEdit(${i},'name',this.value)"></td>
      <td><input class="t" value="${esc(s.sscc||'')}" onchange="wizEdit(${i},'sscc',this.value)"></td>
      <td><input class="t" value="${esc(s.batch||'')}" onchange="wizEdit(${i},'batch',this.value)"></td>
@@ -640,14 +650,18 @@ function wizStep2(){ const rows=WIZ.samples.map((s,i)=>`<tr><td>${i+1}</td>
       <button class="btn sec sm" onclick="downloadSetTemplate()">⤓ Tải template Excel</button>
       ${WIZ.samples.length?'<button class="btn sec sm" onclick="exportSetSamples()">⤓ Xuất danh sách mẫu</button>':''}
       <button class="btn sm" onclick="document.getElementById('fileSetSamples').click()">⤒ Nhập mẫu từ Excel</button></div>
-    <div class="row c4">
+    <div class="row" style="grid-template-columns:.8fr 1.6fr 1fr 1fr auto">
+      <div><label class="f">Tên mã hóa</label><input class="t" id="smCode" value="${esc(wizNextCode())}" placeholder="VD: 1 hoặc CHO 1" style="font-weight:700"></div>
       <div><label class="f">Tên mẫu</label><input class="t" id="smName" placeholder="VD: Freeze-dried STD"></div>
       <div><label class="f">SSCC/Hour</label><input class="t" id="smSscc" placeholder="VD: 09:00"></div>
       <div><label class="f">Batch (Lô)</label><input class="t" id="smBatch" placeholder="VD: L2508"></div>
       <div style="align-self:end"><button class="btn" onclick="wizAdd()">+ Thêm mẫu</button></div></div>
     <div class="tbl-wrap" style="margin-top:6px"><table class="grid">
-      <thead><tr><th style="width:44px">STT</th><th class="l">Tên mẫu</th><th>SSCC/Hour</th><th>Batch</th><th style="width:56px"></th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="5" class="hint" style="padding:14px">Chưa có mẫu nào</td></tr>'}</tbody></table></div>
+      <thead><tr><th style="width:44px">STT</th><th style="width:140px">Tên mã hóa</th><th class="l">Tên mẫu</th><th>SSCC/Hour</th><th>Batch</th><th style="width:56px"></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="6" class="hint" style="padding:14px">Chưa có mẫu nào</td></tr>'}</tbody></table></div>
+    ${WIZ.samples.length?`<div class="toolbar" style="margin:8px 0 0"><span class="hint">Tên mã hóa là tên panellist thấy khi chấm (mẫu mù). Đánh mã lại toàn bộ theo tiền tố:</span>
+      <input class="t" id="smPrefix" placeholder="VD: CHO (để trống = 1, 2, 3…)" style="max-width:220px">
+      <button class="btn sec sm" onclick="wizRecode()">↻ Đánh mã lại</button></div>`:''}
     <div class="toolbar" style="margin-top:12px"><button class="btn sec" onclick="wizBack()">← Quay lại</button><span class="spacer"></span>
       <button class="btn" onclick="wizCreate()">✔ Tạo Set &amp; mở buổi nếm</button></div></div>`; }
 function wizNext(){ WIZ.meta={name:$('#wName').value.trim(),date:$('#wDate').value,shift:$('#wShift').value,sampleType:$('#wType').value};
@@ -658,13 +672,17 @@ function wizNext(){ WIZ.meta={name:$('#wName').value.trim(),date:$('#wDate').val
 function dupSetName(m){ return STATE.sets.some(s=>s.date===m.date&&s.shift===m.shift&&s.name.toLowerCase()===m.name.toLowerCase()); }
 function wizBack(){ WIZ.step=1; renderSetup(); }
 function wizAdd(){ const name=$('#smName').value.trim(); if(!name)return toast('Nhập tên mẫu','err');
-  WIZ.samples.push({name,sscc:$('#smSscc').value.trim(),batch:$('#smBatch').value.trim()}); renderSetup(); setTimeout(()=>$('#smName')?.focus(),30); }
+  const code=$('#smCode').value.trim()||wizNextCode();
+  if(WIZ.samples.some(x=>(x.code||'').trim().toLowerCase()===code.toLowerCase()))return toast('Tên mã hóa "'+code+'" đã dùng','err');
+  WIZ.samples.push({code,name,sscc:$('#smSscc').value.trim(),batch:$('#smBatch').value.trim()}); renderSetup(); setTimeout(()=>$('#smName')?.focus(),30); }
 function wizEdit(i,k,v){ WIZ.samples[i][k]=v; }
 function wizDel(i){ WIZ.samples.splice(i,1); renderSetup(); }
 function wizCreate(){ if(WIZ.samples.length===0)return toast('Chưa có mẫu nào','err');
+  const codes=WIZ.samples.map((x,i)=>((x.code||'').trim()||String(i+1)).toLowerCase()),dup=codes.find((c,i)=>codes.indexOf(c)!==i);
+  if(dup)return toast('Trùng Tên mã hóa "'+dup+'" — mỗi mẫu cần mã khác nhau','err');
   if(dupSetName(WIZ.meta))return toast('Trùng tên Set trong ca '+WIZ.meta.shift+' ngày '+WIZ.meta.date,'err');
   const set={id:uid('set'),name:WIZ.meta.name,date:WIZ.meta.date,shift:WIZ.meta.shift,sampleType:WIZ.meta.sampleType,
-    creator:'QA',status:'open',samples:WIZ.samples.map((s,i)=>({no:i+1,name:s.name,sscc:s.sscc,batch:s.batch})),scores:{},attendees:[]};
+    creator:'QA',status:'open',samples:WIZ.samples.map((s,i)=>({no:i+1,code:(s.code||'').trim()||String(i+1),name:s.name,sscc:s.sscc,batch:s.batch})),scores:{},attendees:[]};
   STATE.sets.push(set); STATE.currentSetId=set.id; logAudit('Tạo Set: '+setLabel(set)+' ('+set.samples.length+' mẫu)'); save();
   WIZ={step:1,meta:{},samples:[],nameAuto:true}; $('#hdrSet').textContent=setLabel(set); toast('Đã tạo Set ✓','ok'); switchTab('tab-scoring'); }
 function closeSet(){ const s=curSet(); if(!s)return; confirmAsk('Đóng Set "'+s.name+'"? (vẫn tra cứu được sau)','Đóng Set',()=>{
@@ -685,7 +703,7 @@ function summaryFormHTML(set){
     return `<span class="sf-chk ${on?'on':''}"><i>${on?'✓':''}</i>${t}${t==='Other'&&other&&set.sampleType?': <b>'+esc(set.sampleType)+'</b>':''}</span>`;}).join('');
   const rows=set.samples.map(sm=>{const r=calcSample(set,sm.no),x=sumSampleInfo(set,sm.no);
     const pct=r.pct===null?'':`<b class="${r.pass?'sf-pass':'sf-fail'}">${r.pct.toFixed(1)}</b>`;
-    return `<tr><td class="c">${sm.no}</td><td>${esc(sm.name)}</td><td class="c">${esc(sm.sscc||'')}</td><td class="c">${esc(sm.batch||'')}</td>
+    return `<tr><td class="c">${sm.no}</td><td>${esc(sm.name)}<small class="sf-code">Mã: ${esc(sampleCode(sm))}</small></td><td class="c">${esc(sm.sscc||'')}</td><td class="c">${esc(sm.batch||'')}</td>
       <td class="c">${r.total?r.IN:''}</td><td class="c">${r.total?r.JI:''}</td><td class="c">${r.total?r.OUT:''}</td><td class="c">${r.total||''}</td><td class="c">${pct}</td>
       <td class="sf-cmt">${x.errs.map(esc).join(', ')}</td><td class="sf-cmt">${x.tasters.map(esc).join(', ')}</td></tr>`;});
   for(let i=set.samples.length+1;i<=SUM_MIN_ROWS;i++)rows.push(`<tr><td class="c">${i}</td>${'<td></td>'.repeat(10)}</tr>`);
@@ -736,7 +754,7 @@ function renderLookup(){
   const list=STATE.sets.filter(s=>{
     const okType=!LK.type||s.sampleType===LK.type;
     const q=LK.q.toLowerCase();
-    const okQ=!q||s.name.toLowerCase().includes(q)||s.date.includes(q)||s.samples.some(sm=>(sm.name||'').toLowerCase().includes(q)||(sm.batch||'').toLowerCase().includes(q));
+    const okQ=!q||s.name.toLowerCase().includes(q)||s.date.includes(q)||s.samples.some(sm=>(sm.name||'').toLowerCase().includes(q)||(sm.code||'').toLowerCase().includes(q)||(sm.batch||'').toLowerCase().includes(q));
     return okType&&okQ;
   });
   const rows=list.map(s=>{ const res=s.samples.map(sm=>calcSample(s,sm.no));
@@ -948,12 +966,12 @@ function downloadMasterTemplate(){ downloadFile('iLD_MasterData_Template.csv',
   toCSV([['Type','Name'],['Product','Freeze-dried Coffee'],['Recipe','Standard 100%'],['PO','PO-2508-01'],['Batch','L2508A']]),'text/csv'); }
 
 /* Template + import danh sách mẫu cho Set (dùng ở wizard bước ②) */
-const SET_SAMPLE_HEAD=['Tên mẫu','SSCC/Hour','Batch'];
+const SET_SAMPLE_HEAD=['Tên mã hóa','Tên mẫu','SSCC/Hour','Batch'];
 function downloadSetTemplate(){ downloadFile('iLD_SetSamples_Template.xls',itemsWorkbook([SET_SAMPLE_HEAD,
-  ['FD STD','08:00','L2508A'],['FD Mẫu 1','09:00','L2508A'],['FD Mẫu 2','10:00','L2508B']],'Samples'),'application/vnd.ms-excel'); }
+  ['CHO 1','FD STD','08:00','L2508A'],['CHO 2','FD Mẫu 1','09:00','L2508A'],['CHO 3','FD Mẫu 2','10:00','L2508B']],'Samples'),'application/vnd.ms-excel'); }
 function exportSetSamples(){ if(!WIZ.samples.length)return toast('Chưa có mẫu để xuất','err');
   downloadFile('iLD_SetSamples_'+(WIZ.meta.date||todayStr())+'_'+(WIZ.meta.shift||'')+'_'+(WIZ.meta.name||'Set').replace(/\s+/g,'_')+'.xls',
-    itemsWorkbook([SET_SAMPLE_HEAD,...WIZ.samples.map(x=>[x.name,x.sscc||'',x.batch||''])],'Samples'),'application/vnd.ms-excel');
+    itemsWorkbook([SET_SAMPLE_HEAD,...WIZ.samples.map((x,i)=>[(x.code||'').trim()||String(i+1),x.name,x.sscc||'',x.batch||''])],'Samples'),'application/vnd.ms-excel');
   toast('Đã xuất '+WIZ.samples.length+' mẫu ra Excel','ok'); }
 /* Excel lưu giờ dạng phân số của ngày (0.375 = 09:00) → đổi lại HH:MM */
 function excelTime(v){ v=(v??'').toString().trim(); const n=Number(v);
@@ -970,9 +988,11 @@ document.getElementById('fileSetSamples').addEventListener('change',async e=>{ c
     const isName=h=>['ten mau','tên mẫu','name','mau','mẫu'].some(k=>h.includes(k));
     const hi=rows.findIndex(r=>r.some(h=>isName(h.toLowerCase()))); if(hi<0)throw new Error('Thiếu cột Tên mẫu');
     const head=rows[hi].map(h=>h.toLowerCase()),find=keys=>head.findIndex(h=>keys.some(k=>h.includes(k)));
-    const iName=head.findIndex(isName),iSscc=find(['sscc','hour','giờ','gio']),iBatch=find(['batch','lo','lô']);
+    const iCode=find(['mã hóa','mã hoá','ma hoa','code','blind']);
+    const iName=head.findIndex((h,i)=>i!==iCode&&isName(h)),iSscc=find(['sscc','hour','giờ','gio']),iBatch=find(['batch','lo','lô']);
     let n=0; rows.slice(hi+1).forEach(r=>{ const name=r[iName]||''; if(!name)return;
-      WIZ.samples.push({name,sscc:iSscc>=0?excelTime(r[iSscc]):'',batch:iBatch>=0?(r[iBatch]||''):''}); n++; });
+      const code=(iCode>=0?(r[iCode]||''):'')||wizNextCode();
+      WIZ.samples.push({code,name,sscc:iSscc>=0?excelTime(r[iSscc]):'',batch:iBatch>=0?(r[iBatch]||''):''}); n++; });
     if(n===0)throw new Error('Không có dòng mẫu hợp lệ');
     renderSetup(); toast('Đã nạp '+n+' mẫu','ok');
   }catch(err){ toast('Import lỗi: '+err.message,'err'); } });
@@ -994,9 +1014,9 @@ $('#fileMaster').addEventListener('change',e=>{ const f=e.target.files[0]; e.tar
 
 function exportSummaryCSV(){ const set=curSet(); if(!set)return toast('Chưa có Set','err');
   const rows=[['iLD SUMMARY TASTING RESULT'],['Set',set.name,'Ngày',set.date,'Ca',set.shift,'Loại',set.sampleType],[],
-    ['No.','Tên mẫu','SSCC/Hour','Batch','IN','Just In','Out','Total','Result %','Kết luận','Comments (Lỗi)','Taster (Người nếm)']];
+    ['No.','Tên mã hóa','Tên mẫu','SSCC/Hour','Batch','IN','Just In','Out','Total','Result %','Kết luận','Comments (Lỗi)','Taster (Người nếm)']];
   set.samples.forEach(sm=>{ const r=calcSample(set,sm.no),x=sumSampleInfo(set,sm.no);
-    rows.push([sm.no,sm.name,sm.sscc||'',sm.batch||'',r.IN,r.JI,r.OUT,r.total,r.pct===null?'':r.pct.toFixed(1),
+    rows.push([sm.no,sampleCode(sm),sm.name,sm.sscc||'',sm.batch||'',r.IN,r.JI,r.OUT,r.total,r.pct===null?'':r.pct.toFixed(1),
       r.pct===null?'chưa đủ':(r.pass?'Passed':'Failed'),x.errs.join('; '),x.tasters.join('; ')]); });
   downloadFile('Summary_'+set.name.replace(/\s+/g,'_')+'.csv',toCSV(rows),'text/csv');
   logAudit('Xuất Excel: '+set.name); toast('Đã xuất Excel (CSV)','ok'); }
