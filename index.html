@@ -235,6 +235,7 @@ body[data-theme="dark"] .scoring-start-card{background:linear-gradient(135deg,#2
 .auth-gate.show{display:flex}
 .auth-card{background:var(--panel);color:var(--text);border-radius:16px;box-shadow:0 22px 60px rgba(0,0,0,.45);width:380px;max-width:100%;padding:28px 26px 22px;text-align:center}
 .auth-card img{height:52px;margin:0 auto 12px;display:block}
+body[data-theme="dark"] .auth-card .logo-for-light,body:not([data-theme="dark"]) .auth-card .logo-for-dark{display:none}
 .auth-card h2{margin:0 0 4px;font-size:19px}.auth-card p{margin:0 0 16px;font-size:13px;color:var(--muted)}
 .auth-card .t{margin-bottom:10px;text-align:center;font-size:15px;min-height:44px}
 .auth-card .btn{width:100%;min-height:42px;justify-content:center}
@@ -326,7 +327,7 @@ footer .spacer{flex:1}
   <div class="header-spacer"></div>
   <span class="set-badge">Set: <b id="hdrSet">— chưa mở —</b></span>
   <button class="role-pill acct-btn off" id="acctBtn" onclick="authOpenAccount()" title="Tài khoản · đăng nhập Admin"><span class="dot"></span><span id="acctLabel">Chưa đăng nhập</span></button>
-  <button class="hbtn ghost" id="logoutBtn" onclick="authLogout()" title="Đăng xuất & xoá dữ liệu tạm trên trình duyệt" style="display:none">⏻ Đăng xuất</button>
+  <button class="hbtn ghost" id="logoutBtn" onclick="authLogout()" title="Đăng xuất & xoá dữ liệu tạm trên trình duyệt" style="display:none">🚪 Đăng xuất</button>
   <button class="hbtn ghost" onclick="toggleTheme()" title="Sáng/Tối">🌓</button>
 </header>
 
@@ -416,7 +417,7 @@ footer .spacer{flex:1}
 
 <!-- ĐĂNG NHẬP cấp 1 (mật khẩu User chung) / tài khoản riêng -->
 <div class="auth-gate show noprint" id="authGate"><div class="auth-card">
-  <img data-logo="dark" alt="iLD"><h2>Sensory Entry</h2><p id="gateSub">Đang kiểm tra đăng nhập…</p>
+  <img data-logo="dark" class="logo-for-light" alt="iLD"><img data-logo="light" class="logo-for-dark" alt="iLD"><h2>Sensory Entry</h2><p id="gateSub">Đang kiểm tra đăng nhập…</p>
   <div id="gateUserRow" style="display:none"><input class="t" id="gateUser" placeholder="Tên đăng nhập" autocomplete="username" autocapitalize="off"></div>
   <input class="t" id="gatePass" type="password" placeholder="Mật khẩu" autocomplete="current-password" onkeydown="if(event.key==='Enter')authGateSubmit()">
   <div class="auth-err" id="gateErr"></div>
@@ -436,7 +437,7 @@ footer .spacer{flex:1}
 <div id="toast" class="noprint"></div>
 
 <!-- input file ẩn cho import -->
-<input type="file" id="fileMaster" accept=".csv" style="display:none">
+<input type="file" id="fileLots" accept=".xlsx,.xls,.csv" style="display:none">
 <input type="file" id="fileBackup" accept=".json" style="display:none">
 <input type="file" id="fileSetSamples" accept=".xlsx,.xls,.csv" style="display:none">
 <input type="file" id="fileItems" accept=".xlsx,.xls,.csv" style="display:none">
@@ -473,7 +474,7 @@ let STATE={panellists:[],products:[],recipes:[],pos:[],batches:[],itemCodes:[],s
 function persist(skipCloud=false){
   try{
     const data={panellists:STATE.panellists,products:STATE.products,recipes:STATE.recipes,
-      pos:STATE.pos,batches:STATE.batches,itemCodes:STATE.itemCodes,sets:STATE.sets,currentSetId:STATE.currentSetId,
+      pos:STATE.pos,batches:STATE.batches,lots:STATE.lots,itemCodes:STATE.itemCodes,sets:STATE.sets,currentSetId:STATE.currentSetId,
       audit:STATE.audit};
     localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
     const t=new Date().toLocaleTimeString('vi-VN');
@@ -488,7 +489,7 @@ function loadState(){
     const d=JSON.parse(raw);
     if(!d||typeof d!=='object'||!Array.isArray(d.sets))throw new Error('Cấu trúc không hợp lệ');
     STATE.panellists=d.panellists||[];STATE.products=d.products||[];STATE.recipes=d.recipes||[];
-    STATE.pos=d.pos||[];STATE.batches=d.batches||[];STATE.itemCodes=d.itemCodes||[];STATE.sets=d.sets||[];
+    STATE.pos=d.pos||[];STATE.batches=d.batches||[];STATE.lots=d.lots;STATE.itemCodes=d.itemCodes||[];STATE.sets=d.sets||[];migrateLots();
     STATE.currentSetId=d.currentSetId||null;STATE.audit=d.audit||[];
     return true;
   }catch(e){ toast('Dữ liệu lưu bị lỗi, dùng dữ liệu mặc định','err'); return false; }
@@ -998,34 +999,61 @@ document.getElementById('filePanellists').addEventListener('change',async e=>{co
   }catch(err){toast('Import Panellist lỗi: '+err.message,'err');}});
 
 /* ===================== [MASTER] SP/Recipe/PO/Batch ===================== */
+/* Bảng liên tục Sản phẩm · Recipe · PO · Batch: mỗi dòng là 1 bộ liên kết. STATE.lots=[{id,product,recipe,po,batch}]
+   (các danh sách rời cũ products/recipes/pos/batches được chuyển thành dòng một lần, giữ nguyên để tương thích ngược) */
+const LOT_KEYS=['product','recipe','po','batch'],LOT_HEAD=['Sản phẩm','Recipe','PO','Batch'];
+const LOT_SEED_IDS={prd1:1,prd2:1,rcp1:1,rcp2:1,po1:1,bat1:1,bat2:1};
+function migrateLots(){ if(Array.isArray(STATE.lots))return;const out=[];
+  [['products','product'],['recipes','recipe'],['pos','po'],['batches','batch']].forEach(([arr,k])=>(STATE[arr]||[]).forEach(x=>{if(!LOT_SEED_IDS[x.id]&&x.name)out.push({id:uid('lot'),product:'',recipe:'',po:'',batch:'',[k]:x.name});}));
+  STATE.lots=out; }
+let LOT_UI={filters:{product:'',recipe:'',po:'',batch:''},sortKey:'',sortDir:1,timer:null};
+function lotSort(k){if(LOT_UI.sortKey===k)LOT_UI.sortDir*=-1;else{LOT_UI.sortKey=k;LOT_UI.sortDir=1;}renderProducts();}
+function lotFilter(k,v,pos){LOT_UI.filters[k]=v;clearTimeout(LOT_UI.timer);LOT_UI.timer=setTimeout(()=>{renderProducts();requestAnimationFrame(()=>{const el=$('#lotFilter_'+k);if(el){el.focus();el.setSelectionRange?.(pos??v.length,pos??v.length);}});},180);}
 function renderProducts(){
-  const box=$('#productBody');
-  const list=(arr,fn)=>arr.map(x=>`<tr><td class="l">${esc(x.name)}</td><td><button class="btn sm danger" onclick="${fn}('${x.id}')">Xoá</button></td></tr>`).join('');
+  const box=$('#productBody'),f=LOT_UI.filters,inc=(v,q)=>(v||'').toLowerCase().includes((q||'').trim().toLowerCase());
+  const list=STATE.lots.filter(x=>LOT_KEYS.every(k=>inc(x[k],f[k])));
+  if(LOT_UI.sortKey)list.sort((a,b)=>(a[LOT_UI.sortKey]||'').localeCompare(b[LOT_UI.sortKey]||'','vi',{numeric:true})*LOT_UI.sortDir);
+  const arrow=k=>LOT_UI.sortKey===k?(LOT_UI.sortDir>0?'▲':'▼'):'↕';
+  const rows=list.map(x=>`<tr>${LOT_KEYS.map(k=>`<td><input class="t edit-cell" value="${esc(x[k])}" onchange="editLot('${x.id}','${k}',this.value)"></td>`).join('')}
+    <td><button class="btn sm danger" onclick="delLot('${x.id}')" title="Xoá dòng">🗑️ Xoá</button></td></tr>`).join('');
+  const ph={product:'VD: Freeze-dried Coffee',recipe:'VD: 405',po:'VD: PO-2509-01',batch:'VD: L2509A'};
   box.innerHTML=`
-    <div class="card"><div class="toolbar"><h3 style="margin:0">Import / Template</h3><span class="spacer"></span>
-      <button class="btn sec sm" onclick="downloadMasterTemplate()">⤓ Tải template CSV</button>
-      <button class="btn sm" onclick="document.getElementById('fileMaster').click()">⤒ Import CSV/Excel</button></div>
-      <p class="hint">Template có 2 cột: <b>Type</b> (Product/Recipe/PO/Batch) và <b>Name</b>. Excel lưu dạng CSV (UTF-8) rồi import.</p></div>
-    <div class="row c2">
-      <div class="card"><h3>Sản phẩm</h3><div class="toolbar"><input class="t" id="prodName" placeholder="Tên sản phẩm"><button class="btn" onclick="addProd()">+ Thêm</button></div>
-        <div class="tbl-wrap"><table class="grid"><thead><tr><th class="l">Tên</th><th style="width:70px"></th></tr></thead><tbody>${list(STATE.products,'delProd')||emptyRow(2)}</tbody></table></div></div>
-      <div class="card"><h3>Recipe</h3><div class="toolbar"><input class="t" id="recName" placeholder="Tên recipe"><button class="btn" onclick="addRec()">+ Thêm</button></div>
-        <div class="tbl-wrap"><table class="grid"><thead><tr><th class="l">Tên</th><th style="width:70px"></th></tr></thead><tbody>${list(STATE.recipes,'delRec')||emptyRow(2)}</tbody></table></div></div></div>
-    <div class="row c2">
-      <div class="card"><h3>PO (Production Order)</h3><div class="toolbar"><input class="t" id="poName" placeholder="Số PO"><button class="btn" onclick="addPo()">+ Thêm</button></div>
-        <div class="tbl-wrap"><table class="grid"><thead><tr><th class="l">PO</th><th style="width:70px"></th></tr></thead><tbody>${list(STATE.pos,'delPo')||emptyRow(2)}</tbody></table></div></div>
-      <div class="card"><h3>Batch (Lô SX)</h3><div class="toolbar"><input class="t" id="batchName" placeholder="Mã lô"><button class="btn" onclick="addBatch()">+ Thêm</button></div>
-        <div class="tbl-wrap"><table class="grid"><thead><tr><th class="l">Batch</th><th style="width:70px"></th></tr></thead><tbody>${list(STATE.batches,'delBatch')||emptyRow(2)}</tbody></table></div></div></div>`;
+    <p class="hint" style="margin:-8px 0 14px">Bảng liên tục Sản phẩm · Recipe · PO · Batch — ${STATE.lots.length} dòng. Mỗi dòng là một bộ liên kết; lọc/sắp xếp theo từng cột, sửa trực tiếp hoặc thêm mới ở hàng đầu bảng.</p>
+    <div class="card"><div class="toolbar"><h3 style="margin:0">Xuất template / Nhập / Xuất Excel</h3><span class="spacer"></span>
+      <button class="btn sec sm" onclick="downloadLotsTemplate()">📄 Tải template</button>
+      <button class="btn sec sm" onclick="exportLotsExcel()" ${STATE.lots.length?'':'disabled'}>📊 Xuất danh sách</button>
+      <button class="btn sm" onclick="document.getElementById('fileLots').click()">📥 Nhập từ Excel</button></div>
+      <p class="hint">Hỗ trợ .xlsx, .xls và .csv với các cột <b>Sản phẩm · Recipe · PO · Batch</b>. Import thêm dòng mới, bỏ qua dòng trùng hoàn toàn.</p></div>
+    <div class="card"><div class="toolbar"><h3 style="margin:0">Danh sách Sản phẩm · Recipe · PO · Batch</h3><span class="spacer"></span><span class="badge gray">Hiển thị ${list.length}/${STATE.lots.length}</span></div>
+      <div class="tbl-wrap"><table class="grid item-table lot-table"><thead>
+        <tr>${LOT_KEYS.map((k,i)=>`<th class="l ${LOT_UI.sortKey===k?'sorted':''}" onclick="lotSort('${k}')">${LOT_HEAD[i]} <span class="sort-arrow">${arrow(k)}</span></th>`).join('')}<th></th></tr>
+        <tr class="filter-row">${LOT_KEYS.map((k,i)=>`<th><input class="t" id="lotFilter_${k}" placeholder="Lọc ${LOT_HEAD[i]}…" value="${esc(f[k])}" oninput="lotFilter('${k}',this.value,this.selectionStart)"></th>`).join('')}<th></th></tr></thead>
+        <tbody><tr class="add-row">${LOT_KEYS.map(k=>`<td><input class="t" id="lotNew_${k}" placeholder="${ph[k]}" onkeydown="if(event.key==='Enter')addLot()"></td>`).join('')}
+          <td><button class="btn sm" onclick="addLot()">＋ Thêm</button></td></tr>
+          ${rows||'<tr><td colspan="5" class="hint" style="padding:16px">Chưa có dòng nào khớp bộ lọc.</td></tr>'}</tbody></table></div></div>`;
 }
-const emptyRow=n=>`<tr><td colspan="${n}" class="hint" style="padding:12px">Chưa có dữ liệu</td></tr>`;
-function addProd(){const v=$('#prodName').value.trim();if(!v)return;STATE.products.push({id:uid('prd'),name:v});logAudit('Thêm SP: '+v);save();renderProducts();}
-function delProd(id){STATE.products=STATE.products.filter(x=>x.id!==id);save();renderProducts();}
-function addRec(){const v=$('#recName').value.trim();if(!v)return;STATE.recipes.push({id:uid('rcp'),name:v});save();renderProducts();}
-function delRec(id){STATE.recipes=STATE.recipes.filter(x=>x.id!==id);save();renderProducts();}
-function addPo(){const v=$('#poName').value.trim();if(!v)return;STATE.pos.push({id:uid('po'),name:v});save();renderProducts();}
-function delPo(id){STATE.pos=STATE.pos.filter(x=>x.id!==id);save();renderProducts();}
-function addBatch(){const v=$('#batchName').value.trim();if(!v)return;STATE.batches.push({id:uid('bat'),name:v});save();renderProducts();}
-function delBatch(id){STATE.batches=STATE.batches.filter(x=>x.id!==id);save();renderProducts();}
+const lotSame=(a,b)=>LOT_KEYS.every(k=>(a[k]||'').trim().toLowerCase()===(b[k]||'').trim().toLowerCase());
+function addLot(){ const x={};LOT_KEYS.forEach(k=>x[k]=$('#lotNew_'+k).value.trim());
+  if(!LOT_KEYS.some(k=>x[k]))return toast('Nhập ít nhất một trường','err');if(STATE.lots.some(y=>lotSame(x,y)))return toast('Dòng này đã có','err');
+  STATE.lots.unshift({id:uid('lot'),...x});logAudit('Thêm SP/Recipe/PO/Batch: '+LOT_KEYS.map(k=>x[k]||'—').join(' · '));save();renderProducts();setTimeout(()=>$('#lotNew_product')?.focus(),30); }
+function editLot(id,k,v){ const x=STATE.lots.find(y=>y.id===id);if(!x||!LOT_KEYS.includes(k))return;x[k]=v.trim();logAudit('Sửa SP/Recipe/PO/Batch: '+LOT_KEYS.map(k=>x[k]||'—').join(' · '));save(); }
+function delLot(id){ const x=STATE.lots.find(y=>y.id===id);if(!x)return;
+  confirmAsk('Xoá dòng "'+LOT_KEYS.map(k=>x[k]||'—').join(' · ')+'"?','Xoá',()=>{STATE.lots=STATE.lots.filter(y=>y.id!==id);logAudit('Xoá SP/Recipe/PO/Batch: '+LOT_KEYS.map(k=>x[k]||'—').join(' · '));save();renderProducts();}); }
+function downloadLotsTemplate(){ downloadFile('iLD_SP_Recipe_PO_Batch_Template.xls',itemsWorkbook([LOT_HEAD,['Freeze-dried Coffee','405','PO-2509-01','L2509A'],['Spray-dried Coffee','406','PO-2509-02','L2509B']],'Lots'),'application/vnd.ms-excel'); }
+function exportLotsExcel(){ downloadFile('iLD_SP_Recipe_PO_Batch_'+todayStr()+'.xls',itemsWorkbook([LOT_HEAD,...STATE.lots.map(x=>LOT_KEYS.map(k=>x[k]||''))],'Lots'),'application/vnd.ms-excel');
+  logAudit('Xuất SP/Recipe/PO/Batch: '+STATE.lots.length+' dòng');save();toast('Đã xuất '+STATE.lots.length+' dòng','ok'); }
+function normalizeLotRows(rows){ const clean=rows.map(r=>[...r].map(v=>(v??'').toString().trim())).filter(r=>r.some(Boolean));
+  const is={product:h=>/sản phẩm|san pham|product|tên sp|ten sp/.test(h),recipe:h=>/recipe|công thức|cong thuc/.test(h),po:h=>/^po\b|production order|lệnh sx|lenh sx/.test(h),batch:h=>/batch|lô|^lo\b|lo sx/.test(h)};
+  const hi=clean.findIndex(r=>{const h=r.map(x=>x.toLowerCase());return LOT_KEYS.filter(k=>h.some(is[k])).length>=2;});if(hi<0)throw new Error('Không tìm thấy tiêu đề Sản phẩm / Recipe / PO / Batch');
+  const h=clean[hi].map(x=>x.toLowerCase()),idx={};LOT_KEYS.forEach(k=>idx[k]=h.findIndex(is[k]));
+  return clean.slice(hi+1).map(r=>{const x={};LOT_KEYS.forEach(k=>x[k]=idx[k]>=0?(r[idx[k]]||''):'');return x;}).filter(x=>LOT_KEYS.some(k=>x[k]));
+}
+document.getElementById('fileLots').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn','err');
+  try{const lower=f.name.toLowerCase();let rows;if(lower.endsWith('.xlsx'))rows=await xlsxRows(await f.arrayBuffer());else{const text=await f.text();rows=lower.endsWith('.csv')?parseCSV(text):xmlRows(text);}
+    const data=normalizeLotRows(rows);if(!data.length)throw new Error('Không có dòng dữ liệu hợp lệ');let added=0,skipped=0;
+    data.forEach(x=>{if(STATE.lots.some(y=>lotSame(x,y))){skipped++;return;}STATE.lots.push({id:uid('lot'),...x});added++;});
+    logAudit('Import SP/Recipe/PO/Batch: +'+added+', bỏ qua '+skipped);save();renderProducts();toast('Đã nhập '+added+' dòng; bỏ qua '+skipped+' dòng trùng','ok');
+  }catch(err){toast('Import lỗi: '+err.message,'err');}});
 
 /* ===================== [ITEMS] Items Code · Product · Recipe ===================== */
 let ITEM_UI={filters:{group:'',item:'',name:'',recipe:''},sortKey:'item',sortDir:1,filterTimer:null};
@@ -1145,8 +1173,6 @@ function parseCSV(text){ // parser CSV tối giản, hỗ trợ dấu ngoặc k�
     i++; }
   if(f!==''||row.length){row.push(f);rows.push(row);} return rows.filter(r=>r.some(x=>x!==''));
 }
-function downloadMasterTemplate(){ downloadFile('iLD_MasterData_Template.csv',
-  toCSV([['Type','Name'],['Product','Freeze-dried Coffee'],['Recipe','Standard 100%'],['PO','PO-2508-01'],['Batch','L2508A']]),'text/csv'); }
 
 /* Template + import danh sách mẫu cho Set (dùng ở wizard bước ②) */
 const SET_SAMPLE_HEAD=['Tên mã hóa','Tên mẫu','SSCC/Hour','Batch'];
@@ -1179,21 +1205,6 @@ document.getElementById('fileSetSamples').addEventListener('change',async e=>{ c
     if(n===0)throw new Error('Không có dòng mẫu hợp lệ');
     renderSetup(); toast('Đã nạp '+n+' mẫu','ok');
   }catch(err){ toast('Import lỗi: '+err.message,'err'); } });
-$('#fileMaster').addEventListener('change',e=>{ const f=e.target.files[0]; e.target.value=''; if(!f)return;
-  if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn (>'+CONFIG.MAX_IMPORT_MB+'MB)','err');
-  const rd=new FileReader();
-  rd.onload=()=>{ try{
-    const rows=parseCSV(rd.result); if(rows.length<2)throw new Error('File rỗng');
-    const head=rows[0].map(h=>h.trim().toLowerCase()); const iType=head.indexOf('type'),iName=head.indexOf('name');
-    if(iType<0||iName<0)throw new Error('Thiếu cột Type/Name');
-    let n=0; rows.slice(1).forEach(r=>{ const type=(r[iType]||'').trim().toLowerCase(),name=(r[iName]||'').trim(); if(!name)return;
-      const map={product:['products','prd'],recipe:['recipes','rcp'],po:['pos','po'],batch:['batches','bat']};
-      const key={product:'products',recipe:'recipes',po:'pos',batch:'batches'}[type]; if(!key)return;
-      if(STATE[key].some(x=>x.name.toLowerCase()===name.toLowerCase()))return;
-      STATE[key].push({id:uid(type),name}); n++; });
-    logAudit('Import Master Data: +'+n+' dòng'); save(); renderProducts(); toast('Đã import '+n+' dòng','ok');
-  }catch(err){ toast('Import lỗi: '+err.message,'err'); } };
-  rd.onerror=()=>toast('Không đọc được file','err'); rd.readAsText(f,'UTF-8'); });
 
 function exportSummaryCSV(){ const set=curSet(); if(!set)return toast('Chưa có Set','err');
   const rows=[['iLD SUMMARY TASTING RESULT'],['Set',set.name,'Ngày',fmtDate(set.date),'Ca',set.shift,'Loại',set.sampleType],[],
@@ -1404,7 +1415,7 @@ const CLOUD={ready:false,loading:true,error:'',user:null,db:null,auth:null,m:nul
 localStorage.setItem(CLOUD_CLIENT_KEY,CLOUD.clientId);
 function cloudSaveSync(){localStorage.setItem(CLOUD_SYNC_KEY,JSON.stringify(CLOUD.sync));}
 function cloudMeta(){return {schemaVersion:2,panellists:STATE.panellists,products:STATE.products,recipes:STATE.recipes,
-  pos:STATE.pos,batches:STATE.batches,itemCodes:STATE.itemCodes,currentSetId:STATE.currentSetId,audit:STATE.audit};}
+  pos:STATE.pos,batches:STATE.batches,lots:STATE.lots,itemCodes:STATE.itemCodes,currentSetId:STATE.currentSetId,audit:STATE.audit};}
 function cloudEntityKey(type,id='main'){return type+':'+id;}
 function cloudRef(key){const [type,...rest]=key.split(':'),id=rest.join(':');
   if(type==='meta')return CLOUD.m.doc(CLOUD.db,'ild_sensory_v2','meta');
@@ -1441,7 +1452,7 @@ const cloudStrip=d=>{if(!d)return null;const {revision,updatedAt,updatedBy,clien
 /* Đưa bản đã gộp vào STATE, giữ các thay đổi trên máy phát sinh sau khi mục này vào hàng chờ */
 function cloudApplyEntity(key,queued,merged){
   const now=cloudEntities().get(key),data=JSON.parse(JSON.stringify(now?cloudMerge3(queued,now,merged):merged)),[type,...rest]=key.split(':'),id=rest.join(':');
-  if(type==='meta'){['panellists','products','recipes','pos','batches','itemCodes'].forEach(k=>STATE[k]=data[k]||[]);STATE.audit=(data.audit||[]).slice(0,500);}
+  if(type==='meta'){['panellists','products','recipes','pos','batches','lots','itemCodes'].forEach(k=>STATE[k]=data[k]||[]);STATE.audit=(data.audit||[]).slice(0,500);}
   else if(type==='set'){const s=STATE.sets.find(x=>x.id===id);if(s){const scores=s.scores;Object.keys(s).forEach(k=>delete s[k]);Object.assign(s,data,{scores});}else STATE.sets.push({...data,scores:{}});}
   else if(type==='score'){const s=STATE.sets.find(x=>x.id===data.setId);if(s)s.scores[data.panellistId]=data.scores||{};}
   persist(true);
@@ -1526,7 +1537,7 @@ async function cloudFlushOutbox(){if(!CLOUD.user||!navigator.onLine||CLOUD.apply
 async function cloudPush(manual=true){if(!CLOUD.user)return toast('Đăng nhập Firebase trước','err');if(!CLOUD.editorPrimary)return toast('Tab này chỉ đọc','err');
   if(manual){logAudit('Đẩy dữ liệu lên Firebase v2');persist(true);}cloudQueueEntities();await cloudFlushOutbox();if(!CLOUD.sync.conflicts.length&&manual)toast('Đã đồng bộ dữ liệu lên Firebase','ok');}
 function cloudApplyAll(meta,sets,scores,bases){if(!meta||!Array.isArray(sets))throw new Error('Dữ liệu cloud không hợp lệ');CLOUD.applying=true;
-  STATE.panellists=meta.panellists||[];STATE.products=meta.products||[];STATE.recipes=meta.recipes||[];STATE.pos=meta.pos||[];STATE.batches=meta.batches||[];STATE.itemCodes=meta.itemCodes||[];
+  STATE.panellists=meta.panellists||[];STATE.products=meta.products||[];STATE.recipes=meta.recipes||[];STATE.pos=meta.pos||[];STATE.batches=meta.batches||[];STATE.lots=meta.lots;migrateLots();STATE.itemCodes=meta.itemCodes||[];
   const byId=new Map(sets.map(s=>[s.id,{...s,scores:{}}]));scores.forEach(x=>{const s=byId.get(x.setId);if(s)s.scores[x.panellistId]=x.scores||{};});STATE.sets=[...byId.values()];
   STATE.currentSetId=meta.currentSetId||null;STATE.currentPanellistId=null;STATE.audit=meta.audit||[];CLOUD.sync.bases=JSON.parse(JSON.stringify(bases));CLOUD.sync.outbox=[];CLOUD.sync.conflicts=[];cloudSaveSync();persist(true);
   CLOUD.applying=false;purgeDemoPanellists();mergeDefaultPanellists();CLOUD.lastSync=new Date().toLocaleTimeString('vi-VN');$('#hdrSet').textContent=setLabel(curSet());switchTab($('.panel.active')?.id||'tab-scoring');cloudRefreshSettings();}
@@ -1777,7 +1788,7 @@ function renderSettings(){
       <div class="audit">${auditRows}</div></div>`;
 }
 function exportBackup(){ const data={_app:'iLD Sensory Entry',_v:1,_at:new Date().toISOString(),
-    panellists:STATE.panellists,products:STATE.products,recipes:STATE.recipes,pos:STATE.pos,batches:STATE.batches,itemCodes:STATE.itemCodes,
+    panellists:STATE.panellists,products:STATE.products,recipes:STATE.recipes,pos:STATE.pos,batches:STATE.batches,lots:STATE.lots,itemCodes:STATE.itemCodes,
     sets:STATE.sets,currentSetId:STATE.currentSetId,audit:STATE.audit};
   downloadFile('iLD_Sensory_Backup_'+todayStr()+'.json',JSON.stringify(data,null,2),'application/json');
   logAudit('Sao lưu JSON'); toast('Đã sao lưu','ok'); }
@@ -1787,7 +1798,7 @@ $('#fileBackup').addEventListener('change',e=>{ const f=e.target.files[0]; e.tar
     if(!d||!Array.isArray(d.sets))throw new Error('Không phải file sao lưu hợp lệ');
     confirmAsk('Phục hồi sẽ THAY THẾ toàn bộ dữ liệu hiện tại. Tiếp tục?','Phục hồi',()=>{
       STATE.panellists=d.panellists||[];STATE.products=d.products||[];STATE.recipes=d.recipes||[];STATE.pos=d.pos||[];
-      STATE.batches=d.batches||[];STATE.itemCodes=d.itemCodes||[];STATE.sets=d.sets||[];STATE.currentSetId=d.currentSetId||null;STATE.audit=d.audit||[];
+      STATE.batches=d.batches||[];STATE.lots=d.lots;migrateLots();STATE.itemCodes=d.itemCodes||[];STATE.sets=d.sets||[];STATE.currentSetId=d.currentSetId||null;STATE.audit=d.audit||[];
       logAudit('Phục hồi từ JSON'); persist(); purgeDemoPanellists(); boot(); toast('Đã phục hồi','ok'); });
   }catch(err){ toast('Phục hồi lỗi: '+err.message,'err'); } }; rd.readAsText(f,'UTF-8'); });
 
@@ -1866,7 +1877,7 @@ function seed(){
   STATE.panellists=[]; // danh sách thật nạp từ Excel ở tab Quản lý Panellist
   STATE.products=[{id:'prd1',name:'Freeze-dried Coffee'},{id:'prd2',name:'Spray-dried Coffee'}];
   STATE.recipes=[{id:'rcp1',name:'Standard 100%'},{id:'rcp2',name:'Less bitter'}];
-  STATE.pos=[{id:'po1',name:'PO-2508-01'}]; STATE.batches=[{id:'bat1',name:'L2508A'},{id:'bat2',name:'L2508B'}];
+  STATE.pos=[{id:'po1',name:'PO-2508-01'}]; STATE.batches=[{id:'bat1',name:'L2508A'},{id:'bat2',name:'L2508B'}]; STATE.lots=[];
   const set={id:'set_demo',name:'Set Demo',date:todayStr(),shift:'AM',sampleType:'Freeze-dried',creator:'QA',status:'open',
     attendees:['pnl_a','pnl_b','pnl_c'],
     samples:[{no:1,name:'FD STD',sscc:'08:00',batch:'L2508A'},{no:2,name:'FD Mẫu 1',sscc:'09:00',batch:'L2508A'},{no:3,name:'FD Mẫu 2',sscc:'10:00',batch:'L2508B'}],

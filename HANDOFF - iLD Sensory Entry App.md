@@ -101,7 +101,8 @@ Object toàn cục `STATE`:
   products:   [{ id, name }],
   recipes:    [{ id, name }],
   pos:        [{ id, name }],
-  batches:    [{ id, name }],
+  batches:    [{ id, name }],        // legacy — UI dùng lots
+  lots:       [{ id, product, recipe, po, batch }],   // bảng liên tục SP·Recipe·PO·Batch (migrateLots chuyển danh sách rời cũ)
   itemCodes:  [{ id, group, item, name, recipe }],
   sets: [{
     id, name, date, shift, sampleType, creator, status,
