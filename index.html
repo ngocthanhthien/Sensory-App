@@ -27,7 +27,7 @@ body[data-theme="dark"]{
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
-body{font-family:var(--font);color:var(--text);background:var(--bg);
+body{font-family:var(--font);color:var(--text);background:var(--bg);max-width:100vw;
   display:flex;flex-direction:column;height:100vh;overflow:hidden}
 header{display:flex;align-items:center;gap:14px;background:var(--ink);color:#fff;
   padding:0 16px;height:58px;flex:none;box-shadow:var(--shadow);z-index:20}
@@ -44,7 +44,7 @@ body[data-theme="dark"] header{background:#0b0d10}
 .hbtn{background:var(--ild-red);color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer}
 .hbtn.ghost{background:transparent;border:1px solid #3a404a;color:#cfd6df}
 .hbtn:hover{background:var(--ild-red-dark)}.hbtn.ghost:hover{background:var(--bg-dark-2)}
-.shell{display:flex;flex-direction:column;flex:1;min-height:0}
+.shell{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;width:100%;overflow-x:hidden}
 nav.side{width:100%;height:50px;background:var(--bg-dark);color:#cfd6df;flex:none;display:flex;align-items:stretch;
   overflow-x:auto;overflow-y:hidden;padding:0 12px;scrollbar-width:thin;scrollbar-color:#4a515c transparent}
 .nav-group{display:none}
@@ -160,7 +160,75 @@ body[data-theme="dark"] .scoring-start-card{background:linear-gradient(135deg,#2
   box-shadow:0 3px 8px rgba(15,23,42,.06);font-weight:650;padding:9px 12px;transition:.18s ease}
 .scoring-start-card select.s:focus{outline:none;border-color:var(--ild-red);box-shadow:0 0 0 3px rgba(227,6,19,.12),0 5px 12px rgba(15,23,42,.08)}
 .scoring-start-card select.s:disabled{box-shadow:none;opacity:.55}
-@media(max-width:860px){.score-meta{grid-template-columns:1fr 1fr}.score-form-title{font-size:15px}.score-form-head{padding:20px 14px 14px}}
+/* Responsive layout: desktop → tablet → phone */
+@media(max-width:1180px){
+  main{padding:18px 18px}
+  .nav-item{padding:0 11px}
+  .score-table{min-width:860px}
+  .score-table th.remark-col{min-width:260px}
+}
+@media(max-width:860px){
+  .score-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .score-meta>div:last-child{grid-column:span 2}
+  .score-form-title{font-size:15px}.score-form-head{padding:20px 14px 14px}
+  .score-sheet .tbl-wrap{max-height:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+  .score-table{min-width:820px}
+  .toolbar{align-items:stretch}.toolbar .spacer{display:none}
+  .toolbar .btn{min-height:42px}
+}
+@media(max-width:600px){
+  html{-webkit-text-size-adjust:100%}
+  body{min-width:320px}
+  header{height:auto;min-height:54px;flex-wrap:wrap;padding:8px 10px}
+  .logo{font-size:17px;padding:4px 8px}.app-title{font-size:13px;min-width:0;flex:1}
+  .app-title small{display:none}
+  .header-spacer{display:none}.set-badge{order:3;width:calc(100% - 42px);max-width:none!important;text-align:center}
+  .hbtn{min-width:36px;min-height:34px;padding:6px 9px}
+  nav.side{height:46px;scroll-snap-type:x proximity;box-shadow:0 3px 9px rgba(0,0,0,.16)}
+  .nav-item{padding:0 11px;font-size:11.5px;scroll-snap-align:start}.nav-item .ico{font-size:14px}
+  main{width:100%;padding:12px 8px;overflow-x:hidden}
+  .page-head{margin-bottom:12px;gap:7px}.page-head h1{font-size:18px}.page-head .form-code{width:100%;margin-left:0}
+  .card{padding:14px 12px;margin-bottom:12px;border-radius:12px}
+  .grid-3,.row.c2,.row.c3,.row.c4{grid-template-columns:1fr}
+  .scoring-start-card{padding:14px 12px}.scoring-start-card select.s,.scoring-start-card input.t{min-height:44px;font-size:16px}
+  input.t,select.s,textarea.t{font-size:16px;min-height:42px}
+  .score-sheet{border-radius:14px}.score-form-head{padding:18px 10px 12px}
+  .score-form-title{max-width:100%;padding:0 3px;font-size:13px;letter-spacing:0;line-height:1.28;overflow-wrap:anywhere}.score-form-sub{font-size:11.5px}
+  .score-meta{gap:6px;margin-top:12px}.score-meta>div{padding:7px 8px;border-radius:8px}.score-meta span{font-size:12px}
+  .score-sheet .tbl-wrap{overflow:visible}
+  .score-table,.score-table tbody,.score-table tr,.score-table td{display:block;width:100%}
+  .score-table{min-width:0;border-collapse:separate;border-spacing:0;background:transparent}
+  .score-table thead{display:none}
+  .score-table tbody{padding:8px}
+  .score-table tbody tr{display:grid;grid-template-columns:44px repeat(3,minmax(0,1fr));gap:8px;padding:10px;margin-bottom:10px;
+    border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:0 5px 14px rgba(15,23,42,.08)}
+  .score-table tbody tr:last-child{margin-bottom:0}
+  .score-table tbody td{border:0!important;background:transparent!important;padding:0!important;text-align:center}
+  .score-table tbody td:before{content:attr(data-label);display:block;margin-bottom:5px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.35px;color:var(--muted)}
+  .score-table tbody td:nth-child(1){grid-column:1;grid-row:1;padding-top:4px!important;font-weight:800}
+  .score-table tbody td:nth-child(2){grid-column:2 / -1;grid-row:1;text-align:left;padding:2px 0 8px!important;border-bottom:1px solid var(--line)!important}
+  .score-table tbody td:nth-child(3){grid-column:1 / 2}.score-table tbody td:nth-child(4){grid-column:2 / 3}.score-table tbody td:nth-child(5){grid-column:3 / 5}
+  .score-table tbody td:nth-child(6){grid-column:1 / -1;text-align:left;padding-top:4px!important}
+  .score-table tbody td:nth-child(1):before,.score-table tbody td:nth-child(2):before{display:none}
+  .score-table .seg,.score-table .seg label{display:block;width:100%}.score-table .seg label{min-width:0;padding:10px 5px;font-size:11.5px}
+  .score-table .remark-box{min-width:0}.score-table .remark-box select,.score-table .remark-box input{width:100%}
+  .score-table .remark-na{display:block;text-align:center}
+  .score-instructions{padding:11px 12px 13px;font-size:10.5px}
+  .score-actions{display:grid;grid-template-columns:1fr}.score-actions .hint{text-align:center}.score-actions .btn{width:100%;min-height:46px}
+  .tbl-wrap{max-height:none}
+  footer{font-size:10px;padding:6px 9px;gap:8px;flex-wrap:wrap}
+  #toast{bottom:12px;width:calc(100% - 24px);text-align:center}
+}
+@media(max-width:380px){
+  .app-title{font-size:12px}.set-badge{font-size:11px}
+  .nav-item{padding:0 9px}.score-meta{grid-template-columns:1fr}.score-meta>div:last-child{grid-column:auto}
+  .score-table tbody tr{grid-template-columns:34px repeat(3,minmax(0,1fr));gap:5px;padding:8px}
+  .score-table .seg label{font-size:10.5px;padding:9px 3px}
+}
+@media(max-height:520px) and (orientation:landscape){
+  header{min-height:46px;padding-top:5px;padding-bottom:5px}nav.side{height:42px}main{padding-top:9px}
+  .score-sheet .tbl-wrap{max-height:none}
+}
 .overlay{position:fixed;inset:0;background:rgba(15,18,22,.55);display:none;align-items:center;justify-content:center;z-index:50}
 .overlay.show{display:flex}
 .modal{background:var(--panel);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3);width:380px;max-width:92vw;padding:22px}
@@ -176,7 +244,7 @@ footer .spacer{flex:1}
 .audit{font-size:12.5px;max-height:280px;overflow:auto}
 .audit div{padding:5px 0;border-bottom:1px solid var(--line);color:var(--muted)}
 .audit b{color:var(--text)}
-@media(max-width:860px){
+@media(min-width:601px) and (max-width:860px){
   header{padding:0 10px;gap:8px}.logo{font-size:18px}.app-title{font-size:14px}
   .set-badge{max-width:42vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:6px 9px}
   nav.side{height:48px;padding:0 6px}
@@ -410,7 +478,7 @@ function renderScoring(){
 function scPickSet(){SC_SESSION.setId=$('#scSet').value||'';SC_SESSION.panelId='';STATE.currentPanellistId=null;SC_DRAFT={};renderScoring();}
 function scPickPanel(){SC_SESSION.panelId=$('#scPanel').value||'';STATE.currentPanellistId=SC_SESSION.panelId||null;SC_DRAFT={};renderScoring();}
 function renderBlankScoreSheet(){
-  const blankRows=Array.from({length:5},(_,i)=>`<tr><td>${i+1}</td><td class="l">&nbsp;</td><td>□</td><td>□</td><td>□</td><td class="remark-na">&nbsp;</td></tr>`).join('');
+  const blankRows=Array.from({length:5},(_,i)=>`<tr><td data-label="No.">${i+1}</td><td class="l" data-label="Mẫu">&nbsp;</td><td data-label="IN">□</td><td data-label="Just In">□</td><td data-label="OUT">□</td><td class="remark-na" data-label="Remark">&nbsp;</td></tr>`).join('');
   return `<div class="score-sheet score-sheet-empty"><div class="score-form-head"><div class="score-form-title">Sensory - In/Out Score Sheet for Finished Goods<br>and Semi-Finished Goods</div>
     <div class="score-form-sub">Phiếu chấm điểm cảm quan IN / Just In / OUT</div>
     <div class="score-meta"><div><b>Name / Tên</b><span>&nbsp;</span></div><div><b>Dept. / Bộ phận</b><span>&nbsp;</span></div><div><b>Date / Ngày</b><span>&nbsp;</span></div><div><b>Set</b><span>&nbsp;</span></div><div><b>Shift / Ca</b><span>&nbsp;</span></div></div></div>
@@ -430,12 +498,12 @@ function renderScoreGrid(){
     const showErr=(sc.result==='JUSTIN'||sc.result==='OUT');
     const current=scRemarkValue(sc);
     const opts=(list,prefix)=>list.map(e=>`<option value="${prefix}:${esc(e)}" ${current===prefix+':'+e?'selected':''}>${esc(e)}</option>`).join('');
-    return `<tr><td>${sm.no}</td>
-      <td class="l"><b>${esc(sm.name)}</b><div class="hint">${esc(sm.batch||'')} ${sm.sscc?('· '+esc(sm.sscc)):''}</div></td>
-      <td><div class="seg">${seg('IN','in','IN')}</div></td>
-      <td><div class="seg">${seg('JUSTIN','ji','Just In')}</div></td>
-      <td><div class="seg">${seg('OUT','out','Out')}</div></td>
-      <td><span class="remark-na" style="display:${showErr?'none':'inline'}">—</span><div class="remark-box ${showErr?'show':''}">
+    return `<tr><td data-label="No.">${sm.no}</td>
+      <td class="l" data-label="Mẫu"><b>${esc(sm.name)}</b><div class="hint">${esc(sm.batch||'')} ${sm.sscc?('· '+esc(sm.sscc)):''}</div></td>
+      <td data-label="IN"><div class="seg">${seg('IN','in','IN')}</div></td>
+      <td data-label="Just In"><div class="seg">${seg('JUSTIN','ji','Just In')}</div></td>
+      <td data-label="OUT"><div class="seg">${seg('OUT','out','Out')}</div></td>
+      <td data-label="Remark"><span class="remark-na" style="display:${showErr?'none':'inline'}">—</span><div class="remark-box ${showErr?'show':''}">
         <select class="s remark-select" onchange="scRemark('${sm.no}',this.value)"><option value="">— Chọn tình huống —</option>
           <optgroup label="Lỗi ngoại quan">${opts(CONFIG.ERR_APPEARANCE,'A')}</optgroup>
           <optgroup label="Lỗi thử nếm">${opts(CONFIG.ERR_TASTE,'T')}</optgroup></select>
