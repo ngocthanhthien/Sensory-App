@@ -290,7 +290,7 @@ footer .spacer{flex:1}
 .sf-table thead tr:first-child th.sf-cmt-h{font-size:9.5px;font-weight:400;line-height:1.35;text-align:left}.sf-table th.sf-cmt-h b{font-weight:700}
 .sf-table tbody td{height:24px}.sf-table tbody td:first-child{font-weight:700}
 .sf-table td.c{text-align:center}.sf-cmt{font-size:11px;line-height:1.3}
-.sub-table th,.sub-table td{white-space:nowrap}.sub-table td:last-child{white-space:normal;min-width:180px}
+.sub-table th,.sub-table td{white-space:nowrap}.sub-table td.sub-err{white-space:normal;min-width:180px}
 .sf-code{display:block;font-size:9.5px;color:#666}
 .sf-pass{color:var(--ok)}.sf-fail{color:var(--fail)}
 .sf-foot{display:flex;justify-content:space-between;align-items:flex-start;margin-top:10px;font-size:10.5px;font-style:italic;line-height:1.6}
@@ -805,7 +805,9 @@ function renderLookup(){
     return `<tr><td class="l">${esc(s.name)}</td><td>${esc(s.date)}</td><td>${s.shift}</td><td>${esc(s.sampleType)}</td><td>${s.samples.length}</td>
       <td><span class="badge pass">${pass}</span></td><td><span class="badge fail">${fail}</span></td>
       <td>${s.status==='open'?'<span class="badge gray">đang mở</span>':'đã đóng'}</td>
-      <td><button class="btn sm sec" onclick="lookupOpen('${s.id}')">Xem</button></td></tr>`; }).join('');
+      <td style="white-space:nowrap"><button class="btn sm sec" onclick="lookupOpen('${s.id}')">Xem</button>
+        <button class="btn sm sec admin-only" onclick="lookupEdit('${s.id}')">✎ Sửa</button>
+        <button class="btn sm danger admin-only" onclick="lookupDelete('${s.id}')">Xoá</button></td></tr>`; }).join('');
   box.innerHTML=`<div class="card"><div class="toolbar">
       <input class="t" style="max-width:260px" placeholder="Tìm tên Set / ngày / mẫu / batch…" value="${esc(LK.q)}" oninput="LK.q=this.value;renderLookup()">
       <select class="s" style="max-width:180px" onchange="LK.type=this.value;renderLookup()">${typeOpts}</select>
@@ -825,7 +827,7 @@ function submissionRows(){ const out=[];
     const p=STATE.panellists.find(x=>x.id===pid)||{name:'(đã xoá)',code:'',dept:'',func:''};
     const first=Object.values(bp).find(x=>x&&x.at),at=first?first.at:'',atText=at?fmtTime(at):submitTimeFromAudit(set,p.name);
     set.samples.forEach(sm=>{const sc=bp[sm.no];if(!sc||!sc.result)return;
-      out.push({at,atText,set,p,sm,sc});});}));
+      out.push({at,atText,set,pid,p,sm,sc});});}));
   return out.sort((a,b)=>(b.at||'').localeCompare(a.at||'')||(b.set.date+b.set.shift).localeCompare(a.set.date+a.set.shift)||a.sm.no-b.sm.no);
 }
 function filteredSubmissions(){ const q=SUB.q.trim().toLowerCase();
@@ -856,16 +858,84 @@ function subPaint(){ const rows=filteredSubmissions(),LIMIT=500,sheets=new Set(r
   const body=rows.slice(0,LIMIT).map(r=>{const c=subCols(r);
     return `<tr><td style="white-space:nowrap">${esc(c[0])||'<span class="hint">—</span>'}</td><td style="white-space:nowrap">${esc(c[1])}</td><td>${esc(c[2])}</td><td>${esc(c[3])}</td><td>${esc(c[4])}</td>
       <td>${esc(c[6])}</td><td class="l">${esc(c[7])}</td><td>${esc(c[8])}</td><td>${c[9]}</td><td><b>${esc(c[10])}</b></td><td class="l">${esc(c[11])}</td><td>${esc(c[12])}</td><td>${esc(c[13])}</td>
-      <td>${badge(r.sc.result)}</td><td class="l">${esc([c[15],c[16],c[17]].filter(Boolean).join(' · '))}</td></tr>`;}).join('');
+      <td>${badge(r.sc.result)}${r.sc.editedAt?' <span class="hint" title="Sửa bởi '+esc(r.sc.editedBy||'')+' lúc '+esc(fmtTime(r.sc.editedAt))+'">✎</span>':''}</td><td class="l sub-err">${esc([c[15],c[16],c[17]].filter(Boolean).join(' · '))}</td>
+      <td class="admin-only" style="white-space:nowrap"><button class="btn sec sm" onclick="subEdit('${r.set.id}','${r.pid}',${r.sm.no})">✎ Sửa</button>
+        <button class="btn danger sm" onclick="subDeleteRow('${r.set.id}','${r.pid}',${r.sm.no})" title="Xoá dòng mẫu này">Xoá</button>
+        <button class="btn danger sm" onclick="subDeleteSheet('${r.set.id}','${r.pid}')" title="Xoá toàn bộ phiếu của người nếm này trong Set">Xoá phiếu</button></td></tr>`;}).join('');
   $('#subTable').innerHTML=`<div class="toolbar" style="margin-bottom:8px"><span class="hint">${rows.length} dòng mẫu · ${sheets} phiếu${rows.length>LIMIT?' · hiển thị '+LIMIT+' dòng đầu, xuất Excel để xem đủ':''}</span></div>
     <div class="tbl-wrap"><table class="grid sub-table"><thead><tr><th>Thời gian nộp</th><th>Ngày nếm</th><th>Ca</th><th>Set</th><th>Loại mẫu</th><th>Mã NV</th><th class="l">Người nếm</th><th>Bộ phận</th>
-      <th>STT</th><th>Tên mã hóa</th><th class="l">Tên mẫu</th><th>SSCC/Hour</th><th>Batch</th><th>Kết quả</th><th class="l">Lỗi / Ghi chú</th></tr></thead>
-    <tbody>${body||'<tr><td colspan="15" class="hint" style="padding:14px">Không có dữ liệu phù hợp bộ lọc</td></tr>'}</tbody></table></div>`;
+      <th>STT</th><th>Tên mã hóa</th><th class="l">Tên mẫu</th><th>SSCC/Hour</th><th>Batch</th><th>Kết quả</th><th class="l">Lỗi / Ghi chú</th><th class="admin-only">Admin</th></tr></thead>
+    <tbody>${body||'<tr><td colspan="16" class="hint" style="padding:14px">Không có dữ liệu phù hợp bộ lọc</td></tr>'}</tbody></table></div>`;
+}
+/* ---- Admin: sửa / xoá dữ liệu nộp phiếu (đồng bộ Firebase như thay đổi thường; xoá hết phiếu → xoá document score) ---- */
+function subFind(setId,pid,no){const set=STATE.sets.find(s=>s.id===setId),sm=set?.samples.find(x=>x.no===no),sc=set?.scores?.[pid]?.[no];return {set,sm,sc,p:STATE.panellists.find(x=>x.id===pid)};}
+const subWho=(f,pid)=>(f.p?.name||pid)+' · '+f.set.name+' · mẫu '+sampleCode(f.sm);
+function subEdit(setId,pid,no){ if(!isAdmin())return toast('Chỉ Admin được sửa','err');const f=subFind(setId,pid,no);if(!f.sc)return;
+  const cur=scRemarkValue(f.sc),opts=(list,pre)=>list.map(e=>`<option value="${pre}:${esc(e)}" ${cur===pre+':'+e?'selected':''}>${esc(e)}</option>`).join('');
+  $('#acctModal').innerHTML=`<h3>Sửa dữ liệu nộp phiếu</h3><p>${esc(f.p?.name||pid)} · ${esc(setLabel(f.set))}<br>Mẫu <b>${esc(sampleCode(f.sm))}</b> — ${esc(f.sm.name)}</p>
+    <label class="f">Kết quả</label><select class="s" id="seResult">${Object.entries(RESULT_LABEL).map(([k,v])=>`<option value="${k}" ${f.sc.result===k?'selected':''}>${v}</option>`).join('')}</select>
+    <label class="f" style="margin-top:10px">Lỗi (bắt buộc nếu Just In / Out)</label><select class="s" id="seRemark"><option value="">— Không —</option>
+      <optgroup label="Lỗi ngoại quan">${opts(CONFIG.ERR_APPEARANCE,'A')}</optgroup><optgroup label="Lỗi thử nếm">${opts(CONFIG.ERR_TASTE,'T')}</optgroup></select>
+    <label class="f" style="margin-top:10px">Ghi chú</label><input class="t" id="seNote" value="${esc(f.sc.note||'')}">
+    <div class="actions"><button class="btn sec" onclick="authCloseAccount()">Huỷ</button><button class="btn" onclick="subSave('${setId}','${pid}',${no})">Lưu</button></div>`;
+  $('#acctOverlay').classList.add('show');
+}
+function subSave(setId,pid,no){ if(!isAdmin())return;const f=subFind(setId,pid,no);if(!f.sc)return;
+  const result=$('#seResult').value,remark=$('#seRemark').value,note=$('#seNote').value.trim();
+  if(result!=='IN'&&!remark&&!note)return toast('Just In / Out phải ghi lỗi hoặc ghi chú','err');
+  const before=RESULT_LABEL[f.sc.result]||f.sc.result;
+  Object.assign(f.sc,{result,appearance:result!=='IN'&&remark.startsWith('A:')?[remark.slice(2)]:[],taste:result!=='IN'&&remark.startsWith('T:')?[remark.slice(2)]:[],
+    note:result==='IN'?'':note,editedAt:new Date().toISOString(),editedBy:AUTH.profile?.displayName||'Admin'});
+  logAudit('Sửa dữ liệu nộp phiếu · '+subWho(f,pid)+' · '+before+' → '+RESULT_LABEL[result]);save();authCloseAccount();subPaint();toast('Đã lưu thay đổi','ok');
+}
+function subRemoveSheetIfEmpty(set,pid){ if(Object.keys(set.scores[pid]||{}).length)return;delete set.scores[pid];set.attendees=(set.attendees||[]).filter(x=>x!==pid); }
+function subDeleteRow(setId,pid,no){ if(!isAdmin())return toast('Chỉ Admin được xoá','err');const f=subFind(setId,pid,no);if(!f.sc)return;
+  confirmAsk('Xoá dòng dữ liệu: '+subWho(f,pid)+' ('+(RESULT_LABEL[f.sc.result]||f.sc.result)+')? Kết quả % của mẫu sẽ tính lại.','Xoá dòng',()=>{
+    delete f.set.scores[pid][no];subRemoveSheetIfEmpty(f.set,pid);logAudit('Xoá dòng nộp phiếu · '+subWho(f,pid));save();subPaint();toast('Đã xoá dòng','ok');});
+}
+function subDeleteSheet(setId,pid){ if(!isAdmin())return toast('Chỉ Admin được xoá','err');const set=STATE.sets.find(s=>s.id===setId);if(!set?.scores?.[pid])return;
+  const name=STATE.panellists.find(x=>x.id===pid)?.name||pid,n=Object.keys(set.scores[pid]).length;
+  confirmAsk('Xoá toàn bộ phiếu của "'+name+'" trong Set '+setLabel(set)+' ('+n+' mẫu)? Không thể hoàn tác (nên Sao lưu JSON trước).','Xoá phiếu',()=>{
+    delete set.scores[pid];set.attendees=(set.attendees||[]).filter(x=>x!==pid);logAudit('Xoá phiếu nộp · '+name+' · '+set.name+' ('+n+' mẫu)');save();subPaint();toast('Đã xoá phiếu','ok');});
 }
 function exportSubmissions(){ const rows=filteredSubmissions(); if(!rows.length)return toast('Không có dữ liệu để xuất','err');
   downloadFile('iLD_DuLieuNopPhieu_'+todayStr()+'.xls',itemsWorkbook([SUB_HEAD,...rows.map(subCols)],'Submissions'),'application/vnd.ms-excel');
   logAudit('Xuất dữ liệu nộp phiếu: '+rows.length+' dòng'); save(); toast('Đã xuất '+rows.length+' dòng','ok'); }
 
+/* ---- Admin: sửa / xoá Set trong Truy xuất kết quả (điểm đã nộp giữ theo STT mẫu nên không thêm/bớt mẫu ở đây) ---- */
+function lookupEdit(id){ if(!isAdmin())return toast('Chỉ Admin được sửa','err');const s=STATE.sets.find(x=>x.id===id);if(!s)return;
+  const types=[...new Set([...CONFIG.SAMPLE_TYPES,s.sampleType])].map(t=>`<option ${s.sampleType===t?'selected':''}>${esc(t)}</option>`).join('');
+  const rows=s.samples.map(sm=>`<tr><td>${sm.no}</td><td><input class="t" data-k="code" data-no="${sm.no}" value="${esc(sampleCode(sm))}" style="font-weight:700;text-align:center"></td>
+    <td><input class="t" data-k="name" data-no="${sm.no}" value="${esc(sm.name)}"></td><td><input class="t" data-k="sscc" data-no="${sm.no}" value="${esc(sm.sscc||'')}"></td>
+    <td><input class="t" data-k="batch" data-no="${sm.no}" value="${esc(sm.batch||'')}"></td></tr>`).join('');
+  $('#acctModal').style.width='min(760px,94vw)';
+  $('#acctModal').innerHTML=`<h3>Sửa Set nếm</h3><p>${Object.keys(s.scores||{}).length} phiếu đã nộp · ${s.samples.length} mẫu</p>
+    <div class="row c4"><div><label class="f">Tên Set</label><input class="t" id="leName" value="${esc(s.name)}"></div>
+      <div><label class="f">Ngày</label><input class="t" type="date" id="leDate" value="${esc(s.date)}"></div>
+      <div><label class="f">Ca</label><select class="s" id="leShift"><option ${s.shift==='AM'?'selected':''}>AM</option><option ${s.shift==='PM'?'selected':''}>PM</option></select></div>
+      <div><label class="f">Loại mẫu</label><select class="s" id="leType">${types}</select></div></div>
+    <div style="margin-top:10px"><label class="f">Trạng thái</label><select class="s" id="leStatus" style="max-width:200px"><option value="open" ${s.status==='open'?'selected':''}>Đang mở</option><option value="closed" ${s.status!=='open'?'selected':''}>Đã đóng</option></select></div>
+    <div class="tbl-wrap" style="margin-top:12px;max-height:45vh"><table class="grid" id="leSamples"><thead><tr><th style="width:44px">STT</th><th style="width:130px">Tên mã hóa</th><th class="l">Tên mẫu</th><th>SSCC/Hour</th><th>Batch</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="actions"><button class="btn sec" onclick="authCloseAccount()">Huỷ</button><button class="btn" onclick="lookupSave('${id}')">Lưu</button></div>`;
+  $('#acctOverlay').classList.add('show');
+}
+function lookupSave(id){ if(!isAdmin())return;const s=STATE.sets.find(x=>x.id===id);if(!s)return;
+  const m={name:$('#leName').value.trim(),date:$('#leDate').value,shift:$('#leShift').value,sampleType:$('#leType').value,status:$('#leStatus').value};
+  if(!m.name)return toast('Nhập tên Set','err');if(!m.date)return toast('Chọn ngày','err');
+  if(STATE.sets.some(x=>x.id!==id&&x.date===m.date&&x.shift===m.shift&&x.name.toLowerCase()===m.name.toLowerCase()))return toast('Trùng tên Set trong ca '+m.shift+' ngày '+m.date,'err');
+  const edits={};document.querySelectorAll('#leSamples input').forEach(i=>{(edits[i.dataset.no]=edits[i.dataset.no]||{})[i.dataset.k]=i.value.trim();});
+  if(s.samples.some(sm=>!edits[sm.no].name))return toast('Tên mẫu không được để trống','err');
+  const codes=s.samples.map(sm=>(edits[sm.no].code||String(sm.no)).toLowerCase()),dup=codes.find((c,i)=>codes.indexOf(c)!==i);if(dup)return toast('Trùng Tên mã hóa "'+dup+'"','err');
+  const before=setLabel(s);Object.assign(s,m);s.samples.forEach(sm=>{const e=edits[sm.no];sm.code=e.code||String(sm.no);sm.name=e.name;sm.sscc=e.sscc;sm.batch=e.batch;});
+  if(s.status!=='open'&&STATE.currentSetId===id){STATE.currentSetId=null;}
+  logAudit('Sửa Set: '+before+(before!==setLabel(s)?' → '+setLabel(s):''));save();authCloseAccount();$('#hdrSet').textContent=setLabel(curSet());renderLookup();toast('Đã lưu Set','ok');
+}
+function lookupDelete(id){ if(!isAdmin())return toast('Chỉ Admin được xoá','err');const s=STATE.sets.find(x=>x.id===id);if(!s)return;
+  const n=Object.keys(s.scores||{}).length;
+  confirmAsk('Xoá Set "'+setLabel(s)+'" cùng '+s.samples.length+' mẫu và '+n+' phiếu đã nộp? Dữ liệu cũng bị xoá trên Firebase, không thể hoàn tác (nên Sao lưu JSON trước).','Xoá Set',()=>{
+    STATE.sets=STATE.sets.filter(x=>x.id!==id);if(STATE.currentSetId===id)STATE.currentSetId=null;
+    logAudit('Xoá Set: '+setLabel(s)+' ('+s.samples.length+' mẫu, '+n+' phiếu)');save();$('#hdrSet').textContent=setLabel(curSet());renderLookup();toast('Đã xoá Set','ok');});
+}
 function lookupOpen(id){ STATE.currentSetId=id; $('#hdrSet').textContent=setLabel(curSet()); switchTab('tab-summary'); }
 
 /* ===================== [MASTER] Panellist ===================== */
@@ -1527,7 +1597,7 @@ async function authGateSubmit(){ const ok=await authSignIn(AUTH.mode==='personal
 function authUseOffline(){const c=authCacheGet();if(!c)return;AUTH.profile={...c,fromCache:true};AUTH.offline=true;authApply();}
 /* ---- góc phải: tài khoản / đăng nhập cấp 2 ---- */
 function authOpenAccount(){authRenderAccount();$('#acctOverlay').classList.add('show');setTimeout(()=>$('#acctUser')?.focus(),50);}
-function authCloseAccount(){$('#acctOverlay').classList.remove('show');}
+function authCloseAccount(){$('#acctOverlay').classList.remove('show');$('#acctModal').style.width='';}
 function authRenderAccount(){ const p=AUTH.profile,admin=isAdmin();
   const who=p?`<p>Đang dùng: <b>${esc(p.displayName)}</b> · ${admin?'Admin':'User'}${p.shared?' (mật khẩu chung)':''}${AUTH.offline?' · offline':''}</p>`:'<p>Chưa đăng nhập</p>';
   const form=admin&&!p.shared?'':`<h3 style="margin-top:14px">Đăng nhập Admin / tài khoản riêng</h3>

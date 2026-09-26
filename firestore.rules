@@ -40,12 +40,15 @@ service cloud.firestore {
       allow read, write: if isMember();
     }
 
+    // Set & phiếu nộp: thành viên đọc/tạo/sửa; chỉ Admin được xoá.
     match /ild_sensory_sets/{setId} {
-      allow read, write: if isMember();
+      allow read, create, update: if isMember();
+      allow delete: if isAdmin();
     }
 
     match /ild_sensory_scores/{scoreId} {
-      allow read, write: if isMember();
+      allow read, create, update: if isMember();
+      allow delete: if isAdmin();
     }
 
     // Hồ sơ & vai trò tài khoản: mỗi người đọc được hồ sơ của mình; chỉ Admin tạo/sửa/xoá.
