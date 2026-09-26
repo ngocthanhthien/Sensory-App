@@ -243,6 +243,9 @@ body[data-theme="dark"] .scoring-start-card{background:linear-gradient(135deg,#2
 .acct-btn{cursor:pointer;font-family:inherit;white-space:nowrap}.acct-btn:hover{border-color:#6b7480}
 .acct-btn.admin .dot{background:#f4b942}.acct-btn.off .dot{background:var(--muted)}
 body:not(.is-admin) .admin-only{display:none!important}
+.date-field{position:relative;display:flex;align-items:center;width:100%}.date-field .t{width:100%;padding-right:34px}
+.date-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;font-size:15px;padding:4px;line-height:1}
+.date-native{position:absolute;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0;padding:0;pointer-events:none}
 .overlay{position:fixed;inset:0;background:rgba(15,18,22,.55);display:none;align-items:center;justify-content:center;z-index:50}
 .overlay.show{display:flex}
 .modal{background:var(--panel);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3);width:380px;max-width:92vw;padding:22px}
@@ -498,7 +501,22 @@ function resetAll(){ if(!isAdmin())return toast('Chỉ Admin được xoá toàn
 const $=(s,el=document)=>el.querySelector(s);
 const uid=(p='id')=>p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const esc=s=>(s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const todayStr=()=>new Date().toISOString().slice(0,10);
+/* Ngày lưu dạng ISO yyyy-mm-dd (sắp xếp/so sánh được); mọi chỗ HIỂN THỊ dùng dd/mm/yyyy */
+const pad2=n=>String(n).padStart(2,'0');
+const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}; // theo giờ máy (không lệch ngày UTC)
+function fmtDate(v){ if(!v)return '';const m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[3]+'/'+m[2]+'/'+m[1];
+  const d=v instanceof Date?v:new Date(v);return isNaN(d)?String(v):pad2(d.getDate())+'/'+pad2(d.getMonth()+1)+'/'+d.getFullYear(); }
+function fmtDateTime(v){ const d=v instanceof Date?v:new Date(v);return isNaN(d)?'':fmtDate(d)+' '+pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds()); }
+function parseDate(t){ const m=(t||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(!m)return '';const d=+m[1],mo=+m[2],y=+m[3],dt=new Date(y,mo-1,d);
+  return dt.getFullYear()===y&&dt.getMonth()===mo-1&&dt.getDate()===d?y+'-'+pad2(mo)+'-'+pad2(d):''; }
+/* Ô nhập ngày dd/mm/yyyy (gõ tay có tự thêm "/", hoặc bấm 📅 mở lịch của trình duyệt) — đọc giá trị ISO bằng dateVal(id) */
+function dateField(id,iso,onchange='',style=''){ return `<span class="date-field" style="${style}"><input class="t" id="${id}" value="${fmtDate(iso)}" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" oninput="dateMask(this)" onchange="${onchange}">`+
+  `<button type="button" class="date-btn" tabindex="-1" onclick="datePick('${id}')" title="Chọn ngày">📅</button>`+
+  `<input type="date" class="date-native" id="${id}_n" tabindex="-1" onchange="const t=$('#${id}');t.value=fmtDate(this.value);t.dispatchEvent(new Event('change'))"></span>`; }
+function dateMask(el){ if(el.value.length<(el._len||0)){el._len=el.value.length;return;} // đang xoá → không chèn lại "/"
+  let v=el.value.replace(/\D/g,'').slice(0,8);if(v.length>4)v=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);else if(v.length>2)v=v.slice(0,2)+'/'+v.slice(2);el.value=v;el._len=v.length; }
+function datePick(id){ const n=$('#'+id+'_n');n.value=parseDate($('#'+id).value)||todayStr();try{n.showPicker();}catch{n.focus();} }
+const dateVal=id=>parseDate($('#'+id)?.value);
 function toast(msg,type=''){const t=$('#toast');if(!t)return;t.textContent=msg;t.className='show '+type;clearTimeout(t._t);t._t=setTimeout(()=>t.className='',2400);}
 const curSet=()=>STATE.sets.find(s=>s.id===STATE.currentSetId)||null;
 function calcSample(set,no){
@@ -517,7 +535,7 @@ $('#cfYes').addEventListener('click',()=>{ const c=cfCb; cfNo(); if(c)c(); });
 
 /* ===================== [AUDIT] (P5) ===================== */
 function logAudit(action){
-  STATE.audit.unshift({t:new Date().toLocaleString('vi-VN'),role:(typeof AUTH!=='undefined'&&AUTH.profile?.displayName)||'User',action}); if(STATE.audit.length>500)STATE.audit.pop(); }
+  STATE.audit.unshift({t:fmtDateTime(new Date()),role:(typeof AUTH!=='undefined'&&AUTH.profile?.displayName)||'User',action}); if(STATE.audit.length>500)STATE.audit.pop(); }
 
 /* ===================== [THEME] (P4) ===================== */
 function toggleTheme(){ const b=document.body; const dark=b.dataset.theme==='dark';
@@ -594,7 +612,7 @@ function renderScoreGrid(){
     <div class="score-form-head"><div class="score-form-title">Sensory - In/Out Score Sheet for Finished Goods<br>and Semi-Finished Goods</div>
       <div class="score-form-sub">Phiếu chấm điểm cảm quan IN / Just In / OUT</div>
       <div class="score-meta"><div><b>Name / Tên</b><span>${esc(person.name)}</span></div><div><b>Dept. / Bộ phận</b><span>${esc(person.dept||'—')}</span></div>
-        <div><b>Date / Ngày</b><span>${esc(set.date)}</span></div><div><b>Set</b><span>${esc(set.name)}</span></div><div><b>Shift / Ca</b><span>${esc(set.shift)}</span></div></div></div>
+        <div><b>Date / Ngày</b><span>${esc(fmtDate(set.date))}</span></div><div><b>Set</b><span>${esc(set.name)}</span></div><div><b>Shift / Ca</b><span>${esc(set.shift)}</span></div></div></div>
     <div class="tbl-wrap"><table class="grid score-table"><thead>
       <tr><th rowspan="2" style="width:44px">No.</th><th rowspan="2" class="l">Mẫu</th><th colspan="3">Cupping results <i>(Kết quả thử nếm)</i></th>
         <th rowspan="2" class="l remark-col">Remark<br><small>Nếu Just In/Out, chọn tình huống hoặc ghi chú khác</small></th></tr>
@@ -650,7 +668,7 @@ function suggestSetName(date,shift){
   return String((nums.length?Math.max(...nums):0)+1);
 }
 /* Khi đổi Ca/Ngày, cập nhật lại số gợi ý nếu người dùng chưa sửa tay */
-function wizMetaLive(){ WIZ.meta.shift=$('#wShift').value; WIZ.meta.date=$('#wDate').value;
+function wizMetaLive(){ WIZ.meta.shift=$('#wShift').value; const d=dateVal('wDate'); if(!d)return toast('Ngày không hợp lệ — nhập dd/mm/yyyy','err'); WIZ.meta.date=d;
   if(WIZ.nameAuto)$('#wName').value=suggestSetName(WIZ.meta.date,WIZ.meta.shift); }
 /* Mã hóa mẫu (blind code) — panellist chỉ thấy mã này khi chấm. Set cũ chưa có mã → dùng số thứ tự. */
 const sampleCode=sm=>(sm.code||'').toString().trim()||String(sm.no);
@@ -661,11 +679,11 @@ function wizNextCode(){ const codes=WIZ.samples.map(x=>(x.code||'').trim()),last
 function wizRecode(){ const pre=($('#smPrefix').value||'').replace(/\s+$/,''); if(!WIZ.samples.length)return toast('Chưa có mẫu','err');
   WIZ.samples.forEach((x,i)=>x.code=(pre?pre+' ':'')+(i+1)); renderSetup(); toast('Đã đánh mã '+WIZ.samples.length+' mẫu','ok'); }
 /* nhãn hiển thị Set (kèm Ca/Ngày cho rõ vì tên có thể lặp) */
-function setLabel(s){ return s?(s.name+' · '+s.shift+' '+s.date):'— chưa mở —'; }
+function setLabel(s){ return s?(s.name+' · '+s.shift+' '+fmtDate(s.date)):'— chưa mở —'; }
 function renderSetup(){
   const box=$('#setupBody'),openSet=curSet();
   const banner=openSet?`<div class="card"><h3>Set đang mở: ${esc(openSet.name)}</h3>
-    <p>${esc(openSet.date)} · ${openSet.shift} · ${esc(openSet.sampleType)} · ${openSet.samples.length} mẫu · ${Object.keys(openSet.scores).length} phiếu.
+    <p>${esc(fmtDate(openSet.date))} · ${openSet.shift} · ${esc(openSet.sampleType)} · ${openSet.samples.length} mẫu · ${Object.keys(openSet.scores).length} phiếu.
     <button class="btn sm sec" style="margin-left:10px" onclick="closeSet()">Đóng Set này</button></p></div>`:'';
   box.innerHTML=banner+(WIZ.step===1?wizStep1():wizStep2());
 }
@@ -676,7 +694,7 @@ function wizStep1(){ const curType=WIZ.meta.sampleType||CONFIG.DEFAULT_SAMPLE_TY
   return `<div class="card"><h3>Bước ① — Thông tin buổi nếm</h3>
     <div class="row c4">
       <div><label class="f">Ca</label><select class="s" id="wShift" onchange="wizMetaLive()"><option ${shift==='AM'?'selected':''}>AM</option><option ${shift==='PM'?'selected':''}>PM</option></select></div>
-      <div><label class="f">Ngày</label><input class="t" type="date" id="wDate" value="${date}" onchange="wizMetaLive()"></div>
+      <div><label class="f">Ngày</label>${dateField('wDate',date,'wizMetaLive()')}</div>
       <div><label class="f">Tên Set (số thứ tự)</label><input class="t" id="wName" value="${esc(suggested)}" oninput="WIZ.nameAuto=false"></div>
       <div><label class="f">Loại mẫu</label><select class="s" id="wType" onchange="WIZ.meta.sampleType=this.value">${types}</select></div>
     </div>
@@ -688,7 +706,7 @@ function wizStep2(){ const rows=WIZ.samples.map((s,i)=>`<tr><td>${i+1}</td>
      <td><input class="t" value="${esc(s.sscc||'')}" onchange="wizEdit(${i},'sscc',this.value)"></td>
      <td><input class="t" value="${esc(s.batch||'')}" onchange="wizEdit(${i},'batch',this.value)"></td>
      <td><button class="btn sm danger" onclick="wizDel(${i})">✕</button></td></tr>`).join('');
-  return `<div class="card"><h3>Bước ② — Danh sách mẫu (${esc(WIZ.meta.name)} · ${WIZ.meta.date} · ${WIZ.meta.shift} · ${esc(WIZ.meta.sampleType)})</h3>
+  return `<div class="card"><h3>Bước ② — Danh sách mẫu (${esc(WIZ.meta.name)} · ${fmtDate(WIZ.meta.date)} · ${WIZ.meta.shift} · ${esc(WIZ.meta.sampleType)})</h3>
     <div class="toolbar"><span class="hint">Nhập từng mẫu bên dưới, hoặc nạp hàng loạt:</span><span class="spacer"></span>
       <button class="btn sec sm" onclick="downloadSetTemplate()">⤓ Tải template Excel</button>
       ${WIZ.samples.length?'<button class="btn sec sm" onclick="exportSetSamples()">⤓ Xuất danh sách mẫu</button>':''}
@@ -707,9 +725,9 @@ function wizStep2(){ const rows=WIZ.samples.map((s,i)=>`<tr><td>${i+1}</td>
       <button class="btn sec sm" onclick="wizRecode()">↻ Đánh mã lại</button></div>`:''}
     <div class="toolbar" style="margin-top:12px"><button class="btn sec" onclick="wizBack()">← Quay lại</button><span class="spacer"></span>
       <button class="btn" onclick="wizCreate()">✔ Tạo Set &amp; mở buổi nếm</button></div></div>`; }
-function wizNext(){ WIZ.meta={name:$('#wName').value.trim(),date:$('#wDate').value,shift:$('#wShift').value,sampleType:$('#wType').value};
-  if(!WIZ.meta.name)return toast('Nhập tên Set','err'); if(!WIZ.meta.date)return toast('Chọn ngày','err');
-  if(dupSetName(WIZ.meta))return toast('Đã có Set "'+WIZ.meta.name+'" trong ca '+WIZ.meta.shift+' ngày '+WIZ.meta.date,'err');
+function wizNext(){ WIZ.meta={name:$('#wName').value.trim(),date:dateVal('wDate'),shift:$('#wShift').value,sampleType:$('#wType').value};
+  if(!WIZ.meta.name)return toast('Nhập tên Set','err'); if(!WIZ.meta.date)return toast('Ngày không hợp lệ — nhập dd/mm/yyyy','err');
+  if(dupSetName(WIZ.meta))return toast('Đã có Set "'+WIZ.meta.name+'" trong ca '+WIZ.meta.shift+' ngày '+fmtDate(WIZ.meta.date),'err');
   WIZ.step=2; renderSetup(); }
 /* true nếu đã tồn tại Set trùng tên trong cùng ngày+ca */
 function dupSetName(m){ return STATE.sets.some(s=>s.date===m.date&&s.shift===m.shift&&s.name.toLowerCase()===m.name.toLowerCase()); }
@@ -723,7 +741,7 @@ function wizDel(i){ WIZ.samples.splice(i,1); renderSetup(); }
 function wizCreate(){ if(WIZ.samples.length===0)return toast('Chưa có mẫu nào','err');
   const codes=WIZ.samples.map((x,i)=>((x.code||'').trim()||String(i+1)).toLowerCase()),dup=codes.find((c,i)=>codes.indexOf(c)!==i);
   if(dup)return toast('Trùng Tên mã hóa "'+dup+'" — mỗi mẫu cần mã khác nhau','err');
-  if(dupSetName(WIZ.meta))return toast('Trùng tên Set trong ca '+WIZ.meta.shift+' ngày '+WIZ.meta.date,'err');
+  if(dupSetName(WIZ.meta))return toast('Trùng tên Set trong ca '+WIZ.meta.shift+' ngày '+fmtDate(WIZ.meta.date),'err');
   const set={id:uid('set'),name:WIZ.meta.name,date:WIZ.meta.date,shift:WIZ.meta.shift,sampleType:WIZ.meta.sampleType,
     creator:'QA',status:'open',samples:WIZ.samples.map((s,i)=>({no:i+1,code:(s.code||'').trim()||String(i+1),name:s.name,sscc:s.sscc,batch:s.batch})),scores:{},attendees:[]};
   STATE.sets.push(set); STATE.currentSetId=set.id; logAudit('Tạo Set: '+setLabel(set)+' ('+set.samples.length+' mẫu)'); save();
@@ -753,7 +771,7 @@ function summaryFormHTML(set){
   return `<div class="sf">
     <div class="sf-head"><div><img class="sf-logo" src="${ILD_LOGO.dark}" alt="iLD"></div>
       <div class="sf-title"><h2>SUMMARY TASTING RESULT</h2><div>(Tổng hợp kết quả nếm)</div></div>
-      <div class="sf-meta"><div><b>Date:</b><span>${esc(set.date)}</span></div><div><b>Set:</b><span>${esc(set.name)}</span></div><div><b>Shift:</b><span>${esc(set.shift)}</span></div></div></div>
+      <div class="sf-meta"><div><b>Date:</b><span>${esc(fmtDate(set.date))}</span></div><div><b>Set:</b><span>${esc(set.name)}</span></div><div><b>Shift:</b><span>${esc(set.shift)}</span></div></div></div>
     <div class="sf-types">${types}</div>
     <table class="sf-table"><colgroup><col style="width:4%"><col style="width:15%"><col style="width:8%"><col style="width:8%">
       <col style="width:4.5%"><col style="width:4.5%"><col style="width:4.5%"><col style="width:4.5%"><col style="width:5.5%"><col style="width:24%"><col style="width:17%"></colgroup>
@@ -797,12 +815,12 @@ function renderLookup(){
   const list=STATE.sets.filter(s=>{
     const okType=!LK.type||s.sampleType===LK.type;
     const q=LK.q.toLowerCase();
-    const okQ=!q||s.name.toLowerCase().includes(q)||s.date.includes(q)||s.samples.some(sm=>(sm.name||'').toLowerCase().includes(q)||(sm.code||'').toLowerCase().includes(q)||(sm.batch||'').toLowerCase().includes(q));
+    const okQ=!q||s.name.toLowerCase().includes(q)||s.date.includes(q)||fmtDate(s.date).includes(q)||s.samples.some(sm=>(sm.name||'').toLowerCase().includes(q)||(sm.code||'').toLowerCase().includes(q)||(sm.batch||'').toLowerCase().includes(q));
     return okType&&okQ;
   });
   const rows=list.map(s=>{ const res=s.samples.map(sm=>calcSample(s,sm.no));
     const pass=res.filter(r=>r.pass).length,fail=res.filter(r=>r.pct!==null&&!r.pass).length;
-    return `<tr><td class="l">${esc(s.name)}</td><td>${esc(s.date)}</td><td>${s.shift}</td><td>${esc(s.sampleType)}</td><td>${s.samples.length}</td>
+    return `<tr><td class="l">${esc(s.name)}</td><td>${esc(fmtDate(s.date))}</td><td>${s.shift}</td><td>${esc(s.sampleType)}</td><td>${s.samples.length}</td>
       <td><span class="badge pass">${pass}</span></td><td><span class="badge fail">${fail}</span></td>
       <td>${s.status==='open'?'<span class="badge gray">đang mở</span>':'đã đóng'}</td>
       <td style="white-space:nowrap"><button class="btn sm sec" onclick="lookupOpen('${s.id}')">Xem</button>
@@ -821,7 +839,7 @@ let SUB={setId:'',q:'',result:'',from:'',to:''};
 const RESULT_LABEL={IN:'IN',JUSTIN:'Just In',OUT:'Out'};
 /* Phiếu nộp trước khi có trường thời gian → lấy từ audit log (nếu còn) */
 function submitTimeFromAudit(set,name){ const a=STATE.audit.find(x=>x.action==='Nộp phiếu nếm · '+name+' · '+set.name); return a?a.t:''; }
-function fmtTime(iso){ const d=new Date(iso); return isNaN(d)?'':d.toLocaleString('vi-VN',{hour12:false}); }
+function fmtTime(iso){ return fmtDateTime(iso); }
 function submissionRows(){ const out=[];
   STATE.sets.forEach(set=>Object.entries(set.scores||{}).forEach(([pid,bp])=>{
     const p=STATE.panellists.find(x=>x.id===pid)||{name:'(đã xoá)',code:'',dept:'',func:''};
@@ -835,7 +853,7 @@ function filteredSubmissions(){ const q=SUB.q.trim().toLowerCase();
     &&(!SUB.from||r.set.date>=SUB.from)&&(!SUB.to||r.set.date<=SUB.to)
     &&(!q||[r.p.name,r.p.code,r.p.dept,r.sm.name,r.sm.code,r.sm.batch,r.sm.sscc,r.set.name].some(v=>(v||'').toString().toLowerCase().includes(q))));
 }
-const subCols=r=>[r.atText,r.set.date,r.set.shift,r.set.name,r.set.sampleType,r.set.status==='open'?'Đang mở':'Đã đóng',
+const subCols=r=>[r.atText,fmtDate(r.set.date),r.set.shift,r.set.name,r.set.sampleType,r.set.status==='open'?'Đang mở':'Đã đóng',
   r.p.code||'',r.p.name,r.p.dept||'',r.sm.no,sampleCode(r.sm),r.sm.name,r.sm.sscc||'',r.sm.batch||'',RESULT_LABEL[r.sc.result]||r.sc.result,
   (r.sc.appearance||[]).join(', '),(r.sc.taste||[]).join(', '),r.sc.note||''];
 const SUB_HEAD=['Thời gian nộp','Ngày nếm','Ca','Set','Loại mẫu','Trạng thái Set','Mã NV','Người nếm','Bộ phận','STT','Tên mã hóa','Tên mẫu','SSCC/Hour','Batch','Kết quả','Lỗi ngoại quan','Lỗi thử nếm','Ghi chú'];
@@ -847,8 +865,8 @@ function renderSubmissions(){
       <input class="t" id="subQ" style="max-width:260px" placeholder="Tìm người nếm / Mã NV / mẫu / batch…" value="${esc(SUB.q)}" oninput="SUB.q=this.value;subPaint()">
       <select class="s" style="max-width:260px" onchange="SUB.setId=this.value;subPaint()"><option value="">Tất cả Set</option>${setOpts}</select>
       <select class="s" style="max-width:140px" onchange="SUB.result=this.value;subPaint()"><option value="">Mọi kết quả</option>${Object.entries(RESULT_LABEL).map(([k,v])=>`<option value="${k}" ${SUB.result===k?'selected':''}>${v}</option>`).join('')}</select>
-      <label class="hint">Từ</label><input class="t" type="date" style="max-width:150px" value="${SUB.from}" onchange="SUB.from=this.value;subPaint()">
-      <label class="hint">đến</label><input class="t" type="date" style="max-width:150px" value="${SUB.to}" onchange="SUB.to=this.value;subPaint()">
+      <label class="hint">Từ</label>${dateField('subFrom',SUB.from,"SUB.from=dateVal('subFrom');subPaint()",'max-width:160px')}
+      <label class="hint">đến</label>${dateField('subTo',SUB.to,"SUB.to=dateVal('subTo');subPaint()",'max-width:160px')}
       <span class="spacer"></span><button class="btn sec sm" onclick="exportSubmissions()">⤓ Xuất Excel</button></div></div>
     <div class="card"><div id="subTable"></div></div>`;
   subPaint();
@@ -911,7 +929,7 @@ function lookupEdit(id){ if(!isAdmin())return toast('Chỉ Admin được sửa'
   $('#acctModal').style.width='min(760px,94vw)';
   $('#acctModal').innerHTML=`<h3>Sửa Set nếm</h3><p>${Object.keys(s.scores||{}).length} phiếu đã nộp · ${s.samples.length} mẫu</p>
     <div class="row c4"><div><label class="f">Tên Set</label><input class="t" id="leName" value="${esc(s.name)}"></div>
-      <div><label class="f">Ngày</label><input class="t" type="date" id="leDate" value="${esc(s.date)}"></div>
+      <div><label class="f">Ngày</label>${dateField('leDate',s.date)}</div>
       <div><label class="f">Ca</label><select class="s" id="leShift"><option ${s.shift==='AM'?'selected':''}>AM</option><option ${s.shift==='PM'?'selected':''}>PM</option></select></div>
       <div><label class="f">Loại mẫu</label><select class="s" id="leType">${types}</select></div></div>
     <div style="margin-top:10px"><label class="f">Trạng thái</label><select class="s" id="leStatus" style="max-width:200px"><option value="open" ${s.status==='open'?'selected':''}>Đang mở</option><option value="closed" ${s.status!=='open'?'selected':''}>Đã đóng</option></select></div>
@@ -920,9 +938,9 @@ function lookupEdit(id){ if(!isAdmin())return toast('Chỉ Admin được sửa'
   $('#acctOverlay').classList.add('show');
 }
 function lookupSave(id){ if(!isAdmin())return;const s=STATE.sets.find(x=>x.id===id);if(!s)return;
-  const m={name:$('#leName').value.trim(),date:$('#leDate').value,shift:$('#leShift').value,sampleType:$('#leType').value,status:$('#leStatus').value};
-  if(!m.name)return toast('Nhập tên Set','err');if(!m.date)return toast('Chọn ngày','err');
-  if(STATE.sets.some(x=>x.id!==id&&x.date===m.date&&x.shift===m.shift&&x.name.toLowerCase()===m.name.toLowerCase()))return toast('Trùng tên Set trong ca '+m.shift+' ngày '+m.date,'err');
+  const m={name:$('#leName').value.trim(),date:dateVal('leDate'),shift:$('#leShift').value,sampleType:$('#leType').value,status:$('#leStatus').value};
+  if(!m.name)return toast('Nhập tên Set','err');if(!m.date)return toast('Ngày không hợp lệ — nhập dd/mm/yyyy','err');
+  if(STATE.sets.some(x=>x.id!==id&&x.date===m.date&&x.shift===m.shift&&x.name.toLowerCase()===m.name.toLowerCase()))return toast('Trùng tên Set trong ca '+m.shift+' ngày '+fmtDate(m.date),'err');
   const edits={};document.querySelectorAll('#leSamples input').forEach(i=>{(edits[i.dataset.no]=edits[i.dataset.no]||{})[i.dataset.k]=i.value.trim();});
   if(s.samples.some(sm=>!edits[sm.no].name))return toast('Tên mẫu không được để trống','err');
   const codes=s.samples.map(sm=>(edits[sm.no].code||String(sm.no)).toLowerCase()),dup=codes.find((c,i)=>codes.indexOf(c)!==i);if(dup)return toast('Trùng Tên mã hóa "'+dup+'"','err');
@@ -1178,7 +1196,7 @@ $('#fileMaster').addEventListener('change',e=>{ const f=e.target.files[0]; e.tar
   rd.onerror=()=>toast('Không đọc được file','err'); rd.readAsText(f,'UTF-8'); });
 
 function exportSummaryCSV(){ const set=curSet(); if(!set)return toast('Chưa có Set','err');
-  const rows=[['iLD SUMMARY TASTING RESULT'],['Set',set.name,'Ngày',set.date,'Ca',set.shift,'Loại',set.sampleType],[],
+  const rows=[['iLD SUMMARY TASTING RESULT'],['Set',set.name,'Ngày',fmtDate(set.date),'Ca',set.shift,'Loại',set.sampleType],[],
     ['No.','Tên mã hóa','Tên mẫu','SSCC/Hour','Batch','IN','Just In','Out','Total','Result %','Kết luận','Comments (Lỗi)','Taster (Người nếm)']];
   set.samples.forEach(sm=>{ const r=calcSample(set,sm.no),x=sumSampleInfo(set,sm.no);
     rows.push([sm.no,sampleCode(sm),sm.name,sm.sscc||'',sm.batch||'',r.IN,r.JI,r.OUT,r.total,r.pct===null?'':r.pct.toFixed(1),
@@ -1655,7 +1673,7 @@ async function renderUsers(){ const box=$('#usersBody');
   const rows=USERS_LIST.map(u=>`<tr><td class="l"><b>${esc(u.username)}</b>${u.shared?' <span class="badge gray">mật khẩu chung</span>':''}</td><td class="l">${esc(u.displayName||'')}</td>
     <td>${u.role==='admin'?'<span class="badge fail">Admin</span>':'<span class="badge gray">User</span>'}</td>
     <td>${u.active===false?'<span class="badge fail">Đã khoá</span>':'<span class="badge pass">Hoạt động</span>'}</td>
-    <td style="white-space:nowrap">${esc(u.createdAt?new Date(u.createdAt).toLocaleDateString('vi-VN'):'')}</td>
+    <td style="white-space:nowrap">${esc(u.createdAt?fmtDate(new Date(u.createdAt)):'')}</td>
     <td style="white-space:nowrap">${u.uid===me?'<span class="hint">(bạn)</span>':`
       ${u.shared?'':`<button class="btn sec sm" onclick="userSetRole('${u.uid}','${u.role==='admin'?'user':'admin'}')">${u.role==='admin'?'→ User':'→ Admin'}</button>`}
       <button class="btn sec sm" onclick="userSetActive('${u.uid}',${u.active===false})">${u.active===false?'Mở khoá':'Khoá'}</button>
@@ -1730,7 +1748,7 @@ async function userPasswordSave(uid){const u=USERS_LIST.find(x=>x.uid===uid);con
 function renderSettings(){
   const box=$('#settingsBody');
   const auditRows=STATE.audit.slice(0,80).map(a=>`<div><b>${esc(a.role)}</b> · ${esc(a.t)} — ${esc(a.action)}</div>`).join('')||'<div>Chưa có nhật ký</div>';
-  const conflictRows=CLOUD.sync.conflicts.map((c,i)=>`<tr><td class="l"><b>${esc(c.key)}</b></td><td>${esc(new Date(c.at).toLocaleString('vi-VN'))}</td><td>
+  const conflictRows=CLOUD.sync.conflicts.map((c,i)=>`<tr><td class="l"><b>${esc(c.key)}</b></td><td>${esc(fmtDateTime(c.at))}</td><td>
     <button class="btn sec sm" onclick="cloudUseRemoteConflict(${i})">Dùng Firebase</button>
     <button class="btn sm" onclick="cloudRetryLocalConflict(${i})">Ghi bản trên máy</button></td></tr>`).join('');
   box.innerHTML=`
@@ -1855,7 +1873,7 @@ function seed(){
     scores:{ pnl_a:{1:{result:'IN',appearance:[],taste:[],note:''},2:{result:'JUSTIN',appearance:[],taste:['less aroma'],note:''},3:{result:'IN',appearance:[],taste:[],note:''}},
              pnl_b:{1:{result:'IN',appearance:[],taste:[],note:''},2:{result:'IN',appearance:[],taste:[],note:''},3:{result:'OUT',appearance:['hai màu'],taste:[],note:''}},
              pnl_c:{1:{result:'IN',appearance:[],taste:[],note:''},2:{result:'JUSTIN',appearance:[],taste:['less aroma'],note:''},3:{result:'IN',appearance:[],taste:[],note:''}} }};
-  STATE.sets=[set]; STATE.currentSetId=set.id; STATE.audit=[{t:new Date().toLocaleString('vi-VN'),role:'QA',action:'Khởi tạo dữ liệu mẫu'}];
+  STATE.sets=[set]; STATE.currentSetId=set.id; STATE.audit=[{t:fmtDateTime(new Date()),role:'QA',action:'Khởi tạo dữ liệu mẫu'}];
 }
 
 /* ===================== [BOOT] ===================== */
