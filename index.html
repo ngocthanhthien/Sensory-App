@@ -323,6 +323,7 @@ footer .spacer{flex:1}
   <div class="header-spacer"></div>
   <span class="set-badge">Set: <b id="hdrSet">— chưa mở —</b></span>
   <button class="role-pill acct-btn off" id="acctBtn" onclick="authOpenAccount()" title="Tài khoản · đăng nhập Admin"><span class="dot"></span><span id="acctLabel">Chưa đăng nhập</span></button>
+  <button class="hbtn ghost" id="logoutBtn" onclick="authLogout()" title="Đăng xuất & xoá dữ liệu tạm trên trình duyệt" style="display:none">⏻ Đăng xuất</button>
   <button class="hbtn ghost" onclick="toggleTheme()" title="Sáng/Tối">🌓</button>
 </header>
 
@@ -1500,7 +1501,7 @@ function authApply(){ const p=AUTH.profile,admin=isAdmin();
   document.body.classList.toggle('is-admin',admin);
   $('#acctLabel').textContent=p?(admin?'🛡 ':'👤 ')+p.displayName+(admin?' · Admin':'')+(AUTH.offline?' · offline':''):'Chưa đăng nhập';
   $('#acctBtn').classList.toggle('admin',admin);$('#acctBtn').classList.toggle('off',!p||AUTH.offline);
-  $('#authGate').classList.toggle('show',!p);if(!p)authGateRender();
+  $('#authGate').classList.toggle('show',!p);if(!p)authGateRender();$('#logoutBtn').style.display=p?'':'none';
   if(!admin&&$('#tab-users')?.classList.contains('active'))switchTab('tab-scoring');
   if($('#acctOverlay').classList.contains('show'))authRenderAccount();
   cloudRefreshSettings();
@@ -1538,7 +1539,26 @@ function authRenderAccount(){ const p=AUTH.profile,admin=isAdmin();
     <div class="actions">${p?`<button class="btn sec" onclick="authLogout()">Đăng xuất</button>`:''}<button class="btn sec" onclick="authCloseAccount()">Đóng</button></div>`;
 }
 async function authAccountLogin(){ if(await authSignIn($('#acctUser').value,$('#acctPass').value,$('#acctErr'),$('#acctLoginBtn'))){authCloseAccount();toast('Đã đăng nhập','ok');} }
-function authLogout(){confirmAsk('Đăng xuất khỏi app trên thiết bị này? Lần sau cần nhập lại mật khẩu.','Đăng xuất',async()=>{authCloseAccount();AUTH.mode='shared';await cloudSignOut();});}
+/* Đăng xuất = gửi nốt dữ liệu lên Firebase → đăng xuất → xoá toàn bộ dữ liệu tạm của app trên trình duyệt (LocalStorage, SessionStorage, Cache Storage, phiên Firebase) → tải lại.
+   Dữ liệu chung vẫn còn trên Firebase; lần đăng nhập sau sẽ tự tải về. Chỉ giữ lại lựa chọn giao diện sáng/tối. */
+async function authCountUnsynced(){ if(!CLOUD.user||AUTH.offline)return -1; // -1: không có kết nối cloud → mọi dữ liệu trên máy chưa chắc đã có trên Firebase
+  clearTimeout(CLOUD.timer);cloudQueueEntities();if(navigator.onLine)await cloudFlushOutbox();return CLOUD.sync.outbox.length+CLOUD.sync.conflicts.length; }
+function authLogout(){ authCloseAccount();
+  confirmAsk('Đăng xuất và xoá dữ liệu tạm của app trên trình duyệt này? Dữ liệu sẽ được gửi lên Firebase trước khi xoá; lần sau cần nhập lại mật khẩu.','Đăng xuất',async()=>{
+    toast('Đang đồng bộ trước khi đăng xuất…');const n=await authCountUnsynced();
+    if(n===0)return authWipeAndReload();
+    setTimeout(()=>confirmAsk(n<0?'⚠ Đang offline/chưa kết nối Firebase: dữ liệu nhập trên máy này có thể CHƯA được lưu lên Firebase và sẽ MẤT nếu xoá. Nên kết nối mạng rồi đăng xuất lại. Vẫn xoá?'
+      :'⚠ Còn '+n+' thay đổi chưa gửi được lên Firebase (mất mạng hoặc xung đột) và sẽ MẤT nếu xoá. Vẫn xoá?','Vẫn xoá & đăng xuất',authWipeAndReload),250);});
+}
+async function authWipeAndReload(){
+  try{cloudStopListener();clearTimeout(CLOUD.timer);clearTimeout(CLOUD.retryTimer);CLOUD.auto=false;if(CLOUD.auth)await CLOUD.m.signOut(CLOUD.auth);}catch{}
+  try{Object.keys(localStorage).filter(k=>k.startsWith('ild_sensory')&&k!==THEME_KEY).forEach(k=>localStorage.removeItem(k));}catch{}
+  try{sessionStorage.clear();}catch{}
+  try{if(window.caches)for(const k of await caches.keys())await caches.delete(k);}catch{}
+  try{indexedDB.deleteDatabase('firebaseLocalStorageDb');}catch{}
+  window.persist=()=>{}; // chặn ghi lại STATE cũ trong lúc tải lại
+  location.reload();
+}
 
 /* Lần đầu thiết bị này đồng bộ (chưa có base): cloud có dữ liệu → tải về (máy mới) hoặc hỏi (máy có dữ liệu riêng); cloud trống → đẩy lên */
 async function cloudFirstSync(){ try{const pack=await cloudFetchV2();
