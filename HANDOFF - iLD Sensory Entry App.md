@@ -259,7 +259,9 @@ Mọi document khác mặc định không được cấp quyền.
 - `cloudSignIn()` dùng Google popup với email gợi ý.
 - `cloudPush(true)` tạo entity diff rồi gửi tuần tự từ outbox.
 - Mỗi entity được ghi bằng Firestore transaction, kiểm tra `baseRevision` và tăng `revision`.
-- Revision lệch tạo conflict; không tự động chọn bên thắng.
+- Revision lệch → tự gộp 3 chiều (`cloudMerge3`: base · local · remote): giữ thay đổi của cả hai phía; mảng gộp theo `id`/`no`, audit gộp theo nội dung; cùng sửa một giá trị đơn thì bản trên máy thắng. Chỉ khi gộp lỗi (hoặc quá 5 lần) mới đưa vào conflict UI.
+- Không tự nhận dữ liệu cloud đè lên máy khi còn outbox/conflict, đang nhập liệu hoặc đang chấm dở phiếu (`cloudHasLocalPending`, `cloudScoringBusy`); đánh dấu `pendingRemote` và áp dụng sau khi gửi xong / nộp phiếu / rời ô nhập.
+- `cloudEntities()` trả bản sao sâu — base/outbox không được trỏ chung vào `STATE` (lỗi cũ làm thay đổi `meta`/Set trong phiên không được gửi).
 - `cloudPull()` ưu tiên schema v2 và tự đọc legacy nếu v2 chưa có.
 - Listener theo dõi riêng Meta, Sets và Scores; thay đổi được hoãn nếu người dùng đang nhập.
 - Web Locks API chỉ cho một tab làm tab chỉnh sửa chính.
