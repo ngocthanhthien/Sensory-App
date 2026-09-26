@@ -256,6 +256,30 @@ footer .spacer{flex:1}
 .menu-toggle{display:none}
 /* ===================== [PRINT] xuất PDF ===================== */
 #printArea{display:none}
+/* Summary form QA.F.072 — giữ dạng giấy trắng cả khi dark mode */
+.sf-paper{background:#fff;color:#111;border-radius:12px;box-shadow:0 10px 28px rgba(15,23,42,.12);padding:22px;overflow-x:auto}
+.sf{min-width:1040px;color:#111;font-family:Arial,var(--font)}
+.sf-head{display:grid;grid-template-columns:150px 1fr 190px;align-items:start;gap:10px}
+.sf-logo{font:900 italic 30px/1 Arial,sans-serif;letter-spacing:-1px;color:#111}
+.sf-logo::first-letter{color:var(--ild-red)}
+.sf-title{text-align:center}.sf-title h2{margin:0;font-size:21px;font-weight:800;letter-spacing:.3px}.sf-title div{font-size:12px;margin-top:4px}
+.sf-meta{font-size:12px}.sf-meta div{display:flex;gap:6px;margin-bottom:5px}.sf-meta b{width:42px;flex:none}
+.sf-meta span{flex:1;border-bottom:1px dotted #777;min-height:15px;font-weight:600}
+.sf-types{display:flex;justify-content:space-around;flex-wrap:wrap;gap:8px;margin:12px 0 14px;font-size:12px}
+.sf-chk{display:inline-flex;align-items:center;gap:6px}.sf-chk i{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border:1px solid #333;font-style:normal;font-size:11px;font-weight:900}
+.sf-chk.on{font-weight:700}.sf-chk.on i{color:var(--ild-red);border-color:var(--ild-red)}
+.sf-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:12px}
+.sf-table th,.sf-table td{border:1px solid #222;padding:4px 6px;vertical-align:middle}
+.sf-table th{font-size:11.5px;font-weight:700;text-align:center;background:#fff}
+.sf-table th small{display:block;font-weight:400;font-style:italic;font-size:9.5px}
+.sf-table thead tr:first-child th{font-size:13px}
+.sf-table thead tr:first-child th.sf-cmt-h{font-size:9.5px;font-weight:400;line-height:1.35;text-align:left}.sf-table th.sf-cmt-h b{font-weight:700}
+.sf-table tbody td{height:24px}.sf-table tbody td:first-child{font-weight:700}
+.sf-table td.c{text-align:center}.sf-cmt{font-size:11px;line-height:1.3}
+.sf-pass{color:var(--ok)}.sf-fail{color:var(--fail)}
+.sf-foot{display:flex;justify-content:space-between;align-items:flex-start;margin-top:10px;font-size:10.5px;font-style:italic;line-height:1.6}
+.sf-rule{font-style:normal;color:#555}
+.sf-check{display:flex;gap:8px;align-items:flex-end;font-style:normal;margin-right:40px}.sf-check span{display:inline-block;width:170px;border-bottom:1px dotted #777;height:30px}
 @media print{
   .noprint{display:none!important}
   body{height:auto;overflow:visible;background:#fff;color:#000}
@@ -264,6 +288,13 @@ footer .spacer{flex:1}
   #printArea th,#printArea td{border:1px solid #444;padding:5px 7px;text-align:center}
   #printArea td.l{text-align:left}
   #printArea h2{margin:0 0 2px}#printArea .meta{font-size:12px;margin-bottom:10px;color:#333}
+  @page{size:A4 landscape;margin:8mm}
+  #printArea{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printArea .sf{min-width:0}
+  #printArea .sf-table{font-size:10.5px}#printArea .sf-table th,#printArea .sf-table td{border:1px solid #222;padding:2px 5px}
+  #printArea .sf-table td.c{text-align:center}#printArea .sf-table td:not(.c){text-align:left}
+  #printArea .sf-table tbody td{height:19px}
+  #printArea .sf-title h2{margin:0}
 }
 </style>
 </head>
@@ -364,6 +395,7 @@ footer .spacer{flex:1}
 <input type="file" id="fileBackup" accept=".json" style="display:none">
 <input type="file" id="fileSetSamples" accept=".csv" style="display:none">
 <input type="file" id="fileItems" accept=".xlsx,.xls,.csv" style="display:none">
+<input type="file" id="filePanellists" accept=".xlsx,.xls,.csv" style="display:none">
 
 <script>
 /* ===================== [CONFIG] ===================== */
@@ -630,32 +662,60 @@ function closeSet(){ const s=curSet(); if(!s)return; confirmAsk('Đóng Set "'+s
   s.status='closed'; STATE.currentSetId=null; $('#hdrSet').textContent='— chưa mở —'; logAudit('Đóng Set: '+s.name); save(); toast('Đã đóng Set'); renderSetup(); }); }
 
 /* ===================== [SUMMARY] F.072 ===================== */
+const SUM_TYPES=['Green coffee','Freeze-dried','Semi product','KQ','Other'];
+const SUM_MIN_ROWS=20;
+function sumSampleInfo(set,no){ const errs=new Map(),tasters=[];
+  Object.entries(set.scores).forEach(([pid,bp])=>{const sc=bp[no];if(!sc?.result)return;
+    tasters.push(STATE.panellists.find(p=>p.id===pid)?.name||'(đã xoá)');
+    [...(sc.appearance||[]),...(sc.taste||[]),...(sc.note?.trim()?[sc.note.trim()]:[])].forEach(e=>errs.set(e,(errs.get(e)||0)+1));});
+  return {errs:[...errs].map(([e,n])=>n>1?e+' ('+n+')':e),tasters};
+}
+function summaryFormHTML(set){
+  const other=!SUM_TYPES.slice(0,4).includes(set.sampleType);
+  const types=SUM_TYPES.map(t=>{const on=t==='Other'?other:set.sampleType===t;
+    return `<span class="sf-chk ${on?'on':''}"><i>${on?'✓':''}</i>${t}${t==='Other'&&other&&set.sampleType?': <b>'+esc(set.sampleType)+'</b>':''}</span>`;}).join('');
+  const rows=set.samples.map(sm=>{const r=calcSample(set,sm.no),x=sumSampleInfo(set,sm.no);
+    const pct=r.pct===null?'':`<b class="${r.pass?'sf-pass':'sf-fail'}">${r.pct.toFixed(1)}</b>`;
+    return `<tr><td class="c">${sm.no}</td><td>${esc(sm.name)}</td><td class="c">${esc(sm.sscc||'')}</td><td class="c">${esc(sm.batch||'')}</td>
+      <td class="c">${r.total?r.IN:''}</td><td class="c">${r.total?r.JI:''}</td><td class="c">${r.total?r.OUT:''}</td><td class="c">${r.total||''}</td><td class="c">${pct}</td>
+      <td class="sf-cmt">${x.errs.map(esc).join(', ')}</td><td class="sf-cmt">${x.tasters.map(esc).join(', ')}</td></tr>`;});
+  for(let i=set.samples.length+1;i<=SUM_MIN_ROWS;i++)rows.push(`<tr><td class="c">${i}</td>${'<td></td>'.repeat(10)}</tr>`);
+  return `<div class="sf">
+    <div class="sf-head"><div class="sf-logo">iLD</div>
+      <div class="sf-title"><h2>SUMMARY TASTING RESULT</h2><div>(Tổng hợp kết quả nếm)</div></div>
+      <div class="sf-meta"><div><b>Date:</b><span>${esc(set.date)}</span></div><div><b>Set:</b><span>${esc(set.name)}</span></div><div><b>Shift:</b><span>${esc(set.shift)}</span></div></div></div>
+    <div class="sf-types">${types}</div>
+    <table class="sf-table"><colgroup><col style="width:4%"><col style="width:15%"><col style="width:8%"><col style="width:8%">
+      <col style="width:4.5%"><col style="width:4.5%"><col style="width:4.5%"><col style="width:4.5%"><col style="width:5.5%"><col style="width:24%"><col style="width:17%"></colgroup>
+      <thead><tr><th rowspan="2">No.<small>(STT)</small></th><th colspan="3">Sample Description <i>(Mô tả mẫu)</i></th>
+        <th colspan="5">Cupping results<small>(Kết quả thử nếm)</small></th>
+        <th rowspan="2" class="sf-cmt-h">Comments <i>(ghi chú)</i> :<br><b>Just in/out</b> <i>(Lỗi thử nếm)</i> ${CONFIG.ERR_TASTE.map(esc).join(', ')}, …<br><b>Appearance</b> <i>(Lỗi ngoại quan)</i> ${CONFIG.ERR_APPEARANCE.map(esc).join(', ')}, …</th>
+        <th rowspan="2">Taster<small>(Người nếm)</small></th></tr>
+      <tr><th>Name sample<small>(Tên mẫu)</small></th><th>SSCC/Hour</th><th>Batch<small>(Lô sx)</small></th>
+        <th>IN<small>(Đạt)</small></th><th>JUST IN<small>(Chấp nhận)</small></th><th>OUT<small>(Không đạt)</small></th><th>Total</th><th>Result<small>(%)</small></th></tr></thead>
+      <tbody>${rows.join('')}</tbody></table>
+    <div class="sf-foot"><div>(*) KQ and semi-FGs: at least ${CONFIG.MIN_PANELLIST} trained assessors<br>(*) Finish good product: at least ${CONFIG.MIN_PANELLIST} trained assessors.<br>(*) Raw material: at least ${CONFIG.MIN_PANELLIST} trained assessors<br>
+      <span class="sf-rule">Result% = (1 − [(Out×3 + JustIn×0.5)/(Total×3)]) × 100 · Passed ≥ ${CONFIG.PASS_THRESHOLD}%</span></div>
+      <div class="sf-check"><b>Check by:</b><span></span></div></div></div>`;
+}
+function sumPickSet(id){ STATE.currentSetId=id||null; $('#hdrSet').textContent=setLabel(curSet()); renderSummary(); }
 function renderSummary(){
   const box=$('#summaryBody'),set=curSet();
-  if(!set){ box.innerHTML=`<div class="ph"><span class="big">📊</span>Chưa có Set đang mở. Vào <b>Truy xuất</b> để chọn Set cũ.</div>`; return; }
-  const results=set.samples.map(sm=>({sm,...calcSample(set,sm.no)}));
+  if(!STATE.sets.length){ box.innerHTML=`<div class="ph"><span class="big">📊</span>Chưa có Set nếm nào. Vào <b>Tạo Set</b> để bắt đầu.</div>`; return; }
+  const opts=[...STATE.sets].sort((a,b)=>(b.date+b.shift).localeCompare(a.date+a.shift)).map(s=>`<option value="${s.id}" ${set?.id===s.id?'selected':''}>${esc(setLabel(s))}${s.status==='closed'?' · đã đóng':''}</option>`).join('');
+  const picker=`<div class="card noprint"><div class="toolbar" style="margin:0"><label class="f" style="margin:0">Set nếm</label>
+    <select class="s" style="max-width:420px" onchange="sumPickSet(this.value)">${set?'':'<option value="">— Chọn Set —</option>'}${opts}</select>
+    <span class="spacer"></span>${set?`<button class="btn sec sm" onclick="exportSummaryCSV()">⤓ Xuất Excel</button><button class="btn sec sm" onclick="printSummary()">🖨️ Xuất PDF</button>`:''}</div></div>`;
+  if(!set){ box.innerHTML=picker+`<div class="ph"><span class="big">📊</span>Chọn một Set nếm để xem báo cáo.</div>`; return; }
+  const results=set.samples.map(sm=>calcSample(set,sm.no));
   const nPass=results.filter(r=>r.pass).length, nFail=results.filter(r=>r.pct!==null&&!r.pass).length;
   const nAtt=Object.keys(set.scores).length;
-  const attWarn=nAtt<CONFIG.MIN_PANELLIST?`<span class="badge fail">⚠ &lt; ${CONFIG.MIN_PANELLIST} panellist</span>`:`<span class="badge pass">✓ ${nAtt} panellist</span>`;
-  const rows=results.map(r=>{ const errs=new Set();
-    Object.values(set.scores).forEach(bp=>{const sc=bp[r.sm.no];if(sc){(sc.appearance||[]).forEach(e=>errs.add(e));(sc.taste||[]).forEach(e=>errs.add(e));if(sc.note?.trim())errs.add(sc.note.trim());}});
-    const pctTxt=r.pct===null?'—':r.pct.toFixed(1)+'%';
-    const badge=r.pct===null?'<span class="badge gray">chưa đủ</span>':(r.pass?'<span class="badge pass">Passed</span>':'<span class="badge fail">Failed</span>');
-    return `<tr><td>${r.sm.no}</td><td class="l">${esc(r.sm.name)}</td><td>${esc(r.sm.batch||'')}</td>
-      <td>${r.IN}</td><td>${r.JI}</td><td>${r.OUT}</td><td>${r.total}</td><td><b>${pctTxt}</b></td><td>${badge}</td>
-      <td class="l">${[...errs].map(e=>esc(e)).join(', ')}</td></tr>`; }).join('');
-  box.innerHTML=`<div class="grid-3">
-      <div class="kpi"><div class="num">${set.samples.length}</div><div class="lbl">Tổng mẫu</div></div>
+  const attWarn=nAtt<CONFIG.MIN_PANELLIST?`<span class="badge fail">⚠ ${nAtt} phiếu · cần ≥ ${CONFIG.MIN_PANELLIST} panellist</span>`:`<span class="badge pass">✓ ${nAtt} panellist</span>`;
+  box.innerHTML=picker+`<div class="grid-3">
+      <div class="kpi"><div class="num">${set.samples.length}</div><div class="lbl">Tổng mẫu · ${attWarn}</div></div>
       <div class="kpi ok"><div class="num">${nPass}</div><div class="lbl">Passed (≥${CONFIG.PASS_THRESHOLD}%)</div></div>
       <div class="kpi fail"><div class="num">${nFail}</div><div class="lbl">Failed (&lt;${CONFIG.PASS_THRESHOLD}%)</div></div></div>
-    <div class="card"><div class="toolbar"><h3 style="margin:0">${esc(set.name)} · ${esc(set.date)} · ${set.shift} · ${esc(set.sampleType)} &nbsp;${attWarn}</h3>
-      <span class="spacer"></span>
-      <button class="btn sec sm" onclick="exportSummaryCSV()">⤓ Xuất Excel</button>
-      <button class="btn sec sm" onclick="printSummary()">🖨️ Xuất PDF</button></div>
-      <div class="tbl-wrap"><table class="grid">
-        <thead><tr><th>No.</th><th class="l">Tên mẫu</th><th>Batch</th><th>IN</th><th>Just In</th><th>Out</th><th>Total</th><th>Result %</th><th>Kết luận</th><th class="l">Lỗi ghi nhận</th></tr></thead>
-        <tbody>${rows}</tbody></table></div>
-      <div class="hint">Result% = (1 − [(Out×3 + JustIn×0.5)/(Total×3)]) × 100 · Passed khi ≥ ${CONFIG.PASS_THRESHOLD}%.</div></div>`;
+    <div class="sf-paper">${summaryFormHTML(set)}</div>`;
 }
 
 /* ===================== [LOOKUP] ===================== */
@@ -689,21 +749,43 @@ function lookupOpen(id){ STATE.currentSetId=id; $('#hdrSet').textContent=setLabe
 /* ===================== [MASTER] Panellist ===================== */
 function renderPanellists(){
   const box=$('#panellistBody');
-  const rows=STATE.panellists.map(p=>`<tr><td class="l">${esc(p.name)}</td><td>${esc(p.dept)}</td>
+  const rows=STATE.panellists.map(p=>`<tr><td>${esc(p.code||'')}</td><td class="l">${esc(p.name)}</td><td>${esc(p.func||'')}</td><td>${esc(p.dept)}</td>
     <td><button class="btn sm danger" onclick="delPanel('${p.id}')">Xoá</button></td></tr>`).join('');
   box.innerHTML=`<div class="card"><h3>Thêm Panellist</h3>
     <div class="row c3"><div><label class="f">Tên</label><input class="t" id="pName" placeholder="Họ tên"></div>
       <div><label class="f">Bộ phận</label><input class="t" id="pDept" placeholder="QA / Production / R&D"></div>
-      <div style="align-self:end"><button class="btn" onclick="addPanel()">+ Thêm</button></div></div></div>
+      <div style="align-self:end"><button class="btn" onclick="addPanel()">+ Thêm</button></div></div>
+    <div class="hint" style="margin-top:10px">Nhập hàng loạt từ Excel (.xlsx/.xls/.csv) với các cột: <b>Employee code · Full name · Function · Dept.</b> — trùng mã NV hoặc trùng tên sẽ được cập nhật, không nhân đôi.</div>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" onclick="document.getElementById('filePanellists').click()">📥 Nhập từ Excel</button>
+      <button class="btn sm sec" onclick="downloadPanellistTemplate()">⤓ Tải template</button></div></div>
     <div class="card"><h3>Danh sách (${STATE.panellists.length})</h3>
-      <div class="tbl-wrap"><table class="grid"><thead><tr><th class="l">Tên</th><th>Bộ phận</th><th style="width:80px"></th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="3" class="hint" style="padding:14px">Chưa có panellist</td></tr>'}</tbody></table></div></div>`;
+      <div class="tbl-wrap"><table class="grid"><thead><tr><th>Mã NV</th><th class="l">Tên</th><th>Chức năng</th><th>Bộ phận</th><th style="width:80px"></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="5" class="hint" style="padding:14px">Chưa có panellist</td></tr>'}</tbody></table></div></div>`;
 }
 function addPanel(){ const name=$('#pName').value.trim(); if(!name)return toast('Nhập tên','err');
   if(STATE.panellists.some(p=>p.name.toLowerCase()===name.toLowerCase()))return toast('Panellist đã tồn tại','err');
   STATE.panellists.push({id:uid('pnl'),name,dept:$('#pDept').value.trim()}); logAudit('Thêm panellist: '+name); save(); toast('Đã thêm','ok'); renderPanellists(); }
 function delPanel(id){ const p=STATE.panellists.find(x=>x.id===id);
   confirmAsk('Xoá panellist "'+(p?.name||'')+'"?','Xoá',()=>{ STATE.panellists=STATE.panellists.filter(x=>x.id!==id); logAudit('Xoá panellist: '+(p?.name||id)); save(); renderPanellists(); }); }
+
+function downloadPanellistTemplate(){ downloadFile('iLD_Panellist_Template.xls',itemsWorkbook([['Employee code','Full name','Function','Dept.'],['ILD0000','Nguyễn Văn A','QA','QA']]),'application/vnd.ms-excel'); }
+function normalizePanellistRows(rows){
+  const clean=rows.map(r=>[...r].map(v=>(v??'').toString().trim()));
+  const header=clean.findIndex(r=>r.some(x=>/full name|họ tên|ho ten|^tên$|^name$/i.test(x)));
+  if(header<0)throw new Error('Không tìm thấy cột Full name / Họ tên');
+  const h=clean[header].map(x=>x.toLowerCase()),idx=terms=>h.findIndex(x=>terms.some(t=>x.includes(t)));
+  const ic=idx(['employee','mã nv','ma nv','code']),inn=idx(['full name','họ tên','ho ten','tên','name']),ifn=idx(['function','chức năng','chuc nang']),id=idx(['dept','bộ phận','bo phan']);
+  return clean.slice(header+1).map(r=>({code:ic>=0?r[ic]||'':'',name:(r[inn]||'').replace(/\s+/g,' '),func:ifn>=0?r[ifn]||'':'',dept:id>=0?r[id]||'':''})).filter(x=>x.name);
+}
+document.getElementById('filePanellists').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn','err');
+  try{let rows;if(f.name.toLowerCase().endsWith('.xlsx'))rows=await xlsxRows(await f.arrayBuffer());else{const text=await f.text();rows=f.name.toLowerCase().endsWith('.csv')?parseCSV(text):xmlRows(text);}
+    const data=normalizePanellistRows(rows);if(!data.length)throw new Error('Không có dòng dữ liệu hợp lệ');let added=0,updated=0,same=0;
+    data.forEach(x=>{const lc=x.name.toLowerCase(),p=STATE.panellists.find(y=>(x.code&&y.code&&y.code.toLowerCase()===x.code.toLowerCase())||(!(x.code&&y.code)&&y.name.toLowerCase()===lc));
+      if(!p){STATE.panellists.push({id:uid('pnl'),...x});added++;return;}
+      const next={code:x.code||p.code||'',name:x.name,func:x.func||p.func||'',dept:x.dept||p.dept||''};
+      if(['code','name','func','dept'].every(k=>(p[k]||'')===next[k])){same++;return;}Object.assign(p,next);updated++;});
+    logAudit('Import Panellist: +'+added+', cập nhật '+updated+', trùng '+same);save();renderPanellists();toast('Panellist: thêm '+added+', cập nhật '+updated+', bỏ qua '+same+' dòng trùng','ok');
+  }catch(err){toast('Import Panellist lỗi: '+err.message,'err');}});
 
 /* ===================== [MASTER] SP/Recipe/PO/Batch ===================== */
 function renderProducts(){
@@ -895,24 +977,16 @@ $('#fileMaster').addEventListener('change',e=>{ const f=e.target.files[0]; e.tar
 
 function exportSummaryCSV(){ const set=curSet(); if(!set)return toast('Chưa có Set','err');
   const rows=[['iLD SUMMARY TASTING RESULT'],['Set',set.name,'Ngày',set.date,'Ca',set.shift,'Loại',set.sampleType],[],
-    ['No.','Tên mẫu','SSCC/Hour','Batch','IN','Just In','Out','Total','Result %','Kết luận','Lỗi']];
-  set.samples.forEach(sm=>{ const r=calcSample(set,sm.no); const errs=new Set();
-    Object.values(set.scores).forEach(bp=>{const sc=bp[sm.no];if(sc){(sc.appearance||[]).forEach(e=>errs.add(e));(sc.taste||[]).forEach(e=>errs.add(e));if(sc.note?.trim())errs.add(sc.note.trim());}});
+    ['No.','Tên mẫu','SSCC/Hour','Batch','IN','Just In','Out','Total','Result %','Kết luận','Comments (Lỗi)','Taster (Người nếm)']];
+  set.samples.forEach(sm=>{ const r=calcSample(set,sm.no),x=sumSampleInfo(set,sm.no);
     rows.push([sm.no,sm.name,sm.sscc||'',sm.batch||'',r.IN,r.JI,r.OUT,r.total,r.pct===null?'':r.pct.toFixed(1),
-      r.pct===null?'chưa đủ':(r.pass?'Passed':'Failed'),[...errs].join('; ')]); });
+      r.pct===null?'chưa đủ':(r.pass?'Passed':'Failed'),x.errs.join('; '),x.tasters.join('; ')]); });
   downloadFile('Summary_'+set.name.replace(/\s+/g,'_')+'.csv',toCSV(rows),'text/csv');
   logAudit('Xuất Excel: '+set.name); toast('Đã xuất Excel (CSV)','ok'); }
 
 /* ===================== [PRINT] Xuất PDF ===================== */
 function printSummary(){ const set=curSet(); if(!set)return toast('Chưa có Set','err');
-  const rows=set.samples.map(sm=>{ const r=calcSample(set,sm.no); const errs=new Set();
-    Object.values(set.scores).forEach(bp=>{const sc=bp[sm.no];if(sc){(sc.appearance||[]).forEach(e=>errs.add(e));(sc.taste||[]).forEach(e=>errs.add(e));if(sc.note?.trim())errs.add(sc.note.trim());}});
-    const concl=r.pct===null?'chưa đủ':(r.pass?'Passed':'Failed');
-    return `<tr><td>${sm.no}</td><td class="l">${esc(sm.name)}</td><td>${esc(sm.batch||'')}</td><td>${r.IN}</td><td>${r.JI}</td><td>${r.OUT}</td><td>${r.total}</td><td>${r.pct===null?'—':r.pct.toFixed(1)+'%'}</td><td>${concl}</td><td class="l">${[...errs].map(esc).join(', ')}</td></tr>`; }).join('');
-  $('#printArea').innerHTML=`<h2>iLD — SUMMARY TASTING RESULT (QA.F.072)</h2>
-    <div class="meta">Set: <b>${esc(set.name)}</b> · Ngày: ${esc(set.date)} · Ca: ${set.shift} · Loại: ${esc(set.sampleType)} · Số phiếu: ${Object.keys(set.scores).length}</div>
-    <table><thead><tr><th>No.</th><th>Tên mẫu</th><th>Batch</th><th>IN</th><th>Just In</th><th>Out</th><th>Total</th><th>Result %</th><th>Kết luận</th><th>Lỗi</th></tr></thead><tbody>${rows}</tbody></table>
-    <p style="font-size:11px;margin-top:10px">Result% = (1 − [(Out×3 + JustIn×0.5)/(Total×3)]) × 100 · Passed ≥ ${CONFIG.PASS_THRESHOLD}%. &nbsp;&nbsp; Check by: ____________</p>`;
+  $('#printArea').innerHTML=summaryFormHTML(set);
   logAudit('Xuất PDF (in): '+set.name); window.print(); }
 
 /* ===================== [SENSORY] Kiến thức cảm quan (rút gọn từ iLD Sensory Guide) ===================== */
@@ -1180,7 +1254,7 @@ function cloudApplyAll(meta,sets,scores,bases){if(!meta||!Array.isArray(sets))th
   STATE.panellists=meta.panellists||[];STATE.products=meta.products||[];STATE.recipes=meta.recipes||[];STATE.pos=meta.pos||[];STATE.batches=meta.batches||[];STATE.itemCodes=meta.itemCodes||[];
   const byId=new Map(sets.map(s=>[s.id,{...s,scores:{}}]));scores.forEach(x=>{const s=byId.get(x.setId);if(s)s.scores[x.panellistId]=x.scores||{};});STATE.sets=[...byId.values()];
   STATE.currentSetId=meta.currentSetId||null;STATE.currentPanellistId=null;STATE.audit=meta.audit||[];CLOUD.sync.bases=bases;CLOUD.sync.outbox=[];CLOUD.sync.conflicts=[];cloudSaveSync();persist(true);
-  CLOUD.applying=false;CLOUD.lastSync=new Date().toLocaleTimeString('vi-VN');$('#hdrSet').textContent=setLabel(curSet());switchTab($('.panel.active')?.id||'tab-scoring');cloudRefreshSettings();}
+  CLOUD.applying=false;purgeDemoPanellists();CLOUD.lastSync=new Date().toLocaleTimeString('vi-VN');$('#hdrSet').textContent=setLabel(curSet());switchTab($('.panel.active')?.id||'tab-scoring');cloudRefreshSettings();}
 async function cloudFetchV2(){const m=CLOUD.m,metaSnap=await m.getDoc(cloudRef('meta:main'));if(!metaSnap.exists())return null;
   const [setSnap,scoreSnap]=await Promise.all([m.getDocs(m.collection(CLOUD.db,'ild_sensory_sets')),m.getDocs(m.collection(CLOUD.db,'ild_sensory_scores'))]);const bases={};
   const strip=d=>{const {revision,updatedAt,updatedBy,clientId,...data}=d;return {revision:revision||0,data};};let x=strip(metaSnap.data());bases['meta:main']=x;const meta=x.data;
@@ -1254,13 +1328,18 @@ $('#fileBackup').addEventListener('change',e=>{ const f=e.target.files[0]; e.tar
     confirmAsk('Phục hồi sẽ THAY THẾ toàn bộ dữ liệu hiện tại. Tiếp tục?','Phục hồi',()=>{
       STATE.panellists=d.panellists||[];STATE.products=d.products||[];STATE.recipes=d.recipes||[];STATE.pos=d.pos||[];
       STATE.batches=d.batches||[];STATE.itemCodes=d.itemCodes||[];STATE.sets=d.sets||[];STATE.currentSetId=d.currentSetId||null;STATE.audit=d.audit||[];
-      logAudit('Phục hồi từ JSON'); persist(); boot(); toast('Đã phục hồi','ok'); });
+      logAudit('Phục hồi từ JSON'); persist(); purgeDemoPanellists(); boot(); toast('Đã phục hồi','ok'); });
   }catch(err){ toast('Phục hồi lỗi: '+err.message,'err'); } }; rd.readAsText(f,'UTF-8'); });
+
+/* Panellist mô phỏng của bản demo cũ (không có Mã NV) → tự loại khỏi Master Data; điểm trong Set Demo vẫn giữ. */
+const DEMO_PANELLISTS={pnl_a:'Nguyễn Văn A',pnl_b:'Trần Thị B',pnl_c:'Lê Văn C',pnl_d:'Phạm Thị D'};
+function purgeDemoPanellists(){const before=STATE.panellists.length;
+  STATE.panellists=STATE.panellists.filter(p=>p.code||DEMO_PANELLISTS[p.id]!==p.name);const n=before-STATE.panellists.length;
+  if(n){logAudit('Xoá '+n+' panellist mô phỏng (không có Mã NV)');save();}return n;}
 
 /* ===================== [SEED] dữ liệu mẫu (chỉ khi trống) ===================== */
 function seed(){
-  STATE.panellists=[{id:'pnl_a',name:'Nguyễn Văn A',dept:'QA'},{id:'pnl_b',name:'Trần Thị B',dept:'Production'},
-    {id:'pnl_c',name:'Lê Văn C',dept:'R&D'},{id:'pnl_d',name:'Phạm Thị D',dept:'QA'}];
+  STATE.panellists=[]; // danh sách thật nạp từ Excel ở tab Quản lý Panellist
   STATE.products=[{id:'prd1',name:'Freeze-dried Coffee'},{id:'prd2',name:'Spray-dried Coffee'}];
   STATE.recipes=[{id:'rcp1',name:'Standard 100%'},{id:'rcp2',name:'Less bitter'}];
   STATE.pos=[{id:'po1',name:'PO-2508-01'}]; STATE.batches=[{id:'bat1',name:'L2508A'},{id:'bat2',name:'L2508B'}];
@@ -1280,7 +1359,7 @@ function boot(){
 }
 (function init(){
   document.body.dataset.theme=localStorage.getItem(THEME_KEY)||'light';
-  const loaded=loadState(); if(!loaded){ seed(); persist(); }
+  const loaded=loadState(); if(!loaded){ seed(); persist(); } purgeDemoPanellists();
   boot();firebaseInit();
 })();
 </script>

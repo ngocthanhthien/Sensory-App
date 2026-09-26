@@ -97,7 +97,7 @@ Object toàn cục `STATE`:
 
 ```js
 {
-  panellists: [{ id, name, dept }],
+  panellists: [{ id, code, name, func, dept }],   // code = Employee code, func = Function (tùy chọn)
   products:   [{ id, name }],
   recipes:    [{ id, name }],
   pos:        [{ id, name }],
