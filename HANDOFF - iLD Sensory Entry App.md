@@ -215,7 +215,16 @@ Firebase JS SDK: 12.19.0, import động từ gstatic
 Allowed account: binhdangthanh94@gmail.com
 ```
 
-Nếu email khác đăng nhập, client tự sign out. Đây chỉ là lớp UI; quyền thật do Firestore Rules bảo vệ.
+### Đăng nhập 2 cấp & phân quyền (từ 2026-09-26)
+
+- Cấp 1: màn hình khoá chỉ hỏi **mật khẩu User chung** → đăng nhập Firebase Auth tài khoản `staff@ild-sensory.local` (Admin tạo/đổi trong tab Người dùng, ≥ 6 ký tự).
+- Cấp 2 (nút tài khoản góc phải): tài khoản riêng `tên đăng nhập` → `<tên>@ild-sensory.local`, hoặc Google của chủ dự án.
+- Vai trò lưu ở `ild_sensory_users/{uid}`: `{username, email, displayName, role: user|admin, active, shared, createdAt, createdBy}`. Chủ dự án (`binhdangthanh94@gmail.com`) luôn là Admin theo Rules.
+- Admin thấy thêm tab **Người dùng** (tạo tài khoản, đổi vai trò, khoá/mở, đổi mật khẩu khi biết mật khẩu cũ, xoá quyền) và các thao tác thay thế dữ liệu (Reset, Phục hồi JSON, Tải đè từ Firebase).
+- Tạo/đổi mật khẩu tài khoản khác dùng một Firebase app phụ (in-memory) để không đăng xuất Admin. Gói Spark không xoá được tài khoản Auth từ client → "Xoá" chỉ gỡ hồ sơ quyền; xoá hẳn ở Console.
+- Offline: phiên đăng nhập gần nhất được cache (`ild_sensory_auth_cache`) để vẫn dùng app khi không tải được Firebase.
+- API key đang giới hạn theo tên miền (referrer) → chạy từ `localhost` bị chặn; thử nghiệm trên GitHub Pages.
+- Tự động đồng bộ mặc định **bật**. Thiết bị chưa đồng bộ lần nào: cloud có dữ liệu → tự tải về (máy mới) hoặc hỏi (máy có dữ liệu riêng); cloud trống → đẩy lên.
 
 ### Vị trí dữ liệu
 
