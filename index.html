@@ -277,6 +277,7 @@ footer .spacer{flex:1}
 .sf-table thead tr:first-child th.sf-cmt-h{font-size:9.5px;font-weight:400;line-height:1.35;text-align:left}.sf-table th.sf-cmt-h b{font-weight:700}
 .sf-table tbody td{height:24px}.sf-table tbody td:first-child{font-weight:700}
 .sf-table td.c{text-align:center}.sf-cmt{font-size:11px;line-height:1.3}
+.sub-table th,.sub-table td{white-space:nowrap}.sub-table td:last-child{white-space:normal;min-width:180px}
 .sf-code{display:block;font-size:9.5px;color:#666}
 .sf-pass{color:var(--ok)}.sf-fail{color:var(--fail)}
 .sf-foot{display:flex;justify-content:space-between;align-items:flex-start;margin-top:10px;font-size:10.5px;font-style:italic;line-height:1.6}
@@ -320,6 +321,7 @@ footer .spacer{flex:1}
     <div class="nav-item" data-tab="tab-summary"><span class="ico">📊</span> Báo cáo</div>
     <div class="nav-group">Tra cứu</div>
     <div class="nav-item" data-tab="tab-lookup"><span class="ico">🔍</span> Tra cứu</div>
+    <div class="nav-item" data-tab="tab-submissions"><span class="ico">🗂️</span> Dữ liệu nộp phiếu</div>
     <div class="nav-group">Master Data</div>
     <div class="nav-item" data-tab="tab-panellist"><span class="ico">👥</span> Panellist</div>
     <div class="nav-item" data-tab="tab-product"><span class="ico">📦</span> SP &amp; Lô</div>
@@ -344,6 +346,10 @@ footer .spacer{flex:1}
     <section class="panel" id="tab-summary">
       <div class="page-head"><h1>Tổng hợp &amp; Báo cáo</h1><span class="tag">QA · F.072</span><span class="form-code">QA.F.072 v4</span></div>
       <div id="summaryBody"></div>
+    </section>
+    <section class="panel" id="tab-submissions">
+      <div class="page-head"><h1>Dữ liệu nộp phiếu nếm</h1><span class="tag">QA · F.071</span></div>
+      <div id="submissionsBody"></div>
     </section>
     <section class="panel" id="tab-lookup">
       <div class="page-head"><h1>Truy xuất kết quả</h1><span class="tag">QA</span></div>
@@ -491,7 +497,7 @@ function switchTab(tabId){
   panels.forEach(p=>p.classList.toggle('active',p.id===tabId));
   navItems.forEach(n=>n.classList.toggle('active',n.dataset.tab===tabId));
   document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
-  ({'tab-scoring':renderScoring,'tab-setup':renderSetup,'tab-summary':renderSummary,'tab-lookup':renderLookup,
+  ({'tab-scoring':renderScoring,'tab-setup':renderSetup,'tab-summary':renderSummary,'tab-lookup':renderLookup,'tab-submissions':renderSubmissions,
     'tab-panellist':renderPanellists,'tab-product':renderProducts,'tab-items':renderItems,'tab-sensory':renderSensory,'tab-guide':renderGuide,'tab-settings':renderSettings}[tabId]||(()=>{}))();
 }
 navItems.forEach(item=>item.addEventListener('click',()=>switchTab(item.dataset.tab)));
@@ -592,7 +598,8 @@ function scSubmit(){
     if(!sc.result)return toast(`Mẫu ${sm.no} chưa chấm`,'err');
     if((sc.result==='JUSTIN'||sc.result==='OUT')&&sc.appearance.length===0&&sc.taste.length===0&&!sc.note.trim())
       return toast(`Mẫu ${sm.no} là ${sc.result} — phải ghi lỗi`,'err'); }
-  const doSubmit=()=>{ set.scores[pid]=JSON.parse(JSON.stringify(SC_DRAFT));
+  const doSubmit=()=>{ const at=new Date().toISOString(); set.scores[pid]=JSON.parse(JSON.stringify(SC_DRAFT));
+    Object.values(set.scores[pid]).forEach(sc=>sc.at=at);
     if(!set.attendees.includes(pid))set.attendees.push(pid);
     logAudit('Nộp phiếu nếm · '+(STATE.panellists.find(p=>p.id===pid)?.name||pid)+' · '+set.name); save();
     SC_SESSION.panelId='';STATE.currentPanellistId=null;SC_DRAFT={};toast('Đã nộp phiếu ✓','ok'); renderScoring(); };
@@ -771,6 +778,58 @@ function renderLookup(){
       <thead><tr><th class="l">Tên Set</th><th>Ngày</th><th>Ca</th><th>Loại</th><th>Số mẫu</th><th>Passed</th><th>Failed</th><th>Trạng thái</th><th></th></tr></thead>
       <tbody>${rows||'<tr><td colspan="9" class="hint" style="padding:14px">Không có kết quả</td></tr>'}</tbody></table></div></div>`;
 }
+/* ===================== [SUBMISSIONS] Dữ liệu nộp phiếu (1 dòng = 1 mẫu trong 1 phiếu) ===================== */
+let SUB={setId:'',q:'',result:'',from:'',to:''};
+const RESULT_LABEL={IN:'IN',JUSTIN:'Just In',OUT:'Out'};
+/* Phiếu nộp trước khi có trường thời gian → lấy từ audit log (nếu còn) */
+function submitTimeFromAudit(set,name){ const a=STATE.audit.find(x=>x.action==='Nộp phiếu nếm · '+name+' · '+set.name); return a?a.t:''; }
+function fmtTime(iso){ const d=new Date(iso); return isNaN(d)?'':d.toLocaleString('vi-VN',{hour12:false}); }
+function submissionRows(){ const out=[];
+  STATE.sets.forEach(set=>Object.entries(set.scores||{}).forEach(([pid,bp])=>{
+    const p=STATE.panellists.find(x=>x.id===pid)||{name:'(đã xoá)',code:'',dept:'',func:''};
+    const first=Object.values(bp).find(x=>x&&x.at),at=first?first.at:'',atText=at?fmtTime(at):submitTimeFromAudit(set,p.name);
+    set.samples.forEach(sm=>{const sc=bp[sm.no];if(!sc||!sc.result)return;
+      out.push({at,atText,set,p,sm,sc});});}));
+  return out.sort((a,b)=>(b.at||'').localeCompare(a.at||'')||(b.set.date+b.set.shift).localeCompare(a.set.date+a.set.shift)||a.sm.no-b.sm.no);
+}
+function filteredSubmissions(){ const q=SUB.q.trim().toLowerCase();
+  return submissionRows().filter(r=>(!SUB.setId||r.set.id===SUB.setId)&&(!SUB.result||r.sc.result===SUB.result)
+    &&(!SUB.from||r.set.date>=SUB.from)&&(!SUB.to||r.set.date<=SUB.to)
+    &&(!q||[r.p.name,r.p.code,r.p.dept,r.sm.name,r.sm.code,r.sm.batch,r.sm.sscc,r.set.name].some(v=>(v||'').toString().toLowerCase().includes(q))));
+}
+const subCols=r=>[r.atText,r.set.date,r.set.shift,r.set.name,r.set.sampleType,r.set.status==='open'?'Đang mở':'Đã đóng',
+  r.p.code||'',r.p.name,r.p.dept||'',r.sm.no,sampleCode(r.sm),r.sm.name,r.sm.sscc||'',r.sm.batch||'',RESULT_LABEL[r.sc.result]||r.sc.result,
+  (r.sc.appearance||[]).join(', '),(r.sc.taste||[]).join(', '),r.sc.note||''];
+const SUB_HEAD=['Thời gian nộp','Ngày nếm','Ca','Set','Loại mẫu','Trạng thái Set','Mã NV','Người nếm','Bộ phận','STT','Tên mã hóa','Tên mẫu','SSCC/Hour','Batch','Kết quả','Lỗi ngoại quan','Lỗi thử nếm','Ghi chú'];
+function renderSubmissions(){
+  const box=$('#submissionsBody'),all=submissionRows();
+  if(!all.length){ box.innerHTML=`<div class="ph"><span class="big">🗂️</span>Chưa có phiếu nếm nào được nộp.</div>`; return; }
+  const setOpts=[...STATE.sets].sort((a,b)=>(b.date+b.shift).localeCompare(a.date+a.shift)).map(s=>`<option value="${s.id}" ${SUB.setId===s.id?'selected':''}>${esc(setLabel(s))}</option>`).join('');
+  box.innerHTML=`<div class="card"><div class="toolbar" style="margin:0">
+      <input class="t" id="subQ" style="max-width:260px" placeholder="Tìm người nếm / Mã NV / mẫu / batch…" value="${esc(SUB.q)}" oninput="SUB.q=this.value;subPaint()">
+      <select class="s" style="max-width:260px" onchange="SUB.setId=this.value;subPaint()"><option value="">Tất cả Set</option>${setOpts}</select>
+      <select class="s" style="max-width:140px" onchange="SUB.result=this.value;subPaint()"><option value="">Mọi kết quả</option>${Object.entries(RESULT_LABEL).map(([k,v])=>`<option value="${k}" ${SUB.result===k?'selected':''}>${v}</option>`).join('')}</select>
+      <label class="hint">Từ</label><input class="t" type="date" style="max-width:150px" value="${SUB.from}" onchange="SUB.from=this.value;subPaint()">
+      <label class="hint">đến</label><input class="t" type="date" style="max-width:150px" value="${SUB.to}" onchange="SUB.to=this.value;subPaint()">
+      <span class="spacer"></span><button class="btn sec sm" onclick="exportSubmissions()">⤓ Xuất Excel</button></div></div>
+    <div class="card"><div id="subTable"></div></div>`;
+  subPaint();
+}
+function subPaint(){ const rows=filteredSubmissions(),LIMIT=500,sheets=new Set(rows.map(r=>r.set.id+'|'+r.p.name)).size;
+  const badge=v=>({IN:'<span class="badge pass">IN</span>',JUSTIN:'<span class="badge gray" style="color:var(--warn)">Just In</span>',OUT:'<span class="badge fail">Out</span>'}[v]||esc(v));
+  const body=rows.slice(0,LIMIT).map(r=>{const c=subCols(r);
+    return `<tr><td style="white-space:nowrap">${esc(c[0])||'<span class="hint">—</span>'}</td><td style="white-space:nowrap">${esc(c[1])}</td><td>${esc(c[2])}</td><td>${esc(c[3])}</td><td>${esc(c[4])}</td>
+      <td>${esc(c[6])}</td><td class="l">${esc(c[7])}</td><td>${esc(c[8])}</td><td>${c[9]}</td><td><b>${esc(c[10])}</b></td><td class="l">${esc(c[11])}</td><td>${esc(c[12])}</td><td>${esc(c[13])}</td>
+      <td>${badge(r.sc.result)}</td><td class="l">${esc([c[15],c[16],c[17]].filter(Boolean).join(' · '))}</td></tr>`;}).join('');
+  $('#subTable').innerHTML=`<div class="toolbar" style="margin-bottom:8px"><span class="hint">${rows.length} dòng mẫu · ${sheets} phiếu${rows.length>LIMIT?' · hiển thị '+LIMIT+' dòng đầu, xuất Excel để xem đủ':''}</span></div>
+    <div class="tbl-wrap"><table class="grid sub-table"><thead><tr><th>Thời gian nộp</th><th>Ngày nếm</th><th>Ca</th><th>Set</th><th>Loại mẫu</th><th>Mã NV</th><th class="l">Người nếm</th><th>Bộ phận</th>
+      <th>STT</th><th>Tên mã hóa</th><th class="l">Tên mẫu</th><th>SSCC/Hour</th><th>Batch</th><th>Kết quả</th><th class="l">Lỗi / Ghi chú</th></tr></thead>
+    <tbody>${body||'<tr><td colspan="15" class="hint" style="padding:14px">Không có dữ liệu phù hợp bộ lọc</td></tr>'}</tbody></table></div>`;
+}
+function exportSubmissions(){ const rows=filteredSubmissions(); if(!rows.length)return toast('Không có dữ liệu để xuất','err');
+  downloadFile('iLD_DuLieuNopPhieu_'+todayStr()+'.xls',itemsWorkbook([SUB_HEAD,...rows.map(subCols)],'Submissions'),'application/vnd.ms-excel');
+  logAudit('Xuất dữ liệu nộp phiếu: '+rows.length+' dòng'); save(); toast('Đã xuất '+rows.length+' dòng','ok'); }
+
 function lookupOpen(id){ STATE.currentSetId=id; $('#hdrSet').textContent=setLabel(curSet()); switchTab('tab-summary'); }
 
 /* ===================== [MASTER] Panellist ===================== */

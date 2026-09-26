@@ -108,7 +108,7 @@ Object toàn cục `STATE`:
     samples: [{ no, code, name, sscc, batch }],   // code = Tên mã hóa (mẫu mù); thiếu → dùng no
     scores: {
       [panellistId]: {
-        [sampleNo]: { result, appearance: [], taste: [], note }
+        [sampleNo]: { result, appearance: [], taste: [], note, at }   // at = ISO thời gian nộp phiếu
       }
     },
     attendees: [panellistId]
