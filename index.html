@@ -651,6 +651,7 @@ function renderScoreGrid(){
       <tbody>${rows}</tbody></table></div>
     <div class="score-instructions"><b>* Hướng dẫn:</b><br>1. Lỗi ngoại quan: ${CONFIG.ERR_APPEARANCE.map(esc).join(', ')}.<br>2. Lỗi thử nếm: ${CONFIG.ERR_TASTE.map(esc).join(', ')}.</div></div>
     <div class="toolbar score-actions"><span class="hint" id="scStatus"></span><span class="spacer"></span>
+      <button class="btn sec" onclick="scDiscard()" title="Xoá hết kết quả đang điền, làm lại từ đầu">↺ Discard</button>
       <button class="btn" onclick="scSubmit()">💾 Nộp phiếu</button></div>`;
   updateScStatus();
 }
@@ -660,6 +661,11 @@ function scDraftInit(){ const set=scoringSet(),pid=SC_SESSION.panelId;
   set.samples.forEach(sm=>{if(!SC_DRAFT[sm.no])SC_DRAFT[sm.no]={result:'',appearance:[],taste:[],note:''};
     const sc=SC_DRAFT[sm.no];sc.appearance=Array.isArray(sc.appearance)?sc.appearance:[];sc.taste=Array.isArray(sc.taste)?sc.taste:[];sc.note=sc.note||'';}); }
 function scSet(no,v){ SC_DRAFT[no].result=v; if(v==='IN'){SC_DRAFT[no].appearance=[];SC_DRAFT[no].taste=[];SC_DRAFT[no].note='';} paintDraft(); }
+/* Discard: bỏ toàn bộ kết quả đang điền (chưa nộp) → form trắng như lúc bắt đầu; phiếu đã nộp trước đó (nếu có) không bị xoá */
+function scDiscard(){ const set=scoringSet();if(!set||!SC_SESSION.panelId)return;
+  const n=set.samples.filter(sm=>SC_DRAFT[sm.no]?.result||SC_DRAFT[sm.no]?.note).length;
+  const doIt=()=>{set.samples.forEach(sm=>SC_DRAFT[sm.no]={result:'',appearance:[],taste:[],note:''});paintDraft();document.querySelector('#scGrid .tbl-wrap')?.scrollTo(0,0);toast('Đã xoá kết quả đang điền','ok');};
+  n?confirmAsk('Bỏ kết quả đang điền của '+n+' mẫu và làm lại từ đầu?'+(set.scores[SC_SESSION.panelId]?' (Phiếu đã nộp trước đó vẫn giữ nguyên cho tới khi nộp lại.)':''),'Discard',doIt):toast('Form đang trống'); }
 /* Điền nhanh: tất cả mẫu = IN (xoá lỗi/ghi chú). Nếu đã có mẫu Just In/Out thì hỏi trước khi ghi đè. */
 function scAllIn(){ const set=scoringSet();if(!set||!SC_SESSION.panelId)return;
   const doIt=()=>{set.samples.forEach(sm=>SC_DRAFT[sm.no]={...SC_DRAFT[sm.no],result:'IN',appearance:[],taste:[],note:''});paintDraft();toast('Đã đánh IN cho '+set.samples.length+' mẫu','ok');};
