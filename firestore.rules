@@ -25,7 +25,7 @@ service cloud.firestore {
       return isOwner() || (activeProfile() && get(profilePath()).data.role in roles);
     }
 
-    // Vai trò: user (chấm nếm) · qc (tạo & sửa Set) · supervisor (Giám sát nếm: xác nhận kết quả) · admin.
+    // Vai trò: user (chấm nếm, tạo Set) · qc (+ sửa & đóng Set) · supervisor (Giám sát nếm: xác nhận kết quả) · admin.
     function isMember()     { return isOwner() || activeProfile(); }
     function isAdmin()      { return hasRole(['admin']); }
     function isQC()         { return hasRole(['qc', 'admin']); }
@@ -59,13 +59,13 @@ service cloud.firestore {
     }
 
     // Set nếm:
-    // - QC/Admin tạo & sửa (Set đã được Giám sát xác nhận thì chỉ Admin sửa).
+    // - Mọi thành viên tạo Set; QC/Admin sửa (Set đã được Giám sát xác nhận thì chỉ Admin sửa).
     // - Thành viên chỉ được cập nhật danh sách người đã nộp (attendees) khi nộp phiếu.
     // - Giám sát/Admin xác nhận hoặc huỷ xác nhận (approval, status).
     // - Chỉ Admin được xoá.
     match /ild_sensory_sets/{setId} {
       allow read: if isMember();
-      allow create: if isQC();
+      allow create: if isMember();
       allow update: if isMember() && (
         changedKeys().hasOnly(syncKeys().concat(['attendees']))
         || (isSupervisor() && changedKeys().hasOnly(syncKeys().concat(['approval', 'status'])))

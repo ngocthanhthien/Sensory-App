@@ -221,9 +221,9 @@ Allowed account: binhdangthanh94@gmail.com
 - Cấp 1: màn hình khoá chỉ hỏi **mật khẩu User chung** → đăng nhập Firebase Auth tài khoản `staff@ild-sensory.local` (Admin tạo/đổi trong tab Người dùng, ≥ 6 ký tự).
 - Cấp 2 (nút tài khoản góc phải): tài khoản riêng `tên đăng nhập` → `<tên>@ild-sensory.local`, hoặc Google của chủ dự án.
 - Vai trò lưu ở `ild_sensory_users/{uid}`: `{username, email, displayName, role: user|qc|supervisor|admin, active, shared, createdAt, createdBy}`.
-  - `user`: chấm nếm, xem báo cáo/tra cứu. `qc`: + tạo Set (tab Tạo Set), sửa/đóng Set. `supervisor` (Giám sát nếm): + xác nhận / huỷ xác nhận kết quả Set ở tab Báo cáo. `admin`: toàn quyền.
+  - `user`: chấm nếm, tạo Set (thêm/sửa/xoá mẫu trong wizard), xem báo cáo/tra cứu. `qc`: + sửa/đóng Set đã tạo (Tra cứu, Tạo Set). `supervisor` (Giám sát nếm): + xác nhận / huỷ xác nhận kết quả Set ở tab Báo cáo. `admin`: toàn quyền.
   - Xác nhận ghi `set.approval = {by, byUid, at, panellists, passed, total}`, đóng Set và khoá: không nộp phiếu, không sửa Set/phiếu cho tới khi Giám sát/Admin huỷ xác nhận. Tên + thời gian hiện ở ô "Check by" của phiếu Summary.
-  - Firestore Rules kiểm tra tương ứng (tạo Set: qc/admin; user chỉ đổi `attendees`; supervisor chỉ đổi `approval`/`status`; phiếu của Set đã xác nhận chỉ Admin ghi). Chủ dự án (`binhdangthanh94@gmail.com`) luôn là Admin theo Rules.
+  - Firestore Rules kiểm tra tương ứng (tạo Set: mọi thành viên; sửa Set: qc/admin; user chỉ đổi `attendees`; supervisor chỉ đổi `approval`/`status`; phiếu của Set đã xác nhận chỉ Admin ghi). Chủ dự án (`binhdangthanh94@gmail.com`) luôn là Admin theo Rules.
 - Admin thấy thêm tab **Người dùng** (tạo tài khoản, đổi vai trò, khoá/mở, đổi mật khẩu khi biết mật khẩu cũ, xoá quyền) và các thao tác thay thế dữ liệu (Reset, Phục hồi JSON, Tải đè từ Firebase).
 - Tạo/đổi mật khẩu tài khoản khác dùng một Firebase app phụ (in-memory) để không đăng xuất Admin. Gói Spark không xoá được tài khoản Auth từ client → "Xoá" chỉ gỡ hồ sơ quyền; xoá hẳn ở Console.
 - Offline: phiên đăng nhập gần nhất được cache (`ild_sensory_auth_cache`) để vẫn dùng app khi không tải được Firebase.

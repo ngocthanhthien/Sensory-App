@@ -348,7 +348,7 @@ footer .spacer{flex:1}
   <nav class="side" id="sidebar" aria-label="Điều hướng chức năng">
     <div class="nav-group">Tác nghiệp</div>
     <div class="nav-item active" data-tab="tab-scoring"><span class="ico">✍️</span> Chấm nếm</div>
-    <div class="nav-item qc-only" data-tab="tab-setup"><span class="ico">🧪</span> Tạo Set</div>
+    <div class="nav-item" data-tab="tab-setup"><span class="ico">🧪</span> Tạo Set</div>
     <div class="nav-item" data-tab="tab-summary"><span class="ico">📊</span> Báo cáo</div>
     <div class="nav-group">Tra cứu</div>
     <div class="nav-item" data-tab="tab-lookup"><span class="ico">🔍</span> Tra cứu</div>
@@ -558,7 +558,7 @@ function toggleTheme(){ const b=document.body; const dark=b.dataset.theme==='dar
 const navItems=document.querySelectorAll('.nav-item');
 const panels=document.querySelectorAll('.panel');
 function switchTab(tabId){
-  if((tabId==='tab-users'&&!isAdmin())||(tabId==='tab-setup'&&!canQC()))tabId='tab-scoring';
+  if(tabId==='tab-users'&&!isAdmin())tabId='tab-scoring';
   const previousTab=document.querySelector('.panel.active')?.id;
   if(tabId==='tab-scoring'&&previousTab!=='tab-scoring'&&typeof SC_SESSION!=='undefined'){SC_SESSION={setId:'',panelId:''};STATE.currentPanellistId=null;SC_DRAFT={};}
   panels.forEach(p=>p.classList.toggle('active',p.id===tabId));
@@ -720,7 +720,7 @@ function renderSetup(){
   const box=$('#setupBody'),openSet=curSet();
   const banner=openSet?`<div class="card"><h3>Set đang mở: ${esc(openSet.name)}</h3>
     <p>${esc(fmtDate(openSet.date))} · ${openSet.shift} · ${esc(openSet.sampleType)} · ${openSet.samples.length} mẫu · ${Object.keys(openSet.scores).length} phiếu.
-    <button class="btn sm sec" style="margin-left:10px" onclick="closeSet()">Đóng Set này</button></p></div>`:'';
+    <button class="btn sm sec qc-only" style="margin-left:10px" onclick="closeSet()">Đóng Set này</button></p></div>`:'';
   box.innerHTML=banner+(WIZ.step===1?wizStep1():wizStep2());
 }
 function wizStep1(){ const curType=WIZ.meta.sampleType||CONFIG.DEFAULT_SAMPLE_TYPE;
@@ -774,7 +774,7 @@ function wizAdd(){ const name=$('#smName').value.trim(); if(!name)return toast('
   WIZ.samples.push({code,name,sscc:$('#smSscc').value.trim(),batch:$('#smBatch').value.trim()}); renderSetup(); setTimeout(()=>$('#smName')?.focus(),30); }
 function wizEdit(i,k,v){ WIZ.samples[i][k]=v; }
 function wizDel(i){ WIZ.samples.splice(i,1); renderSetup(); }
-function wizCreate(){ if(!canQC())return toast('Chỉ QC / Admin được tạo Set','err'); if(WIZ.samples.length===0)return toast('Chưa có mẫu nào','err');
+function wizCreate(){ if(WIZ.samples.length===0)return toast('Chưa có mẫu nào','err');
   const codes=WIZ.samples.map((x,i)=>((x.code||'').trim()||String(i+1)).toLowerCase()),dup=codes.find((c,i)=>codes.indexOf(c)!==i);
   if(dup)return toast('Trùng Tên mã hóa "'+dup+'" — mỗi mẫu cần mã khác nhau','err');
   if(dupSetName(WIZ.meta))return toast('Trùng tên Set trong ca '+WIZ.meta.shift+' ngày '+fmtDate(WIZ.meta.date),'err');
@@ -782,7 +782,7 @@ function wizCreate(){ if(!canQC())return toast('Chỉ QC / Admin được tạo 
     creator:AUTH.profile?.displayName||'QA',status:'open',samples:WIZ.samples.map((s,i)=>({no:i+1,code:(s.code||'').trim()||String(i+1),name:s.name,sscc:s.sscc,batch:s.batch})),scores:{},attendees:[]};
   STATE.sets.push(set); STATE.currentSetId=set.id; logAudit('Tạo Set: '+setLabel(set)+' ('+set.samples.length+' mẫu)'); save();
   WIZ={step:1,meta:{},samples:[],nameAuto:true}; $('#hdrSet').textContent=setLabel(set); toast('Đã tạo Set ✓','ok'); switchTab('tab-scoring'); }
-function closeSet(){ if(!canQC())return toast('Chỉ QC / Admin được đóng Set','err'); const s=curSet(); if(!s)return; confirmAsk('Đóng Set "'+s.name+'"? (vẫn tra cứu được sau)','Đóng Set',()=>{
+function closeSet(){ if(!canQC())return toast('Chỉ QC / Admin được đóng Set','err'); const s=curSet(); if(!s)return; if(closeBlockedMsg(s))return toast(closeBlockedMsg(s),'err'); confirmAsk('Đóng Set "'+s.name+'"? (vẫn tra cứu được sau)','Đóng Set',()=>{
   s.status='closed'; STATE.currentSetId=null; $('#hdrSet').textContent='— chưa mở —'; logAudit('Đóng Set: '+s.name); save(); toast('Đã đóng Set'); renderSetup(); }); }
 
 /* ===================== [SUMMARY] F.072 ===================== */
@@ -888,7 +888,7 @@ function renderLookup(){
       <td>${s.approval?`<span class="badge pass" title="${esc(s.approval.by)} · ${esc(fmtDateTime(s.approval.at))}">✔ Đã xác nhận</span>`:'<span class="hint">Chưa</span>'}</td>
       <td style="white-space:nowrap"><button class="btn sm sec" onclick="lookupOpen('${s.id}')">Xem</button>
         <button class="btn sm sec qc-only" onclick="lookupEdit('${s.id}')">✎ Sửa</button>
-        ${s.status==='open'?`<button class="btn sm sec qc-only" onclick="lookupCloseSet('${s.id}')">🔒 Đóng Set</button>`:''}
+        ${s.status==='open'?`<button class="btn sm sec qc-only" onclick="lookupCloseSet('${s.id}')" ${closeBlockedMsg(s)?`disabled title="${esc(closeBlockedMsg(s))}"`:'title="Đóng Set nếm"'}>🔒 Đóng Set</button>`:''}
         <button class="btn sm danger admin-only" onclick="lookupDelete('${s.id}')">Xoá</button></td></tr>`; }).join('');
   box.innerHTML=`<div class="card"><div class="toolbar">
       <input class="t" style="max-width:260px" placeholder="Tìm tên Set / ngày / mẫu / batch…" value="${esc(LK.q)}" oninput="LK.q=this.value;renderLookup()">
@@ -1012,13 +1012,14 @@ function lookupSave(id){ if(!canQC())return;const s=STATE.sets.find(x=>x.id===id
   const edits={};document.querySelectorAll('#leSamples input').forEach(i=>{(edits[i.dataset.no]=edits[i.dataset.no]||{})[i.dataset.k]=i.value.trim();});
   if(s.samples.some(sm=>!edits[sm.no].name))return toast('Tên mẫu không được để trống','err');
   const codes=s.samples.map(sm=>(edits[sm.no].code||String(sm.no)).toLowerCase()),dup=codes.find((c,i)=>codes.indexOf(c)!==i);if(dup)return toast('Trùng Tên mã hóa "'+dup+'"','err');
+  if(s.status==='open'&&m.status==='closed'&&closeBlockedMsg(s))return toast(closeBlockedMsg(s),'err');
   const before=setLabel(s);Object.assign(s,m);s.samples.forEach(sm=>{const e=edits[sm.no];sm.code=e.code||String(sm.no);sm.name=e.name;sm.sscc=e.sscc;sm.batch=e.batch;});
   if(s.status!=='open'&&STATE.currentSetId===id){STATE.currentSetId=null;}
   logAudit('Sửa Set: '+before+(before!==setLabel(s)?' → '+setLabel(s):''));save();authCloseAccount();$('#hdrSet').textContent=setLabel(curSet());renderLookup();toast('Đã lưu Set','ok');
 }
 function lookupCloseSet(id){ if(!canQC())return toast('Chỉ QC / Admin được đóng Set','err');const s=STATE.sets.find(x=>x.id===id);if(!s||s.status!=='open')return;
-  const n=Object.keys(s.scores||{}).length;
-  confirmAsk('Đóng Set "'+setLabel(s)+'"? Đã có '+n+' người nếm'+(n<CONFIG.MIN_PANELLIST?' (⚠ ít hơn '+CONFIG.MIN_PANELLIST+')':'')+'. Sau khi đóng, người nếm không chọn được Set này để nộp phiếu (vẫn tra cứu/báo cáo được; mở lại bằng ✎ Sửa → Trạng thái).','Đóng Set',()=>{
+  const blocked=closeBlockedMsg(s);if(blocked)return toast(blocked,'err');const n=setTasterCount(s);
+  confirmAsk('Đóng Set "'+setLabel(s)+'"? Đã có '+n+' người nếm. Sau khi đóng, người nếm không chọn được Set này để nộp phiếu (vẫn tra cứu/báo cáo được; mở lại bằng ✎ Sửa → Trạng thái).','Đóng Set',()=>{
     s.status='closed';if(STATE.currentSetId===id){STATE.currentSetId=null;$('#hdrSet').textContent=setLabel(curSet());}
     logAudit('Đóng Set: '+setLabel(s)+' ('+n+' người nếm)');save();renderLookup();toast('Đã đóng Set','ok');});
 }
@@ -1653,15 +1654,18 @@ function cloudRetryLocalConflict(i){const c=CLOUD.sync.conflicts[i];if(!c)return
 var AUTH={profile:null,offline:false,mode:'shared'};
 const authEmail=u=>{u=(u||'').trim().toLowerCase();return u.includes('@')?u:u+'@'+AUTH_EMAIL_DOMAIN;};
 const authIsOwner=u=>!!u&&u.emailVerified&&(u.email||'').toLowerCase()===CLOUD_ALLOWED_EMAIL;
-/* Vai trò: user (chấm nếm) · qc (tạo & sửa Set) · supervisor (Giám sát nếm: xác nhận kết quả Set) · admin (toàn quyền) */
+/* Vai trò: user (chấm nếm, tạo Set) · qc (+ sửa & đóng Set đã tạo) · supervisor (Giám sát nếm: xác nhận kết quả Set) · admin (toàn quyền) */
 const ROLES=['user','qc','supervisor','admin'];
-const ROLE_LABEL={user:'User',qc:'QC · Tạo Set',supervisor:'Giám sát nếm',admin:'Admin'};
+const ROLE_LABEL={user:'User',qc:'QC · Quản lý Set',supervisor:'Giám sát nếm',admin:'Admin'};
 const ROLE_ICON={user:'👤',qc:'🧪',supervisor:'✅',admin:'🛡'};
 const ROLE_BADGE={user:'gray',qc:'pass',supervisor:'pass',admin:'fail'};
 function isAdmin(){return AUTH.profile?.role==='admin';}
 function hasRole(...r){const role=AUTH.profile?.role;return role==='admin'||r.includes(role);}
 const canQC=()=>hasRole('qc'), canSupervise=()=>hasRole('supervisor');
 const setLocked=s=>!!s?.approval;
+/* Đóng Set chỉ khi đủ số người nếm tiêu chuẩn (CONFIG.MIN_PANELLIST) */
+const setTasterCount=s=>Object.keys(s?.scores||{}).length;
+function closeBlockedMsg(s){const n=setTasterCount(s);return n<CONFIG.MIN_PANELLIST?'Chưa đủ người nếm: '+n+'/'+CONFIG.MIN_PANELLIST+' — không thể đóng Set':'';}
 function authCacheGet(){try{return JSON.parse(localStorage.getItem(AUTH_CACHE_KEY)||'null');}catch{return null;}}
 function authCacheSet(p){try{if(p)localStorage.setItem(AUTH_CACHE_KEY,JSON.stringify({uid:p.uid,email:p.email,username:p.username,displayName:p.displayName,role:p.role,shared:!!p.shared,owner:!!p.owner}));else localStorage.removeItem(AUTH_CACHE_KEY);}catch{}}
 async function authLoadProfile(user){
@@ -1682,7 +1686,7 @@ function authApply(){ const p=AUTH.profile,admin=isAdmin();
   $('#acctLabel').textContent=p?(ROLE_ICON[p.role]||'👤')+' '+p.displayName+(p.role!=='user'?' · '+ROLE_LABEL[p.role]:'')+(AUTH.offline?' · offline':''):'Chưa đăng nhập';
   $('#acctBtn').classList.toggle('admin',admin);$('#acctBtn').classList.toggle('off',!p||AUTH.offline);
   $('#authGate').classList.toggle('show',!p);if(!p)authGateRender();$('#logoutBtn').style.display=p?'':'none';
-  if((!admin&&$('#tab-users')?.classList.contains('active'))||(!canQC()&&$('#tab-setup')?.classList.contains('active')))switchTab('tab-scoring');
+  if(!admin&&$('#tab-users')?.classList.contains('active'))switchTab('tab-scoring');
   const act=document.querySelector('.panel.active')?.id;if(p&&['tab-summary','tab-lookup','tab-submissions'].includes(act))switchTab(act); // vẽ lại nút theo quyền
   if($('#acctOverlay').classList.contains('show'))authRenderAccount();
   cloudRefreshSettings();
