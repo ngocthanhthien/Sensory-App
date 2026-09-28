@@ -247,8 +247,6 @@ body[data-theme="dark"] .auth-card .logo-for-light,body:not([data-theme="dark"])
 .acct-btn{cursor:pointer;font-family:inherit;white-space:nowrap}.acct-btn:hover{border-color:#6b7480}
 .acct-btn.admin .dot{background:#f4b942}.acct-btn.off .dot{background:var(--muted)}
 body:not(.is-admin) .admin-only{display:none!important}
-body:not(.can-qc) .qc-only{display:none!important}
-body:not(.can-sup) .sup-only{display:none!important}
 .approval-box{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .date-field{position:relative;display:flex;align-items:center;width:100%}.date-field .t{width:100%;padding-right:34px}
 .date-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;font-size:15px;padding:4px;line-height:1}
@@ -301,6 +299,8 @@ footer .spacer{flex:1}
 .sf-table tbody td{height:24px}.sf-table tbody td:first-child{font-weight:700}
 .sf-table td.c{text-align:center}.sf-cmt{font-size:11px;line-height:1.3}
 .sub-table th,.sub-table td{white-space:nowrap}.sub-table td.sub-err{white-space:normal;min-width:180px}
+.perm-table td{text-align:center}.perm-table td.l{text-align:left;min-width:260px}.perm-table input{width:18px;height:18px;accent-color:var(--ild-red);cursor:pointer}
+.perm-table input:disabled{cursor:not-allowed;opacity:.55}.perm-table tr.perm-fixed td{background:var(--bg);color:var(--muted)}
 .combo{position:relative}.combo .t{cursor:text;width:100%}
 .combo-list{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(15,23,42,.18);max-height:320px;overflow-y:auto;padding:4px}
 .combo-list.show{display:block}
@@ -348,7 +348,7 @@ footer .spacer{flex:1}
   <nav class="side" id="sidebar" aria-label="Điều hướng chức năng">
     <div class="nav-group">Tác nghiệp</div>
     <div class="nav-item active" data-tab="tab-scoring"><span class="ico">✍️</span> Chấm nếm</div>
-    <div class="nav-item" data-tab="tab-setup"><span class="ico">🧪</span> Tạo Set</div>
+    <div class="nav-item need-createSet" data-tab="tab-setup"><span class="ico">🧪</span> Tạo Set</div>
     <div class="nav-item" data-tab="tab-summary"><span class="ico">📊</span> Báo cáo</div>
     <div class="nav-group">Tra cứu</div>
     <div class="nav-item" data-tab="tab-lookup"><span class="ico">🔍</span> Tra cứu</div>
@@ -452,6 +452,7 @@ footer .spacer{flex:1}
 <input type="file" id="fileLots" accept=".xlsx,.xls,.csv" style="display:none">
 <input type="file" id="fileBackup" accept=".json" style="display:none">
 <input type="file" id="fileSetSamples" accept=".xlsx,.xls,.csv" style="display:none">
+<input type="file" id="fileSapSamples" accept=".xlsx,.xls,.csv" style="display:none">
 <input type="file" id="fileItems" accept=".xlsx,.xls,.csv" style="display:none">
 <input type="file" id="filePanellists" accept=".xlsx,.xls,.csv" style="display:none">
 
@@ -558,7 +559,7 @@ function toggleTheme(){ const b=document.body; const dark=b.dataset.theme==='dar
 const navItems=document.querySelectorAll('.nav-item');
 const panels=document.querySelectorAll('.panel');
 function switchTab(tabId){
-  if(tabId==='tab-users'&&!isAdmin())tabId='tab-scoring';
+  if((tabId==='tab-users'&&!isAdmin())||(tabId==='tab-setup'&&AUTH.profile&&!can('createSet')))tabId='tab-scoring';
   const previousTab=document.querySelector('.panel.active')?.id;
   if(tabId==='tab-scoring'&&previousTab!=='tab-scoring'&&typeof SC_SESSION!=='undefined'){SC_SESSION={setId:'',panelId:''};STATE.currentPanellistId=null;SC_DRAFT={};}
   panels.forEach(p=>p.classList.toggle('active',p.id===tabId));
@@ -720,7 +721,7 @@ function renderSetup(){
   const box=$('#setupBody'),openSet=curSet();
   const banner=openSet?`<div class="card"><h3>Set đang mở: ${esc(openSet.name)}</h3>
     <p>${esc(fmtDate(openSet.date))} · ${openSet.shift} · ${esc(openSet.sampleType)} · ${openSet.samples.length} mẫu · ${Object.keys(openSet.scores).length} phiếu.
-    <button class="btn sm sec qc-only" style="margin-left:10px" onclick="closeSet()">Đóng Set này</button></p></div>`:'';
+    <button class="btn sm sec need-closeSet" style="margin-left:10px" onclick="closeSet()">Đóng Set này</button></p></div>`:'';
   box.innerHTML=banner+(WIZ.step===1?wizStep1():wizStep2());
 }
 function wizStep1(){ const curType=WIZ.meta.sampleType||CONFIG.DEFAULT_SAMPLE_TYPE;
@@ -746,7 +747,8 @@ function wizStep2(){ const rows=WIZ.samples.map((s,i)=>`<tr><td>${i+1}</td>
     <div class="toolbar"><span class="hint">Nhập từng mẫu bên dưới, hoặc nạp hàng loạt:</span><span class="spacer"></span>
       <button class="btn sec sm" onclick="downloadSetTemplate()">⤓ Tải template Excel</button>
       ${WIZ.samples.length?'<button class="btn sec sm" onclick="exportSetSamples()">⤓ Xuất danh sách mẫu</button>':''}
-      <button class="btn sm" onclick="document.getElementById('fileSetSamples').click()">⤒ Nhập mẫu từ Excel</button></div>
+      <button class="btn sm" onclick="document.getElementById('fileSetSamples').click()">⤒ Nhập mẫu từ Excel</button>
+      <button class="btn sm" onclick="document.getElementById('fileSapSamples').click()" title="File xuất từ SAP: ITEMNAME · BATCH · SSCC">📥 Nhập Excel từ SAP</button></div>
     <div class="row" style="grid-template-columns:.8fr 1.6fr 1fr 1fr auto">
       <div><label class="f">Tên mã hóa</label><input class="t" id="smCode" value="${esc(wizNextCode())}" placeholder="VD: 1 hoặc CHO 1" style="font-weight:700"></div>
       <div><label class="f">Tên mẫu</label><input class="t" id="smName" placeholder="VD: Freeze-dried STD"></div>
@@ -774,7 +776,7 @@ function wizAdd(){ const name=$('#smName').value.trim(); if(!name)return toast('
   WIZ.samples.push({code,name,sscc:$('#smSscc').value.trim(),batch:$('#smBatch').value.trim()}); renderSetup(); setTimeout(()=>$('#smName')?.focus(),30); }
 function wizEdit(i,k,v){ WIZ.samples[i][k]=v; }
 function wizDel(i){ WIZ.samples.splice(i,1); renderSetup(); }
-function wizCreate(){ if(WIZ.samples.length===0)return toast('Chưa có mẫu nào','err');
+function wizCreate(){ if(!can('createSet'))return toast('Bạn không có quyền tạo Set','err'); if(WIZ.samples.length===0)return toast('Chưa có mẫu nào','err');
   const codes=WIZ.samples.map((x,i)=>((x.code||'').trim()||String(i+1)).toLowerCase()),dup=codes.find((c,i)=>codes.indexOf(c)!==i);
   if(dup)return toast('Trùng Tên mã hóa "'+dup+'" — mỗi mẫu cần mã khác nhau','err');
   if(dupSetName(WIZ.meta))return toast('Trùng tên Set trong ca '+WIZ.meta.shift+' ngày '+fmtDate(WIZ.meta.date),'err');
@@ -782,7 +784,7 @@ function wizCreate(){ if(WIZ.samples.length===0)return toast('Chưa có mẫu n�
     creator:AUTH.profile?.displayName||'QA',status:'open',samples:WIZ.samples.map((s,i)=>({no:i+1,code:(s.code||'').trim()||String(i+1),name:s.name,sscc:s.sscc,batch:s.batch})),scores:{},attendees:[]};
   STATE.sets.push(set); STATE.currentSetId=set.id; logAudit('Tạo Set: '+setLabel(set)+' ('+set.samples.length+' mẫu)'); save();
   WIZ={step:1,meta:{},samples:[],nameAuto:true}; $('#hdrSet').textContent=setLabel(set); toast('Đã tạo Set ✓','ok'); switchTab('tab-scoring'); }
-function closeSet(){ if(!canQC())return toast('Chỉ QC / Admin được đóng Set','err'); const s=curSet(); if(!s)return; if(closeBlockedMsg(s))return toast(closeBlockedMsg(s),'err'); confirmAsk('Đóng Set "'+s.name+'"? (vẫn tra cứu được sau)','Đóng Set',()=>{
+function closeSet(){ if(!can('closeSet'))return toast('Bạn không có quyền đóng Set','err'); const s=curSet(); if(!s)return; if(closeBlockedMsg(s))return toast(closeBlockedMsg(s),'err'); confirmAsk('Đóng Set "'+s.name+'"? (vẫn tra cứu được sau)','Đóng Set',()=>{
   s.status='closed'; STATE.currentSetId=null; $('#hdrSet').textContent='— chưa mở —'; logAudit('Đóng Set: '+s.name); save(); toast('Đã đóng Set'); renderSetup(); }); }
 
 /* ===================== [SUMMARY] F.072 ===================== */
@@ -826,13 +828,13 @@ function summaryFormHTML(set){
 function approvalCardHTML(set){ const a=set.approval;
   if(a)return `<div class="card noprint approval-box" style="border-left:4px solid var(--ok)"><span class="badge pass">✔ Đã xác nhận</span>
     <span>Giám sát nếm: <b>${esc(a.by)}</b> · ${esc(fmtDateTime(a.at))}${a.note?' · <i>'+esc(a.note)+'</i>':''}</span><span class="spacer" style="flex:1"></span>
-    <button class="btn sec sm sup-only" onclick="unapproveSet('${set.id}')">Huỷ xác nhận</button></div>`;
+    <button class="btn sec sm need-confirmSet" onclick="unapproveSet('${set.id}')">Huỷ xác nhận</button></div>`;
   const miss=set.samples.filter(sm=>calcSample(set,sm.no).pct===null).length,n=Object.keys(set.scores||{}).length;
   return `<div class="card noprint approval-box" style="border-left:4px solid var(--warn)"><span class="badge gray">Chưa xác nhận</span>
     <span class="hint">${n} phiếu đã nộp${miss?' · '+miss+' mẫu chưa có kết quả':''}${set.status==='open'?' · Set đang mở':''}</span><span class="spacer" style="flex:1"></span>
-    <button class="btn sm sup-only" onclick="approveSet('${set.id}')">✔ Xác nhận kết quả</button></div>`;
+    <button class="btn sm need-confirmSet" onclick="approveSet('${set.id}')">✔ Xác nhận kết quả</button></div>`;
 }
-function approveSet(id){ if(!canSupervise())return toast('Chỉ Giám sát nếm / Admin được xác nhận','err');const s=STATE.sets.find(x=>x.id===id);if(!s||s.approval)return;
+function approveSet(id){ if(!can('confirmSet'))return toast('Bạn không có quyền xác nhận kết quả','err');const s=STATE.sets.find(x=>x.id===id);if(!s||s.approval)return;
   const n=Object.keys(s.scores||{}).length,miss=s.samples.filter(sm=>calcSample(s,sm.no).pct===null).length;
   if(!n)return toast('Set chưa có phiếu nào để xác nhận','err');if(miss)return toast(miss+' mẫu chưa có kết quả — chưa thể xác nhận','err');
   const results=s.samples.map(sm=>calcSample(s,sm.no)),pass=results.filter(r=>r.pass).length;
@@ -841,7 +843,7 @@ function approveSet(id){ if(!canSupervise())return toast('Chỉ Giám sát nếm
     s.status='closed';if(STATE.currentSetId===id)STATE.currentSetId=id; // vẫn xem báo cáo được
     logAudit('Xác nhận kết quả Set: '+setLabel(s)+' ('+pass+'/'+s.samples.length+' Passed, '+n+' phiếu)');save();renderSummary();toast('Đã xác nhận kết quả','ok');});
 }
-function unapproveSet(id){ if(!canSupervise())return toast('Chỉ Giám sát nếm / Admin được huỷ xác nhận','err');const s=STATE.sets.find(x=>x.id===id);if(!s?.approval)return;
+function unapproveSet(id){ if(!can('confirmSet'))return toast('Bạn không có quyền huỷ xác nhận','err');const s=STATE.sets.find(x=>x.id===id);if(!s?.approval)return;
   confirmAsk('Huỷ xác nhận của '+s.approval.by+' cho Set '+setLabel(s)+'? Set sẽ mở khoá để QC/Admin chỉnh sửa (Set vẫn ở trạng thái đã đóng).','Huỷ xác nhận',()=>{
     const by=s.approval.by;delete s.approval;logAudit('Huỷ xác nhận Set: '+setLabel(s)+' (trước đó: '+by+')');save();renderSummary();toast('Đã huỷ xác nhận','ok');});
 }
@@ -887,9 +889,9 @@ function renderLookup(){
       <td>${s.status==='open'?'<span class="badge gray">đang mở</span>':'đã đóng'}</td>
       <td>${s.approval?`<span class="badge pass" title="${esc(s.approval.by)} · ${esc(fmtDateTime(s.approval.at))}">✔ Đã xác nhận</span>`:'<span class="hint">Chưa</span>'}</td>
       <td style="white-space:nowrap"><button class="btn sm sec" onclick="lookupOpen('${s.id}')">Xem</button>
-        <button class="btn sm sec qc-only" onclick="lookupEdit('${s.id}')">✎ Sửa</button>
-        ${s.status==='open'?`<button class="btn sm sec qc-only" onclick="lookupCloseSet('${s.id}')" ${closeBlockedMsg(s)?`disabled title="${esc(closeBlockedMsg(s))}"`:'title="Đóng Set nếm"'}>🔒 Đóng Set</button>`:''}
-        <button class="btn sm danger admin-only" onclick="lookupDelete('${s.id}')">Xoá</button></td></tr>`; }).join('');
+        <button class="btn sm sec need-editSet" onclick="lookupEdit('${s.id}')">✎ Sửa</button>
+        ${s.status==='open'?`<button class="btn sm sec need-closeSet" onclick="lookupCloseSet('${s.id}')" ${closeBlockedMsg(s)?`disabled title="${esc(closeBlockedMsg(s))}"`:'title="Đóng Set nếm"'}>🔒 Đóng Set</button>`:''}
+        <button class="btn sm danger need-deleteSet" onclick="lookupDelete('${s.id}')">Xoá</button></td></tr>`; }).join('');
   box.innerHTML=`<div class="card"><div class="toolbar">
       <input class="t" style="max-width:260px" placeholder="Tìm tên Set / ngày / mẫu / batch…" value="${esc(LK.q)}" oninput="LK.q=this.value;renderLookup()">
       <select class="s" style="max-width:180px" onchange="LK.type=this.value;renderLookup()">${typeOpts}</select>
@@ -941,18 +943,18 @@ function subPaint(){ const rows=filteredSubmissions(),LIMIT=500,sheets=new Set(r
     return `<tr><td style="white-space:nowrap">${esc(c[0])||'<span class="hint">—</span>'}</td><td style="white-space:nowrap">${esc(c[1])}</td><td>${esc(c[2])}</td><td>${esc(c[3])}</td><td>${esc(c[4])}</td>
       <td>${esc(c[6])}</td><td class="l">${esc(c[7])}</td><td>${esc(c[8])}</td><td>${c[9]}</td><td><b>${esc(c[10])}</b></td><td class="l">${esc(c[11])}</td><td>${esc(c[12])}</td><td>${esc(c[13])}</td>
       <td>${badge(r.sc.result)}${r.sc.editedAt?' <span class="hint" title="Sửa bởi '+esc(r.sc.editedBy||'')+' lúc '+esc(fmtTime(r.sc.editedAt))+'">✎</span>':''}</td><td class="l sub-err">${esc([c[15],c[16],c[17]].filter(Boolean).join(' · '))}</td>
-      <td class="admin-only" style="white-space:nowrap"><button class="btn sec sm" onclick="subEdit('${r.set.id}','${r.pid}',${r.sm.no})">✎ Sửa</button>
+      <td class="need-editSubmission" style="white-space:nowrap"><button class="btn sec sm" onclick="subEdit('${r.set.id}','${r.pid}',${r.sm.no})">✎ Sửa</button>
         <button class="btn danger sm" onclick="subDeleteRow('${r.set.id}','${r.pid}',${r.sm.no})" title="Xoá dòng mẫu này">Xoá</button>
         <button class="btn danger sm" onclick="subDeleteSheet('${r.set.id}','${r.pid}')" title="Xoá toàn bộ phiếu của người nếm này trong Set">Xoá phiếu</button></td></tr>`;}).join('');
   $('#subTable').innerHTML=`<div class="toolbar" style="margin-bottom:8px"><span class="hint">${rows.length} dòng mẫu · ${sheets} phiếu${rows.length>LIMIT?' · hiển thị '+LIMIT+' dòng đầu, xuất Excel để xem đủ':''}</span></div>
     <div class="tbl-wrap"><table class="grid sub-table"><thead><tr><th>Thời gian nộp</th><th>Ngày nếm</th><th>Ca</th><th>Set</th><th>Loại mẫu</th><th>Mã NV</th><th class="l">Người nếm</th><th>Bộ phận</th>
-      <th>STT</th><th>Tên mã hóa</th><th class="l">Tên mẫu</th><th>SSCC/Hour</th><th>Batch</th><th>Kết quả</th><th class="l">Lỗi / Ghi chú</th><th class="admin-only">Admin</th></tr></thead>
+      <th>STT</th><th>Tên mã hóa</th><th class="l">Tên mẫu</th><th>SSCC/Hour</th><th>Batch</th><th>Kết quả</th><th class="l">Lỗi / Ghi chú</th><th class="need-editSubmission">Sửa / Xoá</th></tr></thead>
     <tbody>${body||'<tr><td colspan="16" class="hint" style="padding:14px">Không có dữ liệu phù hợp bộ lọc</td></tr>'}</tbody></table></div>`;
 }
 /* ---- Admin: sửa / xoá dữ liệu nộp phiếu (đồng bộ Firebase như thay đổi thường; xoá hết phiếu → xoá document score) ---- */
 function subFind(setId,pid,no){const set=STATE.sets.find(s=>s.id===setId),sm=set?.samples.find(x=>x.no===no),sc=set?.scores?.[pid]?.[no];return {set,sm,sc,p:STATE.panellists.find(x=>x.id===pid)};}
 const subWho=(f,pid)=>(f.p?.name||pid)+' · '+f.set.name+' · mẫu '+sampleCode(f.sm);
-function subEdit(setId,pid,no){ if(!isAdmin())return toast('Chỉ Admin được sửa','err');const f=subFind(setId,pid,no);if(!f.sc)return;
+function subEdit(setId,pid,no){ if(!can('editSubmission'))return toast('Bạn không có quyền sửa dữ liệu nộp phiếu','err');const f=subFind(setId,pid,no);if(!f.sc)return;
   if(setLocked(f.set))return toast('Set đã được Giám sát xác nhận — cần huỷ xác nhận trước khi sửa','err');
   const cur=scRemarkValue(f.sc),opts=(list,pre)=>list.map(e=>`<option value="${pre}:${esc(e)}" ${cur===pre+':'+e?'selected':''}>${esc(e)}</option>`).join('');
   $('#acctModal').innerHTML=`<h3>Sửa dữ liệu nộp phiếu</h3><p>${esc(f.p?.name||pid)} · ${esc(setLabel(f.set))}<br>Mẫu <b>${esc(sampleCode(f.sm))}</b> — ${esc(f.sm.name)}</p>
@@ -963,7 +965,7 @@ function subEdit(setId,pid,no){ if(!isAdmin())return toast('Chỉ Admin được
     <div class="actions"><button class="btn sec" onclick="authCloseAccount()">Huỷ</button><button class="btn" onclick="subSave('${setId}','${pid}',${no})">Lưu</button></div>`;
   $('#acctOverlay').classList.add('show');
 }
-function subSave(setId,pid,no){ if(!isAdmin())return;const f=subFind(setId,pid,no);if(!f.sc)return;
+function subSave(setId,pid,no){ if(!can('editSubmission'))return;const f=subFind(setId,pid,no);if(!f.sc)return;
   const result=$('#seResult').value,remark=$('#seRemark').value,note=$('#seNote').value.trim();
   if(result!=='IN'&&!remark&&!note)return toast('Just In / Out phải ghi lỗi hoặc ghi chú','err');
   const before=RESULT_LABEL[f.sc.result]||f.sc.result;
@@ -972,12 +974,12 @@ function subSave(setId,pid,no){ if(!isAdmin())return;const f=subFind(setId,pid,n
   logAudit('Sửa dữ liệu nộp phiếu · '+subWho(f,pid)+' · '+before+' → '+RESULT_LABEL[result]);save();authCloseAccount();subPaint();toast('Đã lưu thay đổi','ok');
 }
 function subRemoveSheetIfEmpty(set,pid){ if(Object.keys(set.scores[pid]||{}).length)return;delete set.scores[pid];set.attendees=(set.attendees||[]).filter(x=>x!==pid); }
-function subDeleteRow(setId,pid,no){ if(!isAdmin())return toast('Chỉ Admin được xoá','err');const f=subFind(setId,pid,no);if(!f.sc)return;
+function subDeleteRow(setId,pid,no){ if(!can('editSubmission'))return toast('Bạn không có quyền xoá dữ liệu nộp phiếu','err');const f=subFind(setId,pid,no);if(!f.sc)return;
   if(setLocked(f.set))return toast('Set đã được Giám sát xác nhận — cần huỷ xác nhận trước khi xoá','err');
   confirmAsk('Xoá dòng dữ liệu: '+subWho(f,pid)+' ('+(RESULT_LABEL[f.sc.result]||f.sc.result)+')? Kết quả % của mẫu sẽ tính lại.','Xoá dòng',()=>{
     delete f.set.scores[pid][no];subRemoveSheetIfEmpty(f.set,pid);logAudit('Xoá dòng nộp phiếu · '+subWho(f,pid));save();subPaint();toast('Đã xoá dòng','ok');});
 }
-function subDeleteSheet(setId,pid){ if(!isAdmin())return toast('Chỉ Admin được xoá','err');const set=STATE.sets.find(s=>s.id===setId);if(!set?.scores?.[pid])return;
+function subDeleteSheet(setId,pid){ if(!can('editSubmission'))return toast('Bạn không có quyền xoá dữ liệu nộp phiếu','err');const set=STATE.sets.find(s=>s.id===setId);if(!set?.scores?.[pid])return;
   if(setLocked(set))return toast('Set đã được Giám sát xác nhận — cần huỷ xác nhận trước khi xoá','err');
   const name=STATE.panellists.find(x=>x.id===pid)?.name||pid,n=Object.keys(set.scores[pid]).length;
   confirmAsk('Xoá toàn bộ phiếu của "'+name+'" trong Set '+setLabel(set)+' ('+n+' mẫu)? Không thể hoàn tác (nên Sao lưu JSON trước).','Xoá phiếu',()=>{
@@ -988,7 +990,7 @@ function exportSubmissions(){ const rows=filteredSubmissions(); if(!rows.length)
   logAudit('Xuất dữ liệu nộp phiếu: '+rows.length+' dòng'); save(); toast('Đã xuất '+rows.length+' dòng','ok'); }
 
 /* ---- Admin: sửa / xoá Set trong Truy xuất kết quả (điểm đã nộp giữ theo STT mẫu nên không thêm/bớt mẫu ở đây) ---- */
-function lookupEdit(id){ if(!canQC())return toast('Chỉ QC / Admin được sửa Set','err');const s=STATE.sets.find(x=>x.id===id);if(!s)return;
+function lookupEdit(id){ if(!can('editSet'))return toast('Bạn không có quyền sửa Set','err');const s=STATE.sets.find(x=>x.id===id);if(!s)return;
   if(setLocked(s))return toast('Set đã được Giám sát xác nhận — cần huỷ xác nhận trước khi sửa','err');
   const types=[...new Set([...CONFIG.SAMPLE_TYPES,s.sampleType])].map(t=>`<option ${s.sampleType===t?'selected':''}>${esc(t)}</option>`).join('');
   const rows=s.samples.map(sm=>`<tr><td>${sm.no}</td><td><input class="t" data-k="code" data-no="${sm.no}" value="${esc(sampleCode(sm))}" style="font-weight:700;text-align:center"></td>
@@ -1005,25 +1007,26 @@ function lookupEdit(id){ if(!canQC())return toast('Chỉ QC / Admin được s�
     <div class="actions"><button class="btn sec" onclick="authCloseAccount()">Huỷ</button><button class="btn" onclick="lookupSave('${id}')">Lưu</button></div>`;
   $('#acctOverlay').classList.add('show');
 }
-function lookupSave(id){ if(!canQC())return;const s=STATE.sets.find(x=>x.id===id);if(!s)return;
+function lookupSave(id){ if(!can('editSet'))return;const s=STATE.sets.find(x=>x.id===id);if(!s)return;
   const m={name:$('#leName').value.trim(),date:dateVal('leDate'),shift:$('#leShift').value,sampleType:$('#leType').value,status:$('#leStatus').value};
   if(!m.name)return toast('Nhập tên Set','err');if(!m.date)return toast('Ngày không hợp lệ — nhập dd/mm/yyyy','err');
   if(STATE.sets.some(x=>x.id!==id&&x.date===m.date&&x.shift===m.shift&&x.name.toLowerCase()===m.name.toLowerCase()))return toast('Trùng tên Set trong ca '+m.shift+' ngày '+fmtDate(m.date),'err');
   const edits={};document.querySelectorAll('#leSamples input').forEach(i=>{(edits[i.dataset.no]=edits[i.dataset.no]||{})[i.dataset.k]=i.value.trim();});
   if(s.samples.some(sm=>!edits[sm.no].name))return toast('Tên mẫu không được để trống','err');
   const codes=s.samples.map(sm=>(edits[sm.no].code||String(sm.no)).toLowerCase()),dup=codes.find((c,i)=>codes.indexOf(c)!==i);if(dup)return toast('Trùng Tên mã hóa "'+dup+'"','err');
+  if(s.status!==m.status&&!can('closeSet'))return toast('Bạn không có quyền đổi trạng thái đóng/mở Set','err');
   if(s.status==='open'&&m.status==='closed'&&closeBlockedMsg(s))return toast(closeBlockedMsg(s),'err');
   const before=setLabel(s);Object.assign(s,m);s.samples.forEach(sm=>{const e=edits[sm.no];sm.code=e.code||String(sm.no);sm.name=e.name;sm.sscc=e.sscc;sm.batch=e.batch;});
   if(s.status!=='open'&&STATE.currentSetId===id){STATE.currentSetId=null;}
   logAudit('Sửa Set: '+before+(before!==setLabel(s)?' → '+setLabel(s):''));save();authCloseAccount();$('#hdrSet').textContent=setLabel(curSet());renderLookup();toast('Đã lưu Set','ok');
 }
-function lookupCloseSet(id){ if(!canQC())return toast('Chỉ QC / Admin được đóng Set','err');const s=STATE.sets.find(x=>x.id===id);if(!s||s.status!=='open')return;
+function lookupCloseSet(id){ if(!can('closeSet'))return toast('Bạn không có quyền đóng Set','err');const s=STATE.sets.find(x=>x.id===id);if(!s||s.status!=='open')return;
   const blocked=closeBlockedMsg(s);if(blocked)return toast(blocked,'err');const n=setTasterCount(s);
   confirmAsk('Đóng Set "'+setLabel(s)+'"? Đã có '+n+' người nếm. Sau khi đóng, người nếm không chọn được Set này để nộp phiếu (vẫn tra cứu/báo cáo được; mở lại bằng ✎ Sửa → Trạng thái).','Đóng Set',()=>{
     s.status='closed';if(STATE.currentSetId===id){STATE.currentSetId=null;$('#hdrSet').textContent=setLabel(curSet());}
     logAudit('Đóng Set: '+setLabel(s)+' ('+n+' người nếm)');save();renderLookup();toast('Đã đóng Set','ok');});
 }
-function lookupDelete(id){ if(!isAdmin())return toast('Chỉ Admin được xoá','err');const s=STATE.sets.find(x=>x.id===id);if(!s)return;
+function lookupDelete(id){ if(!can('deleteSet'))return toast('Bạn không có quyền xoá Set','err');const s=STATE.sets.find(x=>x.id===id);if(!s)return;
   const n=Object.keys(s.scores||{}).length;
   confirmAsk('Xoá Set "'+setLabel(s)+'" cùng '+s.samples.length+' mẫu và '+n+' phiếu đã nộp? Dữ liệu cũng bị xoá trên Firebase, không thể hoàn tác (nên Sao lưu JSON trước).','Xoá Set',()=>{
     STATE.sets=STATE.sets.filter(x=>x.id!==id);if(STATE.currentSetId===id)STATE.currentSetId=null;
@@ -1035,8 +1038,8 @@ function lookupOpen(id){ STATE.currentSetId=id; $('#hdrSet').textContent=setLabe
 function renderPanellists(){
   const box=$('#panellistBody');
   const rows=STATE.panellists.map(p=>`<tr><td>${esc(p.code||'')}</td><td class="l">${esc(p.name)}</td><td>${esc(p.func||'')}</td><td>${esc(p.dept)}</td>
-    <td><button class="btn sm danger" onclick="delPanel('${p.id}')">Xoá</button></td></tr>`).join('');
-  box.innerHTML=`<div class="card"><h3>Thêm Panellist</h3>
+    <td><button class="btn sm danger need-editMaster" onclick="delPanel('${p.id}')">Xoá</button></td></tr>`).join('');
+  box.innerHTML=`<div class="card need-editMaster"><h3>Thêm Panellist</h3>
     <div class="row c3"><div><label class="f">Tên</label><input class="t" id="pName" placeholder="Họ tên"></div>
       <div><label class="f">Bộ phận</label><input class="t" id="pDept" placeholder="QA / Production / R&D"></div>
       <div style="align-self:end"><button class="btn" onclick="addPanel()">+ Thêm</button></div></div>
@@ -1047,10 +1050,10 @@ function renderPanellists(){
       <div class="tbl-wrap"><table class="grid"><thead><tr><th>Mã NV</th><th class="l">Tên</th><th>Chức năng</th><th>Bộ phận</th><th style="width:80px"></th></tr></thead>
       <tbody>${rows||'<tr><td colspan="5" class="hint" style="padding:14px">Chưa có panellist</td></tr>'}</tbody></table></div></div>`;
 }
-function addPanel(){ const name=$('#pName').value.trim(); if(!name)return toast('Nhập tên','err');
+function addPanel(){ if(!can('editMaster'))return toast('Bạn không có quyền sửa Master Data','err'); const name=$('#pName').value.trim(); if(!name)return toast('Nhập tên','err');
   if(STATE.panellists.some(p=>p.name.toLowerCase()===name.toLowerCase()))return toast('Panellist đã tồn tại','err');
   STATE.panellists.push({id:uid('pnl'),name,dept:$('#pDept').value.trim()}); logAudit('Thêm panellist: '+name); save(); toast('Đã thêm','ok'); renderPanellists(); }
-function delPanel(id){ const p=STATE.panellists.find(x=>x.id===id);
+function delPanel(id){ if(!can('editMaster'))return toast('Bạn không có quyền sửa Master Data','err'); const p=STATE.panellists.find(x=>x.id===id);
   confirmAsk('Xoá panellist "'+(p?.name||'')+'"?','Xoá',()=>{ STATE.panellists=STATE.panellists.filter(x=>x.id!==id); logAudit('Xoá panellist: '+(p?.name||id)); save(); renderPanellists(); }); }
 
 function downloadPanellistTemplate(){ downloadFile('iLD_Panellist_Template.xls',itemsWorkbook([['Employee code','Full name','Function','Dept.'],['ILD0000','Nguyễn Văn A','QA','QA']]),'application/vnd.ms-excel'); }
@@ -1062,7 +1065,7 @@ function normalizePanellistRows(rows){
   const ic=idx(['employee','mã nv','ma nv','code']),inn=idx(['full name','họ tên','ho ten','tên','name']),ifn=idx(['function','chức năng','chuc nang']),id=idx(['dept','bộ phận','bo phan']);
   return clean.slice(header+1).map(r=>({code:ic>=0?r[ic]||'':'',name:(r[inn]||'').replace(/\s+/g,' '),func:ifn>=0?r[ifn]||'':'',dept:id>=0?r[id]||'':''})).filter(x=>x.name);
 }
-document.getElementById('filePanellists').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn','err');
+document.getElementById('filePanellists').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(!can('editMaster'))return toast('Bạn không có quyền sửa Master Data','err');if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn','err');
   try{let rows;if(f.name.toLowerCase().endsWith('.xlsx'))rows=await xlsxRows(await f.arrayBuffer());else{const text=await f.text();rows=f.name.toLowerCase().endsWith('.csv')?parseCSV(text):xmlRows(text);}
     const data=normalizePanellistRows(rows);if(!data.length)throw new Error('Không có dòng dữ liệu hợp lệ');let added=0,updated=0,same=0;
     data.forEach(x=>{const lc=x.name.toLowerCase(),p=STATE.panellists.find(y=>(x.code&&y.code&&y.code.toLowerCase()===x.code.toLowerCase())||(!(x.code&&y.code)&&y.name.toLowerCase()===lc));
@@ -1089,29 +1092,29 @@ function renderProducts(){
   if(LOT_UI.sortKey)list.sort((a,b)=>(a[LOT_UI.sortKey]||'').localeCompare(b[LOT_UI.sortKey]||'','vi',{numeric:true})*LOT_UI.sortDir);
   const arrow=k=>LOT_UI.sortKey===k?(LOT_UI.sortDir>0?'▲':'▼'):'↕';
   const rows=list.map(x=>`<tr>${LOT_KEYS.map(k=>`<td><input class="t edit-cell" value="${esc(x[k])}" onchange="editLot('${x.id}','${k}',this.value)"></td>`).join('')}
-    <td><button class="btn sm danger" onclick="delLot('${x.id}')" title="Xoá dòng">🗑️ Xoá</button></td></tr>`).join('');
+    <td><button class="btn sm danger need-editMaster" onclick="delLot('${x.id}')" title="Xoá dòng">🗑️ Xoá</button></td></tr>`).join('');
   const ph={product:'VD: Freeze-dried Coffee',recipe:'VD: 405',po:'VD: PO-2509-01',batch:'VD: L2509A'};
   box.innerHTML=`
     <p class="hint" style="margin:-8px 0 14px">Bảng liên tục Sản phẩm · Recipe · PO · Batch — ${STATE.lots.length} dòng. Mỗi dòng là một bộ liên kết; lọc/sắp xếp theo từng cột, sửa trực tiếp hoặc thêm mới ở hàng đầu bảng.</p>
     <div class="card"><div class="toolbar"><h3 style="margin:0">Xuất template / Nhập / Xuất Excel</h3><span class="spacer"></span>
       <button class="btn sec sm" onclick="downloadLotsTemplate()">📄 Tải template</button>
       <button class="btn sec sm" onclick="exportLotsExcel()" ${STATE.lots.length?'':'disabled'}>📊 Xuất danh sách</button>
-      <button class="btn sm" onclick="document.getElementById('fileLots').click()">📥 Nhập từ Excel</button></div>
+      <button class="btn sm need-editMaster" onclick="document.getElementById('fileLots').click()">📥 Nhập từ Excel</button></div>
       <p class="hint">Hỗ trợ .xlsx, .xls và .csv với các cột <b>Sản phẩm · Recipe · PO · Batch</b>. Import thêm dòng mới, bỏ qua dòng trùng hoàn toàn.</p></div>
     <div class="card"><div class="toolbar"><h3 style="margin:0">Danh sách Sản phẩm · Recipe · PO · Batch</h3><span class="spacer"></span><span class="badge gray">Hiển thị ${list.length}/${STATE.lots.length}</span></div>
-      <div class="tbl-wrap"><table class="grid item-table lot-table"><thead>
+      <div class="tbl-wrap master-edit"><table class="grid item-table lot-table"><thead>
         <tr>${LOT_KEYS.map((k,i)=>`<th class="l ${LOT_UI.sortKey===k?'sorted':''}" onclick="lotSort('${k}')">${LOT_HEAD[i]} <span class="sort-arrow">${arrow(k)}</span></th>`).join('')}<th></th></tr>
         <tr class="filter-row">${LOT_KEYS.map((k,i)=>`<th><input class="t" id="lotFilter_${k}" placeholder="Lọc ${LOT_HEAD[i]}…" value="${esc(f[k])}" oninput="lotFilter('${k}',this.value,this.selectionStart)"></th>`).join('')}<th></th></tr></thead>
-        <tbody><tr class="add-row">${LOT_KEYS.map(k=>`<td><input class="t" id="lotNew_${k}" placeholder="${ph[k]}" onkeydown="if(event.key==='Enter')addLot()"></td>`).join('')}
+        <tbody><tr class="add-row need-editMaster">${LOT_KEYS.map(k=>`<td><input class="t" id="lotNew_${k}" placeholder="${ph[k]}" onkeydown="if(event.key==='Enter')addLot()"></td>`).join('')}
           <td><button class="btn sm" onclick="addLot()">＋ Thêm</button></td></tr>
           ${rows||'<tr><td colspan="5" class="hint" style="padding:16px">Chưa có dòng nào khớp bộ lọc.</td></tr>'}</tbody></table></div></div>`;
 }
 const lotSame=(a,b)=>LOT_KEYS.every(k=>(a[k]||'').trim().toLowerCase()===(b[k]||'').trim().toLowerCase());
-function addLot(){ const x={};LOT_KEYS.forEach(k=>x[k]=$('#lotNew_'+k).value.trim());
+function addLot(){ if(!can('editMaster'))return toast('Bạn không có quyền sửa Master Data','err'); const x={};LOT_KEYS.forEach(k=>x[k]=$('#lotNew_'+k).value.trim());
   if(!LOT_KEYS.some(k=>x[k]))return toast('Nhập ít nhất một trường','err');if(STATE.lots.some(y=>lotSame(x,y)))return toast('Dòng này đã có','err');
   STATE.lots.unshift({id:uid('lot'),...x});logAudit('Thêm SP/Recipe/PO/Batch: '+LOT_KEYS.map(k=>x[k]||'—').join(' · '));save();renderProducts();setTimeout(()=>$('#lotNew_product')?.focus(),30); }
-function editLot(id,k,v){ const x=STATE.lots.find(y=>y.id===id);if(!x||!LOT_KEYS.includes(k))return;x[k]=v.trim();logAudit('Sửa SP/Recipe/PO/Batch: '+LOT_KEYS.map(k=>x[k]||'—').join(' · '));save(); }
-function delLot(id){ const x=STATE.lots.find(y=>y.id===id);if(!x)return;
+function editLot(id,k,v){ if(!can('editMaster'))return renderProducts(); const x=STATE.lots.find(y=>y.id===id);if(!x||!LOT_KEYS.includes(k))return;x[k]=v.trim();logAudit('Sửa SP/Recipe/PO/Batch: '+LOT_KEYS.map(k=>x[k]||'—').join(' · '));save(); }
+function delLot(id){ if(!can('editMaster'))return toast('Bạn không có quyền sửa Master Data','err'); const x=STATE.lots.find(y=>y.id===id);if(!x)return;
   confirmAsk('Xoá dòng "'+LOT_KEYS.map(k=>x[k]||'—').join(' · ')+'"?','Xoá',()=>{STATE.lots=STATE.lots.filter(y=>y.id!==id);logAudit('Xoá SP/Recipe/PO/Batch: '+LOT_KEYS.map(k=>x[k]||'—').join(' · '));save();renderProducts();}); }
 function downloadLotsTemplate(){ downloadFile('iLD_SP_Recipe_PO_Batch_Template.xls',itemsWorkbook([LOT_HEAD,['Freeze-dried Coffee','405','PO-2509-01','L2509A'],['Spray-dried Coffee','406','PO-2509-02','L2509B']],'Lots'),'application/vnd.ms-excel'); }
 function exportLotsExcel(){ downloadFile('iLD_SP_Recipe_PO_Batch_'+todayStr()+'.xls',itemsWorkbook([LOT_HEAD,...STATE.lots.map(x=>LOT_KEYS.map(k=>x[k]||''))],'Lots'),'application/vnd.ms-excel');
@@ -1122,7 +1125,7 @@ function normalizeLotRows(rows){ const clean=rows.map(r=>[...r].map(v=>(v??'').t
   const h=clean[hi].map(x=>x.toLowerCase()),idx={};LOT_KEYS.forEach(k=>idx[k]=h.findIndex(is[k]));
   return clean.slice(hi+1).map(r=>{const x={};LOT_KEYS.forEach(k=>x[k]=idx[k]>=0?(r[idx[k]]||''):'');return x;}).filter(x=>LOT_KEYS.some(k=>x[k]));
 }
-document.getElementById('fileLots').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn','err');
+document.getElementById('fileLots').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(!can('editMaster'))return toast('Bạn không có quyền sửa Master Data','err');if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn','err');
   try{const lower=f.name.toLowerCase();let rows;if(lower.endsWith('.xlsx'))rows=await xlsxRows(await f.arrayBuffer());else{const text=await f.text();rows=lower.endsWith('.csv')?parseCSV(text):xmlRows(text);}
     const data=normalizeLotRows(rows);if(!data.length)throw new Error('Không có dòng dữ liệu hợp lệ');let added=0,skipped=0;
     data.forEach(x=>{if(STATE.lots.some(y=>lotSame(x,y))){skipped++;return;}STATE.lots.push({id:uid('lot'),...x});added++;});
@@ -1134,7 +1137,7 @@ let ITEM_UI={filters:{group:'',item:'',name:'',recipe:''},sortKey:'item',sortDir
 const itemType=v=>/^rw$/i.test((v||'').trim())?'RW':(/^fgs?$/i.test((v||'').trim())?'FGs':'Other');
 function itemSort(key){if(ITEM_UI.sortKey===key)ITEM_UI.sortDir*=-1;else{ITEM_UI.sortKey=key;ITEM_UI.sortDir=1;}renderItems();}
 function itemFilter(key,value,pos){ITEM_UI.filters[key]=value;clearTimeout(ITEM_UI.filterTimer);ITEM_UI.filterTimer=setTimeout(()=>{renderItems();requestAnimationFrame(()=>{const el=$('#itemFilter_'+key);if(el){el.focus();if(el.setSelectionRange)el.setSelectionRange(pos??value.length,pos??value.length);}});},180);}
-function editItem(id,key,value){const x=STATE.itemCodes.find(v=>v.id===id);if(!x||!['group','item','name','recipe'].includes(key))return;x[key]=value.trim();logAudit('Sửa Items Code: '+(x.item||x.name));save();}
+function editItem(id,key,value){if(!can('editMaster'))return renderItems();const x=STATE.itemCodes.find(v=>v.id===id);if(!x||!['group','item','name','recipe'].includes(key))return;x[key]=value.trim();logAudit('Sửa Items Code: '+(x.item||x.name));save();}
 function renderItems(){
   const box=$('#itemsBody'),f=ITEM_UI.filters;
   const includes=(v,q)=>(v||'').toLowerCase().includes((q||'').trim().toLowerCase());
@@ -1146,16 +1149,16 @@ function renderItems(){
     <td><input class="t edit-cell" value="${esc(x.item)}" onchange="editItem('${x.id}','item',this.value)"></td>
     <td><input class="t edit-cell" value="${esc(x.name)}" onchange="editItem('${x.id}','name',this.value)"></td>
     <td><input class="t edit-cell" value="${esc(x.recipe)}" onchange="editItem('${x.id}','recipe',this.value)"></td>
-    <td><button class="btn sm danger" onclick="delItem('${x.id}')" title="Xoá dòng">🗑️ Xoá</button></td></tr>`).join('');
+    <td><button class="btn sm danger need-editMaster" onclick="delItem('${x.id}')" title="Xoá dòng">🗑️ Xoá</button></td></tr>`).join('');
   box.innerHTML=`
     <p class="hint" style="margin:-8px 0 14px">Bảng liên đới Items Code, tên sản phẩm và Recipe — ${STATE.itemCodes.length} dòng. Lọc/sắp xếp theo từng cột, sửa trực tiếp hoặc thêm mới ở hàng đầu bảng.</p>
     <div class="card"><div class="toolbar"><h3 style="margin:0">Xuất template / Nhập / Xuất Excel</h3><span class="spacer"></span>
       <button class="btn sec sm" onclick="downloadItemsTemplate()">📄 Tải template</button>
       <button class="btn sec sm" onclick="exportItemsExcel()" ${STATE.itemCodes.length?'':'disabled'}>📊 Xuất danh sách</button>
-      <button class="btn sm" onclick="document.getElementById('fileItems').click()">📥 Nhập từ Excel</button></div>
+      <button class="btn sm need-editMaster" onclick="document.getElementById('fileItems').click()">📥 Nhập từ Excel</button></div>
       <p class="hint">Hỗ trợ .xlsx, .xls và .csv. Import thêm dòng mới, bỏ qua dòng trùng; file hai khối FGs CODE / RW CODE được nhận diện tự động.</p></div>
     <div class="card"><div class="toolbar"><h3 style="margin:0">Danh sách Items Code</h3><span class="spacer"></span><span class="badge gray">Hiển thị ${list.length}/${STATE.itemCodes.length}</span></div>
-      <div class="tbl-wrap"><table class="grid item-table"><thead>
+      <div class="tbl-wrap master-edit"><table class="grid item-table"><thead>
         <tr><th class="${ITEM_UI.sortKey==='group'?'sorted':''}" onclick="itemSort('group')">Loại (FGs/RW) <span class="sort-arrow">${arrow('group')}</span></th>
           <th class="l ${ITEM_UI.sortKey==='item'?'sorted':''}" onclick="itemSort('item')">Item Code <span class="sort-arrow">${arrow('item')}</span></th>
           <th class="l ${ITEM_UI.sortKey==='name'?'sorted':''}" onclick="itemSort('name')">Tên sản phẩm <span class="sort-arrow">${arrow('name')}</span></th>
@@ -1164,7 +1167,7 @@ function renderItems(){
           <th><input class="t" id="itemFilter_item" placeholder="Lọc mã…" value="${esc(f.item)}" oninput="itemFilter('item',this.value,this.selectionStart)"></th>
           <th><input class="t" id="itemFilter_name" placeholder="Lọc sản phẩm…" value="${esc(f.name)}" oninput="itemFilter('name',this.value,this.selectionStart)"></th>
           <th><input class="t" id="itemFilter_recipe" placeholder="Lọc Recipe…" value="${esc(f.recipe)}" oninput="itemFilter('recipe',this.value,this.selectionStart)"></th><th></th></tr></thead>
-        <tbody><tr class="add-row"><td><select class="s" id="itGroup"><option>FGs</option><option>RW</option></select></td>
+        <tbody><tr class="add-row need-editMaster"><td><select class="s" id="itGroup"><option>FGs</option><option>RW</option></select></td>
           <td><input class="t" id="itCode" placeholder="VD: 10100001"></td><td><input class="t" id="itName" placeholder="Tên sản phẩm"></td>
           <td><input class="t" id="itRecipe" placeholder="VD: 405"></td><td><button class="btn sm" onclick="addItem()">＋ Thêm</button></td></tr>
           ${rows||'<tr><td colspan="5" class="hint" style="padding:16px">Không có Items Code nào khớp bộ lọc.</td></tr>'}</tbody></table></div></div>`;
@@ -1172,13 +1175,13 @@ function renderItems(){
 function itemExactExists(x){ return STATE.itemCodes.some(y=>
   itemType(y.group)===itemType(x.group)&&y.item.toLowerCase()===x.item.toLowerCase()&&
   y.name.toLowerCase()===x.name.toLowerCase()&&y.recipe.toLowerCase()===x.recipe.toLowerCase()); }
-function addItem(){
+function addItem(){ if(!can('editMaster'))return toast('Bạn không có quyền sửa Master Data','err');
   const x={group:$('#itGroup').value.trim(),item:$('#itCode').value.trim(),name:$('#itName').value.trim(),recipe:$('#itRecipe').value.trim()};
   if(!x.item||!x.name||!x.recipe)return toast('Nhập đủ Items Code, tên sản phẩm và Recipe','err');
   if(itemExactExists(x))return toast('Liên kết này đã tồn tại','err');
   STATE.itemCodes.push({id:uid('itm'),...x});logAudit('Thêm Items Code: '+x.item);save();renderItems();toast('Đã thêm Items Code','ok');
 }
-function delItem(id){ const x=STATE.itemCodes.find(v=>v.id===id);if(!x)return;
+function delItem(id){ if(!can('editMaster'))return toast('Bạn không có quyền sửa Master Data','err'); const x=STATE.itemCodes.find(v=>v.id===id);if(!x)return;
   confirmAsk('Xoá liên kết Items Code "'+x.item+'"?','Xoá',()=>{STATE.itemCodes=STATE.itemCodes.filter(v=>v.id!==id);logAudit('Xoá Items Code: '+x.item);save();renderItems();}); }
 function xmlCell(v){return `<Cell><Data ss:Type="String">${(v??'').toString().replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</Data></Cell>`;}
 function itemsWorkbook(rows,sheet='Items Code'){
@@ -1227,7 +1230,7 @@ function normalizeItemRows(rows){
   const idx=(terms,fallback)=>{const i=h.findIndex(x=>terms.some(t=>x.includes(t)));return i>=0?i:fallback;},ig=idx(['group','type','nhóm','nhom','loại','loai'],0),ii=idx(['items code','item code','item'],1),inn=idx(['product name','tên sản phẩm','ten san pham','name'],2),ir=idx(['recipe'],3);
   clean.slice(header+1).forEach(r=>{const x={group:itemType(r[ig]),item:r[ii]||'',name:r[inn]||'',recipe:r[ir]||''};if(x.item&&x.name&&x.recipe)out.push(x);});return out;
 }
-document.getElementById('fileItems').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn','err');
+document.getElementById('fileItems').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(!can('editMaster'))return toast('Bạn không có quyền sửa Master Data','err');if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn','err');
   try{let rows;if(f.name.toLowerCase().endsWith('.xlsx'))rows=await xlsxRows(await f.arrayBuffer());else{const text=await f.text();rows=f.name.toLowerCase().endsWith('.csv')?parseCSV(text):xmlRows(text);}
     const data=normalizeItemRows(rows);if(!data.length)throw new Error('Không có dòng dữ liệu hợp lệ');let added=0,skipped=0;data.forEach(x=>{if(itemExactExists(x)){skipped++;return;}STATE.itemCodes.push({id:uid('itm'),...x});added++;});
     logAudit('Import Items Code: +'+added+' dòng, bỏ qua '+skipped);save();renderItems();toast('Đã nhập '+added+' dòng; bỏ qua '+skipped+' dòng trùng','ok');
@@ -1256,6 +1259,25 @@ function exportSetSamples(){ if(!WIZ.samples.length)return toast('Chưa có mẫ
   downloadFile('iLD_SetSamples_'+(WIZ.meta.date||todayStr())+'_'+(WIZ.meta.shift||'')+'_'+(WIZ.meta.name||'Set').replace(/\s+/g,'_')+'.xls',
     itemsWorkbook([SET_SAMPLE_HEAD,...WIZ.samples.map((x,i)=>[(x.code||'').trim()||String(i+1),x.name,x.sscc||'',x.batch||''])],'Samples'),'application/vnd.ms-excel');
   toast('Đã xuất '+WIZ.samples.length+' mẫu ra Excel','ok'); }
+/* Nhập mẫu từ file xuất SAP (Selection · ITEMCODE · ITEMNAME · BATCH · SSCC · QTY · DOCDATE · DOCTIME …) — ánh xạ theo TÊN CỘT:
+   Tên mã hóa = số thứ tự tự đánh · Tên mẫu = ITEMNAME · SSCC/Hour = SSCC · Batch = BATCH.
+   Nếu cột Selection có dòng "Checked" thì chỉ nhập các dòng đó; bỏ qua SSCC đã có trong danh sách. */
+document.getElementById('fileSapSamples').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f)return;
+  if(f.size>CONFIG.MAX_IMPORT_MB*1048576)return toast('File quá lớn','err');
+  try{ const lower=f.name.toLowerCase();let rows;
+    if(lower.endsWith('.xlsx'))rows=await xlsxRows(await f.arrayBuffer());else{const text=await f.text();rows=lower.endsWith('.csv')?parseCSV(text):xmlRows(text);}
+    rows=rows.map(r=>[...r].map(v=>(v??'').toString().trim())).filter(r=>r.some(Boolean));
+    const hi=rows.findIndex(r=>{const h=r.map(x=>x.toUpperCase());return h.includes('ITEMNAME')&&(h.includes('SSCC')||h.includes('BATCH'));});
+    if(hi<0)throw new Error('Không đúng template SAP — cần các cột ITEMNAME, BATCH, SSCC');
+    const h=rows[hi].map(x=>x.toUpperCase()),col=k=>h.indexOf(k),iName=col('ITEMNAME'),iBatch=col('BATCH'),iSscc=col('SSCC'),iSel=col('SELECTION');
+    let data=rows.slice(hi+1).filter(r=>r[iName]);
+    const checked=iSel>=0?data.filter(r=>/^checked$/i.test(r[iSel]||'')):[];if(checked.length)data=checked;
+    const have=new Set(WIZ.samples.map(x=>(x.sscc||'').trim()).filter(Boolean));let n=0,dup=0;
+    data.forEach(r=>{const sscc=iSscc>=0?(r[iSscc]||''):'';if(sscc&&have.has(sscc)){dup++;return;}have.add(sscc);
+      WIZ.samples.push({code:wizNextCode(),name:r[iName],sscc,batch:iBatch>=0?(r[iBatch]||''):''});n++;});
+    if(!n)throw new Error(dup?'Tất cả SSCC đã có trong danh sách':'Không có dòng dữ liệu hợp lệ');
+    renderSetup(); toast('Đã nạp '+n+' mẫu từ SAP'+(checked.length?' (dòng Checked)':'')+(dup?' · bỏ qua '+dup+' SSCC trùng':''),'ok');
+  }catch(err){ toast('Nhập SAP lỗi: '+err.message,'err'); } });
 /* Excel lưu giờ dạng phân số của ngày (0.375 = 09:00) → đổi lại HH:MM */
 function excelTime(v){ v=(v??'').toString().trim(); const n=Number(v);
   if(v&&!isNaN(n)&&n>0&&n<1){const m=Math.round(n*1440);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
@@ -1579,6 +1601,7 @@ async function firebaseInit(){try{await acquireEditorLock();const [appM,authM,fs
       if(profile.error){const msg=profile.error;await authM.signOut(CLOUD.auth);AUTH.profile=null;authApply();$('#gateErr').textContent=msg;toast(msg,'err');return;}}
     AUTH.profile=profile;if(profile&&!profile.fromCache)authCacheSet(profile);
     CLOUD.user=user||null;CLOUD.loading=false;CLOUD.error='';clearInterval(CLOUD.tokenTimer);
+    if(CLOUD.user)permWatch();else{CLOUD.permUnsub?.();CLOUD.permUnsub=null;}
     if(CLOUD.user){CLOUD.tokenTimer=setInterval(()=>CLOUD.user?.getIdToken(true).catch(()=>{}),30*60*1000);
       if(CLOUD.auto){if(!Object.keys(CLOUD.sync.bases).length)cloudFirstSync();else{cloudStartListener();cloudQueuePush();}}}else cloudStopListener();
     authApply();});
@@ -1604,6 +1627,8 @@ async function cloudFlushOutbox(){if(!CLOUD.user||!navigator.onLine||CLOUD.apply
     catch(e){if(e.message==='CONFLICT'){const merged=cloudTryMerge(item,e);
         if(merged){item.data=merged;item.baseRevision=e.remoteRev;item.mergeCount=(item.mergeCount||0)+1;CLOUD.mergedAny=true;cloudSaveSync();continue;}
         CLOUD.sync.conflicts.push({key:item.key,local:item.data,remote:e.remote||null,remoteRevision:e.remoteRev||0,at:new Date().toISOString()});CLOUD.sync.outbox.shift();cloudSaveSync();toast('Có xung đột dữ liệu: '+item.key,'err');break;}
+      if(e.code==='permission-denied'){CLOUD.sync.outbox.shift();CLOUD.pendingRemote=true;cloudSaveSync();
+        toast('Không có quyền ghi thay đổi này lên Firebase ('+item.key.split(':')[0]+') — đã bỏ, dùng lại dữ liệu trên Firebase','err');continue;}
       item.retryCount=(item.retryCount||0)+1;cloudSaveSync();const delay=Math.min(60000,2000*Math.pow(2,item.retryCount));CLOUD.retryTimer=setTimeout(cloudFlushOutbox,delay);CLOUD.error=e.message;break;}}
   CLOUD.flushing=false;CLOUD.localDirty=false;CLOUD.lastSync=new Date().toLocaleTimeString('vi-VN');cloudRefreshSettings();
   if(CLOUD.mergedAny&&!CLOUD.sync.outbox.length){CLOUD.mergedAny=false;cloudQueuePush();} // gửi nốt thay đổi phát sinh trong lúc gộp
@@ -1660,8 +1685,24 @@ const ROLE_LABEL={user:'User',qc:'QC · Quản lý Set',supervisor:'Giám sát n
 const ROLE_ICON={user:'👤',qc:'🧪',supervisor:'✅',admin:'🛡'};
 const ROLE_BADGE={user:'gray',qc:'pass',supervisor:'pass',admin:'fail'};
 function isAdmin(){return AUTH.profile?.role==='admin';}
-function hasRole(...r){const role=AUTH.profile?.role;return role==='admin'||r.includes(role);}
-const canQC=()=>hasRole('qc'), canSupervise=()=>hasRole('supervisor');
+/* ---- Ma trận phân quyền (Admin tích chọn ở tab Người dùng) · lưu Firestore ild_sensory_v2/permissions, cache LocalStorage ---- */
+const PERM_DEFS=[
+  ['createSet','Tạo Set nếm','Thêm / sửa / xoá mẫu khi tạo Set (tab Tạo Set)'],
+  ['editSet','Sửa Set đã tạo','Sửa tên, ngày, ca, mẫu của Set (Tra cứu → ✎ Sửa)'],
+  ['closeSet','Đóng Set nếm','Đóng Set khi đủ người nếm (Tra cứu, Tạo Set)'],
+  ['confirmSet','Xác nhận kết quả Set','Giám sát xác nhận / huỷ xác nhận (Báo cáo)'],
+  ['deleteSet','Xoá Set nếm','Xoá Set cùng toàn bộ phiếu đã nộp'],
+  ['editSubmission','Sửa / xoá dữ liệu nộp phiếu','Tab Dữ liệu nộp phiếu'],
+  ['editMaster','Sửa Master Data','Panellist · SP·Recipe·PO·Batch · Items Code (thêm / sửa / xoá / nhập Excel)']];
+const PERM_ROLES=['user','qc','supervisor'];
+const PERM_DEFAULT={user:{createSet:true,editMaster:true},qc:{createSet:true,editSet:true,closeSet:true,editMaster:true},supervisor:{createSet:true,confirmSet:true,editMaster:true}};
+const PERM_CACHE_KEY='ild_sensory_perms';
+const permNormalize=m=>Object.fromEntries(PERM_ROLES.map(r=>[r,Object.fromEntries(PERM_DEFS.map(([k])=>[k,!!(m?.[r]?.[k])]))]));
+let PERMS=(()=>{try{const c=JSON.parse(localStorage.getItem(PERM_CACHE_KEY)||'null');if(c)return permNormalize(c);}catch{}return permNormalize(PERM_DEFAULT);})();
+function can(perm){const r=AUTH.profile?.role;if(!r)return false;return r==='admin'||!!PERMS[r]?.[perm];}
+function permApply(m){PERMS=permNormalize(m);try{localStorage.setItem(PERM_CACHE_KEY,JSON.stringify(PERMS));}catch{}if(AUTH.profile)authApply();}
+document.head.insertAdjacentHTML('beforeend','<style>'+PERM_DEFS.map(([k])=>`body:not(.perm-${k}) .need-${k}{display:none!important}`).join('')+
+  'body:not(.perm-editMaster) .master-edit .edit-cell{pointer-events:none;background:transparent}</style>');
 const setLocked=s=>!!s?.approval;
 /* Đóng Set chỉ khi đủ số người nếm tiêu chuẩn (CONFIG.MIN_PANELLIST) */
 const setTasterCount=s=>Object.keys(s?.scores||{}).length;
@@ -1682,11 +1723,11 @@ function authErrMsg(e){if((e.code||'').startsWith('auth/requests-from-referer'))
   'auth/user-disabled':'Tài khoản đã bị vô hiệu hoá','auth/weak-password':'Mật khẩu tối thiểu 6 ký tự','auth/email-already-in-use':'Tên đăng nhập đã tồn tại',
   'auth/operation-not-allowed':'Chưa bật Email/Password trong Firebase Authentication','permission-denied':'Không có quyền (kiểm tra Firestore Rules)'}[e.code])||e.message;}
 function authApply(){ const p=AUTH.profile,admin=isAdmin();
-  document.body.classList.toggle('is-admin',admin);document.body.classList.toggle('can-qc',!!p&&canQC());document.body.classList.toggle('can-sup',!!p&&canSupervise());
+  document.body.classList.toggle('is-admin',admin);PERM_DEFS.forEach(([k])=>document.body.classList.toggle('perm-'+k,!!p&&can(k)));
   $('#acctLabel').textContent=p?(ROLE_ICON[p.role]||'👤')+' '+p.displayName+(p.role!=='user'?' · '+ROLE_LABEL[p.role]:'')+(AUTH.offline?' · offline':''):'Chưa đăng nhập';
   $('#acctBtn').classList.toggle('admin',admin);$('#acctBtn').classList.toggle('off',!p||AUTH.offline);
   $('#authGate').classList.toggle('show',!p);if(!p)authGateRender();$('#logoutBtn').style.display=p?'':'none';
-  if(!admin&&$('#tab-users')?.classList.contains('active'))switchTab('tab-scoring');
+  if((!admin&&$('#tab-users')?.classList.contains('active'))||(p&&!can('createSet')&&$('#tab-setup')?.classList.contains('active')))switchTab('tab-scoring');
   const act=document.querySelector('.panel.active')?.id;if(p&&['tab-summary','tab-lookup','tab-submissions'].includes(act))switchTab(act); // vẽ lại nút theo quyền
   if($('#acctOverlay').classList.contains('show'))authRenderAccount();
   cloudRefreshSettings();
@@ -1755,6 +1796,31 @@ async function cloudFirstSync(){ try{const pack=await cloudFetchV2();
     const no=$('#cfOverlay .btn.sec'),orig=no.onclick;no.onclick=()=>{cfNo();no.onclick=orig;cloudStartListener();cloudQueuePush();};
   }catch(e){CLOUD.error=e.message;cloudRefreshSettings();toast('Đồng bộ lỗi: '+authErrMsg(e),'err');}}
 
+/* ---- Ma trận phân quyền: đọc realtime; Admin lưu. Chưa có trên Firebase → Admin tạo bằng mặc định ---- */
+const permRef=()=>CLOUD.m.doc(CLOUD.db,'ild_sensory_v2','permissions');
+function permWatch(){ CLOUD.permUnsub?.();
+  CLOUD.permUnsub=CLOUD.m.onSnapshot(permRef(),snap=>{ if(snap.exists())permApply(snap.data().matrix);
+      else if(isAdmin())CLOUD.m.setDoc(permRef(),{matrix:permNormalize(PERM_DEFAULT),updatedAt:new Date().toISOString(),updatedBy:AUTH.profile?.username||''}).catch(()=>{}); },
+    e=>{CLOUD.error='Phân quyền: '+e.message;cloudRefreshSettings();}); }
+function permMatrixHTML(){ const roles=[...PERM_ROLES,'admin'],fixed=[['Chấm nếm & nộp phiếu',['user','qc','supervisor','admin']],['Xem Báo cáo · Tra cứu · Dữ liệu nộp phiếu',['user','qc','supervisor','admin']],
+    ['Quản lý người dùng & phân quyền',['admin']],['Phục hồi JSON · Xoá toàn bộ · Tải đè từ Firebase',['admin']]];
+  const cb=(r,k,on,fix)=>`<td><input type="checkbox" class="perm-cb" data-role="${r}" data-perm="${k}" ${on?'checked':''} ${fix||r==='admin'?'disabled':''}></td>`;
+  return `<div class="card"><div class="toolbar"><h3 style="margin:0">Ma trận phân quyền</h3><span class="spacer"></span>
+      <button class="btn sec sm" onclick="permResetForm()">↺ Mặc định</button><button class="btn sm" id="permSaveBtn" onclick="permSave()">💾 Lưu phân quyền</button></div>
+    <p class="hint">Tích chọn quyền cho từng vai trò rồi bấm Lưu — áp dụng ngay cho mọi thiết bị. Admin luôn có toàn quyền; các dòng xám là quyền cố định.</p>
+    <div class="tbl-wrap"><table class="grid perm-table"><thead><tr><th class="l">Quyền</th>${roles.map(r=>`<th>${ROLE_ICON[r]} ${ROLE_LABEL[r]}</th>`).join('')}</tr></thead><tbody>
+      ${PERM_DEFS.map(([k,label,hint])=>`<tr><td class="l"><b>${label}</b><div class="hint">${hint}</div></td>${roles.map(r=>cb(r,k,r==='admin'||PERMS[r]?.[k])).join('')}</tr>`).join('')}
+      ${fixed.map(([label,rs])=>`<tr class="perm-fixed"><td class="l">${label}</td>${roles.map(r=>cb(r,'',rs.includes(r),true)).join('')}</tr>`).join('')}
+    </tbody></table></div></div>`; }
+function permResetForm(){document.querySelectorAll('.perm-cb[data-perm]:not([disabled])').forEach(c=>c.checked=!!PERM_DEFAULT[c.dataset.role]?.[c.dataset.perm]);toast('Đã điền mặc định — bấm Lưu để áp dụng');}
+async function permSave(){ if(!isAdmin())return toast('Chỉ Admin','err');const m={};PERM_ROLES.forEach(r=>m[r]={});
+  document.querySelectorAll('.perm-cb[data-perm]:not([disabled])').forEach(c=>{if(c.dataset.perm)m[c.dataset.role][c.dataset.perm]=c.checked;});
+  const matrix=permNormalize(m),diff=[];PERM_ROLES.forEach(r=>PERM_DEFS.forEach(([k,l])=>{if(PERMS[r][k]!==matrix[r][k])diff.push((matrix[r][k]?'+':'−')+ROLE_LABEL[r]+': '+l);}));
+  if(!diff.length)return toast('Không có thay đổi');$('#permSaveBtn').disabled=true;
+  try{await CLOUD.m.setDoc(permRef(),{matrix,updatedAt:new Date().toISOString(),updatedBy:AUTH.profile?.username||''});permApply(matrix);
+    logAudit('Đổi phân quyền: '+diff.join('; '));save();toast('Đã lưu phân quyền','ok');}
+  catch(e){toast('Lưu phân quyền lỗi: '+authErrMsg(e),'err');}finally{const b=$('#permSaveBtn');if(b)b.disabled=false;} }
+
 /* ---- Quản lý người dùng (Admin) ---- */
 let USERS_LIST=[];
 async function authSecondary(fn){ // phiên phụ (in-memory) để tạo/đổi mật khẩu tài khoản khác mà không đăng xuất Admin
@@ -1776,7 +1842,7 @@ async function renderUsers(){ const box=$('#usersBody');
       <button class="btn sec sm" onclick="userSetActive('${u.uid}',${u.active===false})">${u.active===false?'Mở khoá':'Khoá'}</button>
       <button class="btn sec sm" onclick="userPasswordForm('${u.uid}')">Đổi mật khẩu</button>
       <button class="btn danger sm" onclick="userRemove('${u.uid}')">Xoá</button>`}</td></tr>`).join('');
-  box.innerHTML=`<div class="card"><h3>Mật khẩu User chung (cấp 1)</h3>
+  box.innerHTML=permMatrixHTML()+`<div class="card"><h3>Mật khẩu User chung (cấp 1)</h3>
       <p class="hint">Người dùng thường chỉ cần nhập mật khẩu này để vào app, ghi và lưu dữ liệu. Tối thiểu 6 ký tự. Đổi mật khẩu sẽ đăng xuất các thiết bị đang dùng mật khẩu cũ.</p>
       ${staff?`<div class="row c4"><div><label class="f">Mật khẩu hiện tại</label><input class="t" type="password" id="stOld" autocomplete="off"></div>
           <div><label class="f">Mật khẩu mới</label><input class="t" type="password" id="stNew" autocomplete="new-password"></div>

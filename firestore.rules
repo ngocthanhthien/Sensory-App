@@ -21,15 +21,20 @@ service cloud.firestore {
       return signedIn() && exists(profilePath()) && get(profilePath()).data.active == true;
     }
 
-    function hasRole(roles) {
-      return isOwner() || (activeProfile() && get(profilePath()).data.role in roles);
+    // Vai trò: user · qc · supervisor (Giám sát nếm) · admin.
+    function isMember() { return isOwner() || activeProfile(); }
+    function isAdmin()  { return isOwner() || (activeProfile() && get(profilePath()).data.role == 'admin'); }
+
+    // Ma trận phân quyền do Admin tích chọn trong app: ild_sensory_v2/permissions.matrix[role][quyền] = true/false.
+    function permPath() {
+      return /databases/$(database)/documents/ild_sensory_v2/permissions;
     }
 
-    // Vai trò: user (chấm nếm, tạo Set) · qc (+ sửa & đóng Set) · supervisor (Giám sát nếm: xác nhận kết quả) · admin.
-    function isMember()     { return isOwner() || activeProfile(); }
-    function isAdmin()      { return hasRole(['admin']); }
-    function isQC()         { return hasRole(['qc', 'admin']); }
-    function isSupervisor() { return hasRole(['supervisor', 'admin']); }
+    function can(perm) {
+      return isAdmin()
+        || (activeProfile() && exists(permPath())
+            && get(permPath()).data.matrix[get(profilePath()).data.role][perm] == true);
+    }
 
     // Các trường kỹ thuật do app đồng bộ tự ghi.
     function syncKeys() {
@@ -53,32 +58,40 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Dữ liệu chung (Master Data, Panellist, audit…): mọi thành viên được đọc/ghi.
-    match /ild_sensory_v2/{documentId} {
-      allow read, write: if isMember();
+    // Ma trận phân quyền: mọi thành viên đọc; chỉ Admin sửa.
+    match /ild_sensory_v2/permissions {
+      allow read: if isMember();
+      allow write: if isAdmin();
     }
 
-    // Set nếm:
-    // - Mọi thành viên tạo Set; QC/Admin sửa (Set đã được Giám sát xác nhận thì chỉ Admin sửa).
-    // - Thành viên chỉ được cập nhật danh sách người đã nộp (attendees) khi nộp phiếu.
-    // - Giám sát/Admin xác nhận hoặc huỷ xác nhận (approval, status).
-    // - Chỉ Admin được xoá.
-    match /ild_sensory_sets/{setId} {
+    // Dữ liệu chung (meta): thành viên đọc/ghi; đổi Master Data cần quyền editMaster.
+    match /ild_sensory_v2/{documentId} {
       allow read: if isMember();
-      allow create: if isMember();
-      allow update: if isMember() && (
-        changedKeys().hasOnly(syncKeys().concat(['attendees']))
-        || (isSupervisor() && changedKeys().hasOnly(syncKeys().concat(['approval', 'status'])))
-        || (isQC() && !changedKeys().hasAny(['approval']) && (!('approval' in resource.data) || isAdmin()))
-      );
+      allow create: if isMember() && documentId != 'permissions';
+      allow update: if isMember() && documentId != 'permissions'
+        && (!changedKeys().hasAny(['panellists', 'products', 'recipes', 'pos', 'batches', 'lots', 'itemCodes']) || can('editMaster'));
       allow delete: if isAdmin();
     }
 
-    // Phiếu nộp ({setId}__{panellistId}): thành viên nộp/nộp lại khi Set chưa được xác nhận; chỉ Admin xoá.
+    // Set nếm — theo ma trận: createSet, editSet, closeSet, confirmSet, deleteSet.
+    // Mọi thành viên được cập nhật danh sách người đã nộp (attendees) khi nộp phiếu.
+    match /ild_sensory_sets/{setId} {
+      allow read: if isMember();
+      allow create: if can('createSet');
+      allow update: if isMember() && (
+        changedKeys().hasOnly(syncKeys().concat(['attendees']))
+        || (can('confirmSet') && changedKeys().hasOnly(syncKeys().concat(['approval', 'status'])))
+        || (can('closeSet') && changedKeys().hasOnly(syncKeys().concat(['status'])) && !('approval' in resource.data))
+        || (can('editSet') && !changedKeys().hasAny(['approval']) && (!('approval' in resource.data) || isAdmin()))
+      );
+      allow delete: if can('deleteSet');
+    }
+
+    // Phiếu nộp ({setId}__{panellistId}): thành viên nộp/nộp lại khi Set chưa xác nhận; sửa/xoá theo quyền editSubmission.
     match /ild_sensory_scores/{scoreId} {
       allow read: if isMember();
       allow create, update: if isMember() && (!setApproved(scoreId.split('__')[0]) || isAdmin());
-      allow delete: if isAdmin();
+      allow delete: if can('editSubmission');
     }
 
     // Hồ sơ & vai trò tài khoản: mỗi người đọc được hồ sơ của mình; chỉ Admin tạo/sửa/xoá.
