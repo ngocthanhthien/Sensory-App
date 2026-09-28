@@ -120,7 +120,10 @@ body[data-theme="dark"] .item-table .add-row td{background:#173d24!important}
 .score-sheet{position:relative;background:var(--panel);border:1px solid rgba(148,163,184,.45);border-radius:18px;
   box-shadow:0 18px 45px rgba(15,23,42,.12),0 3px 10px rgba(15,23,42,.08);overflow:hidden;isolation:isolate}
 .score-sheet:before{content:"";position:absolute;inset:0 0 auto;height:6px;background:linear-gradient(90deg,var(--ild-red),#ff6b4a 42%,#f4b942);z-index:2}
-.score-form-head{padding:24px 24px 18px;border-bottom:1px solid rgba(148,163,184,.35);
+.all-in-btn{position:absolute;top:18px;right:20px;z-index:3;background:var(--ok);box-shadow:0 3px 0 #127030,0 6px 12px rgba(26,143,60,.25)}
+.all-in-btn:hover{background:#15803d}
+@media(max-width:860px){.all-in-btn{position:static;display:block;margin:0 auto 12px}}
+.score-form-head{position:relative;padding:24px 24px 18px;border-bottom:1px solid rgba(148,163,184,.35);
   background:radial-gradient(circle at 50% -40%,rgba(227,6,19,.12),transparent 46%),linear-gradient(180deg,#fff,#f8fafc)}
 body[data-theme="dark"] .score-form-head{background:radial-gradient(circle at 50% -40%,rgba(227,6,19,.22),transparent 48%),linear-gradient(180deg,#252a31,#1d2229)}
 .score-form-title{text-align:center;font-family:var(--font);font-weight:900;font-size:19px;line-height:1.22;text-transform:uppercase;
@@ -244,6 +247,9 @@ body[data-theme="dark"] .auth-card .logo-for-light,body:not([data-theme="dark"])
 .acct-btn{cursor:pointer;font-family:inherit;white-space:nowrap}.acct-btn:hover{border-color:#6b7480}
 .acct-btn.admin .dot{background:#f4b942}.acct-btn.off .dot{background:var(--muted)}
 body:not(.is-admin) .admin-only{display:none!important}
+body:not(.can-qc) .qc-only{display:none!important}
+body:not(.can-sup) .sup-only{display:none!important}
+.approval-box{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .date-field{position:relative;display:flex;align-items:center;width:100%}.date-field .t{width:100%;padding-right:34px}
 .date-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;font-size:15px;padding:4px;line-height:1}
 .date-native{position:absolute;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0;padding:0;pointer-events:none}
@@ -295,11 +301,17 @@ footer .spacer{flex:1}
 .sf-table tbody td{height:24px}.sf-table tbody td:first-child{font-weight:700}
 .sf-table td.c{text-align:center}.sf-cmt{font-size:11px;line-height:1.3}
 .sub-table th,.sub-table td{white-space:nowrap}.sub-table td.sub-err{white-space:normal;min-width:180px}
+.combo{position:relative}.combo .t{cursor:text;width:100%}
+.combo-list{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(15,23,42,.18);max-height:320px;overflow-y:auto;padding:4px}
+.combo-list.show{display:block}
+.combo-item{padding:8px 10px;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;gap:1px}.combo-item b{font-size:13.5px;font-weight:650}.combo-item span{font-size:11.5px;color:var(--muted)}
+.combo-item em{color:var(--ok);font-style:normal;font-weight:700}.combo-item.on,.combo-item:hover{background:var(--bg)}.combo-item.sel b{color:var(--ild-red)}
+.combo-empty{padding:10px;font-size:12.5px;color:var(--muted)}
 .sf-code{display:block;font-size:9.5px;color:#666}
 .sf-pass{color:var(--ok)}.sf-fail{color:var(--fail)}
 .sf-foot{display:flex;justify-content:space-between;align-items:flex-start;margin-top:10px;font-size:10.5px;font-style:italic;line-height:1.6}
 .sf-rule{font-style:normal;color:#555}
-.sf-check{display:flex;gap:8px;align-items:flex-end;font-style:normal;margin-right:40px}.sf-check span{display:inline-block;width:170px;border-bottom:1px dotted #777;height:30px}
+.sf-check{display:flex;gap:8px;align-items:flex-end;font-style:normal;margin-right:40px}.sf-check span{display:inline-block;width:190px;border-bottom:1px dotted #777;min-height:30px;font-weight:700;font-size:12px;text-align:center}
 @media print{
   .noprint{display:none!important}
   body{height:auto;overflow:visible;background:#fff;color:#000}
@@ -336,7 +348,7 @@ footer .spacer{flex:1}
   <nav class="side" id="sidebar" aria-label="Điều hướng chức năng">
     <div class="nav-group">Tác nghiệp</div>
     <div class="nav-item active" data-tab="tab-scoring"><span class="ico">✍️</span> Chấm nếm</div>
-    <div class="nav-item" data-tab="tab-setup"><span class="ico">🧪</span> Tạo Set</div>
+    <div class="nav-item qc-only" data-tab="tab-setup"><span class="ico">🧪</span> Tạo Set</div>
     <div class="nav-item" data-tab="tab-summary"><span class="ico">📊</span> Báo cáo</div>
     <div class="nav-group">Tra cứu</div>
     <div class="nav-item" data-tab="tab-lookup"><span class="ico">🔍</span> Tra cứu</div>
@@ -546,7 +558,7 @@ function toggleTheme(){ const b=document.body; const dark=b.dataset.theme==='dar
 const navItems=document.querySelectorAll('.nav-item');
 const panels=document.querySelectorAll('.panel');
 function switchTab(tabId){
-  if(tabId==='tab-users'&&!isAdmin())tabId='tab-scoring';
+  if((tabId==='tab-users'&&!isAdmin())||(tabId==='tab-setup'&&!canQC()))tabId='tab-scoring';
   const previousTab=document.querySelector('.panel.active')?.id;
   if(tabId==='tab-scoring'&&previousTab!=='tab-scoring'&&typeof SC_SESSION!=='undefined'){SC_SESSION={setId:'',panelId:''};STATE.currentPanellistId=null;SC_DRAFT={};}
   panels.forEach(p=>p.classList.toggle('active',p.id===tabId));
@@ -563,13 +575,13 @@ const scoringSet=()=>STATE.sets.find(s=>s.id===SC_SESSION.setId)||null;
 function renderScoring(){
   const box=$('#scoringBody'),set=scoringSet(),person=STATE.panellists.find(p=>p.id===SC_SESSION.panelId)||null;
   const setOpts=STATE.sets.filter(s=>s.status==='open').map(s=>`<option value="${s.id}" ${s.id===SC_SESSION.setId?'selected':''}>${esc(setLabel(s))} · ${esc(s.sampleType)}</option>`).join('');
-  const opts=STATE.panellists.map(p=>`<option value="${p.id}" ${p.id===SC_SESSION.panelId?'selected':''}>${esc(p.name)}</option>`).join('');
   const done=set?.scores||{};
   const doneList=set?STATE.panellists.map(p=>done[p.id]?`<span class="pill-done">✓ ${esc(p.name)}</span>`:`<span class="pill-wait">${esc(p.name)}</span>`).join(''):'';
   box.innerHTML=`<div class="card scoring-start-card">
     <div class="row c4">
       <div><label class="f">Set nếm</label><select class="s" id="scSet" onchange="scPickSet()"><option value="">— chọn Set nếm —</option>${setOpts}</select></div>
-      <div><label class="f">Người nếm</label><select class="s" id="scPanel" onchange="scPickPanel()" ${set?'':'disabled'}><option value="">— chọn tên —</option>${opts}</select></div>
+      <div><label class="f">Người nếm</label><div class="combo"><input class="t" id="scPanelQ" placeholder="${set?'Gõ tên hoặc Mã NV…':'— chọn Set trước —'}" value="${esc(person?.name||'')}" autocomplete="off"
+          onfocus="this.select();scPanelOpen()" oninput="scPanelOpen()" onkeydown="scPanelKey(event)" onblur="setTimeout(scPanelClose,180)" ${set?'':'disabled'}><div class="combo-list" id="scPanelList"></div></div></div>
       <div><label class="f">Bộ phận</label><input class="t" value="${esc(person?.dept||'')}" placeholder="Tự động theo người nếm" disabled></div>
       <div style="align-self:end"><span class="hint">${set?'Đã nộp: '+Object.keys(done).length+'/'+STATE.panellists.length+' phiếu':'Chọn Set và người nếm để bắt đầu'}</span></div>
     </div>${person&&doneList?`<details class="sc-status"><summary>Xem trạng thái nộp phiếu</summary>${doneList}</details>`:`<div style="margin-top:4px">${doneList}</div>`}</div>
@@ -577,7 +589,23 @@ function renderScoring(){
   renderScoreGrid();
 }
 function scPickSet(){SC_SESSION.setId=$('#scSet').value||'';SC_SESSION.panelId='';STATE.currentPanellistId=null;SC_DRAFT={};renderScoring();}
-function scPickPanel(){SC_SESSION.panelId=$('#scPanel').value||'';STATE.currentPanellistId=SC_SESSION.panelId||null;SC_DRAFT={};renderScoring();if(CLOUD.user)cloudMaybeApplyPending();}
+/* Ô chọn người nếm có tìm kiếm: lọc theo tên (không phân biệt dấu) / Mã NV / bộ phận; ↑↓ Enter để chọn */
+const vnFold=t=>(t||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d');
+let SC_COMBO_I=0;
+function scPanelMatches(){ const q=vnFold($('#scPanelQ')?.value),cur=STATE.panellists.find(p=>p.id===SC_SESSION.panelId);
+  const all=q&&!(cur&&vnFold(cur.name)===q)?STATE.panellists.filter(p=>[p.name,p.code,p.dept,p.func].some(v=>vnFold(v).includes(q))):STATE.panellists;return all.slice(0,60); }
+function scPanelOpen(){ const list=$('#scPanelList');if(!list)return;const set=scoringSet(),done=set?.scores||{},m=scPanelMatches();SC_COMBO_I=Math.min(SC_COMBO_I,Math.max(0,m.length-1));
+  list.innerHTML=m.length?m.map((p,i)=>`<div class="combo-item ${i===SC_COMBO_I?'on':''} ${p.id===SC_SESSION.panelId?'sel':''}" onmousedown="event.preventDefault();scPickPanel('${p.id}')">
+      <b>${esc(p.name)}</b><span>${esc([p.code,p.dept].filter(Boolean).join(' · '))}${done[p.id]?' · <em>✓ đã nộp</em>':''}</span></div>`).join(''):'<div class="combo-empty">Không tìm thấy người nếm</div>';
+  list.classList.add('show'); }
+function scPanelClose(){ const l=$('#scPanelList');if(l)l.classList.remove('show');const q=$('#scPanelQ'),cur=STATE.panellists.find(p=>p.id===SC_SESSION.panelId);if(q&&document.activeElement!==q)q.value=cur?.name||''; }
+function scPanelKey(e){ const m=scPanelMatches();
+  if(e.key==='ArrowDown'){e.preventDefault();SC_COMBO_I=Math.min(SC_COMBO_I+1,m.length-1);scPanelOpen();}
+  else if(e.key==='ArrowUp'){e.preventDefault();SC_COMBO_I=Math.max(SC_COMBO_I-1,0);scPanelOpen();}
+  else if(e.key==='Enter'){e.preventDefault();if(m[SC_COMBO_I])scPickPanel(m[SC_COMBO_I].id);}
+  else if(e.key==='Escape'){e.target.blur();}
+  else SC_COMBO_I=0; }
+function scPickPanel(id){SC_COMBO_I=0;SC_SESSION.panelId=id||'';STATE.currentPanellistId=SC_SESSION.panelId||null;SC_DRAFT={};renderScoring();if(CLOUD.user)cloudMaybeApplyPending();}
 function renderBlankScoreSheet(){
   const blankRows=Array.from({length:5},(_,i)=>`<tr><td data-label="No.">${i+1}</td><td class="l" data-label="Mẫu">&nbsp;</td><td data-label="IN">□</td><td data-label="Just In">□</td><td data-label="OUT">□</td><td class="remark-na" data-label="Remark">&nbsp;</td></tr>`).join('');
   return `<div class="score-sheet score-sheet-empty"><div class="score-form-head"><div class="score-form-title">Sensory - In/Out Score Sheet for Finished Goods<br>and Semi-Finished Goods</div>
@@ -610,7 +638,8 @@ function renderScoreGrid(){
           <optgroup label="Lỗi thử nếm">${opts(CONFIG.ERR_TASTE,'T')}</optgroup></select>
         <input class="t remark-note" placeholder="Ghi chú khác…" value="${esc(sc.note)}" onchange="scNote('${sm.no}',this.value)"></div></td></tr>`;}).join('');
   wrap.innerHTML=`<div class="score-sheet">
-    <div class="score-form-head"><div class="score-form-title">Sensory - In/Out Score Sheet for Finished Goods<br>and Semi-Finished Goods</div>
+    <div class="score-form-head"><button class="btn sm all-in-btn noprint" onclick="scAllIn()" title="Đánh IN cho tất cả mẫu">✔ All IN</button>
+      <div class="score-form-title">Sensory - In/Out Score Sheet for Finished Goods<br>and Semi-Finished Goods</div>
       <div class="score-form-sub">Phiếu chấm điểm cảm quan IN / Just In / OUT</div>
       <div class="score-meta"><div><b>Name / Tên</b><span>${esc(person.name)}</span></div><div><b>Dept. / Bộ phận</b><span>${esc(person.dept||'—')}</span></div>
         <div><b>Date / Ngày</b><span>${esc(fmtDate(set.date))}</span></div><div><b>Set</b><span>${esc(set.name)}</span></div><div><b>Shift / Ca</b><span>${esc(set.shift)}</span></div></div></div>
@@ -630,6 +659,11 @@ function scDraftInit(){ const set=scoringSet(),pid=SC_SESSION.panelId;
   set.samples.forEach(sm=>{if(!SC_DRAFT[sm.no])SC_DRAFT[sm.no]={result:'',appearance:[],taste:[],note:''};
     const sc=SC_DRAFT[sm.no];sc.appearance=Array.isArray(sc.appearance)?sc.appearance:[];sc.taste=Array.isArray(sc.taste)?sc.taste:[];sc.note=sc.note||'';}); }
 function scSet(no,v){ SC_DRAFT[no].result=v; if(v==='IN'){SC_DRAFT[no].appearance=[];SC_DRAFT[no].taste=[];SC_DRAFT[no].note='';} paintDraft(); }
+/* Điền nhanh: tất cả mẫu = IN (xoá lỗi/ghi chú). Nếu đã có mẫu Just In/Out thì hỏi trước khi ghi đè. */
+function scAllIn(){ const set=scoringSet();if(!set||!SC_SESSION.panelId)return;
+  const doIt=()=>{set.samples.forEach(sm=>SC_DRAFT[sm.no]={...SC_DRAFT[sm.no],result:'IN',appearance:[],taste:[],note:''});paintDraft();toast('Đã đánh IN cho '+set.samples.length+' mẫu','ok');};
+  const other=set.samples.filter(sm=>['JUSTIN','OUT'].includes(SC_DRAFT[sm.no]?.result)).length;
+  other?confirmAsk(other+' mẫu đang là Just In / Out. Đổi tất cả thành IN?','All IN',doIt):doIt(); }
 function scRemarkValue(sc){if(sc.appearance?.length)return 'A:'+sc.appearance[0];if(sc.taste?.length)return 'T:'+sc.taste[0];return '';}
 function scRemark(no,value){const sc=SC_DRAFT[no];sc.appearance=[];sc.taste=[];if(value.startsWith('A:'))sc.appearance=[value.slice(2)];if(value.startsWith('T:'))sc.taste=[value.slice(2)];updateScStatus();}
 function scNote(no,v){ SC_DRAFT[no].note=v; }
@@ -649,6 +683,7 @@ function updateScStatus(){ const set=scoringSet();if(!set)return;const f=set.sam
   const el=$('#scStatus'); if(el)el.textContent=`Đã chấm ${f}/${set.samples.length} mẫu`; }
 function scSubmit(){
   const set=scoringSet(),pid=SC_SESSION.panelId;if(!set)return toast('Chưa chọn Set nếm','err');if(!pid)return toast('Chưa chọn người nếm','err');
+  if(setLocked(set))return toast('Set đã được Giám sát xác nhận — không nộp thêm phiếu','err');
   for(const sm of set.samples){ const sc=SC_DRAFT[sm.no];
     if(!sc.result)return toast(`Mẫu ${sm.no} chưa chấm`,'err');
     if((sc.result==='JUSTIN'||sc.result==='OUT')&&sc.appearance.length===0&&sc.taste.length===0&&!sc.note.trim())
@@ -739,15 +774,15 @@ function wizAdd(){ const name=$('#smName').value.trim(); if(!name)return toast('
   WIZ.samples.push({code,name,sscc:$('#smSscc').value.trim(),batch:$('#smBatch').value.trim()}); renderSetup(); setTimeout(()=>$('#smName')?.focus(),30); }
 function wizEdit(i,k,v){ WIZ.samples[i][k]=v; }
 function wizDel(i){ WIZ.samples.splice(i,1); renderSetup(); }
-function wizCreate(){ if(WIZ.samples.length===0)return toast('Chưa có mẫu nào','err');
+function wizCreate(){ if(!canQC())return toast('Chỉ QC / Admin được tạo Set','err'); if(WIZ.samples.length===0)return toast('Chưa có mẫu nào','err');
   const codes=WIZ.samples.map((x,i)=>((x.code||'').trim()||String(i+1)).toLowerCase()),dup=codes.find((c,i)=>codes.indexOf(c)!==i);
   if(dup)return toast('Trùng Tên mã hóa "'+dup+'" — mỗi mẫu cần mã khác nhau','err');
   if(dupSetName(WIZ.meta))return toast('Trùng tên Set trong ca '+WIZ.meta.shift+' ngày '+fmtDate(WIZ.meta.date),'err');
   const set={id:uid('set'),name:WIZ.meta.name,date:WIZ.meta.date,shift:WIZ.meta.shift,sampleType:WIZ.meta.sampleType,
-    creator:'QA',status:'open',samples:WIZ.samples.map((s,i)=>({no:i+1,code:(s.code||'').trim()||String(i+1),name:s.name,sscc:s.sscc,batch:s.batch})),scores:{},attendees:[]};
+    creator:AUTH.profile?.displayName||'QA',status:'open',samples:WIZ.samples.map((s,i)=>({no:i+1,code:(s.code||'').trim()||String(i+1),name:s.name,sscc:s.sscc,batch:s.batch})),scores:{},attendees:[]};
   STATE.sets.push(set); STATE.currentSetId=set.id; logAudit('Tạo Set: '+setLabel(set)+' ('+set.samples.length+' mẫu)'); save();
   WIZ={step:1,meta:{},samples:[],nameAuto:true}; $('#hdrSet').textContent=setLabel(set); toast('Đã tạo Set ✓','ok'); switchTab('tab-scoring'); }
-function closeSet(){ const s=curSet(); if(!s)return; confirmAsk('Đóng Set "'+s.name+'"? (vẫn tra cứu được sau)','Đóng Set',()=>{
+function closeSet(){ if(!canQC())return toast('Chỉ QC / Admin được đóng Set','err'); const s=curSet(); if(!s)return; confirmAsk('Đóng Set "'+s.name+'"? (vẫn tra cứu được sau)','Đóng Set',()=>{
   s.status='closed'; STATE.currentSetId=null; $('#hdrSet').textContent='— chưa mở —'; logAudit('Đóng Set: '+s.name); save(); toast('Đã đóng Set'); renderSetup(); }); }
 
 /* ===================== [SUMMARY] F.072 ===================== */
@@ -785,7 +820,30 @@ function summaryFormHTML(set){
       <tbody>${rows.join('')}</tbody></table>
     <div class="sf-foot"><div>(*) KQ and semi-FGs: at least ${CONFIG.MIN_PANELLIST} trained assessors<br>(*) Finish good product: at least ${CONFIG.MIN_PANELLIST} trained assessors.<br>(*) Raw material: at least ${CONFIG.MIN_PANELLIST} trained assessors<br>
       <span class="sf-rule">Result% = (1 − [(Out×3 + JustIn×0.5)/(Total×3)]) × 100 · Passed ≥ ${CONFIG.PASS_THRESHOLD}%</span></div>
-      <div class="sf-check"><b>Check by:</b><span></span></div></div></div>`;
+      <div class="sf-check"><b>Check by:</b><span>${set.approval?esc(set.approval.by)+'<small style="display:block;font-size:10px;color:#555">'+esc(fmtDateTime(set.approval.at))+'</small>':''}</span></div></div></div>`;
+}
+/* ---- Giám sát nếm: xác nhận kết quả Set sau khi hoàn thành báo cáo → khoá Set (không nộp/sửa thêm) ---- */
+function approvalCardHTML(set){ const a=set.approval;
+  if(a)return `<div class="card noprint approval-box" style="border-left:4px solid var(--ok)"><span class="badge pass">✔ Đã xác nhận</span>
+    <span>Giám sát nếm: <b>${esc(a.by)}</b> · ${esc(fmtDateTime(a.at))}${a.note?' · <i>'+esc(a.note)+'</i>':''}</span><span class="spacer" style="flex:1"></span>
+    <button class="btn sec sm sup-only" onclick="unapproveSet('${set.id}')">Huỷ xác nhận</button></div>`;
+  const miss=set.samples.filter(sm=>calcSample(set,sm.no).pct===null).length,n=Object.keys(set.scores||{}).length;
+  return `<div class="card noprint approval-box" style="border-left:4px solid var(--warn)"><span class="badge gray">Chưa xác nhận</span>
+    <span class="hint">${n} phiếu đã nộp${miss?' · '+miss+' mẫu chưa có kết quả':''}${set.status==='open'?' · Set đang mở':''}</span><span class="spacer" style="flex:1"></span>
+    <button class="btn sm sup-only" onclick="approveSet('${set.id}')">✔ Xác nhận kết quả</button></div>`;
+}
+function approveSet(id){ if(!canSupervise())return toast('Chỉ Giám sát nếm / Admin được xác nhận','err');const s=STATE.sets.find(x=>x.id===id);if(!s||s.approval)return;
+  const n=Object.keys(s.scores||{}).length,miss=s.samples.filter(sm=>calcSample(s,sm.no).pct===null).length;
+  if(!n)return toast('Set chưa có phiếu nào để xác nhận','err');if(miss)return toast(miss+' mẫu chưa có kết quả — chưa thể xác nhận','err');
+  const results=s.samples.map(sm=>calcSample(s,sm.no)),pass=results.filter(r=>r.pass).length;
+  confirmAsk('Xác nhận kết quả Set '+setLabel(s)+': '+n+' phiếu, '+pass+'/'+s.samples.length+' mẫu Passed'+(n<CONFIG.MIN_PANELLIST?' (⚠ ít hơn '+CONFIG.MIN_PANELLIST+' panellist)':'')+'? Sau khi xác nhận, Set được đóng và khoá — không nộp/sửa thêm.','Xác nhận',()=>{
+    s.approval={by:AUTH.profile?.displayName||'Giám sát',byUid:AUTH.profile?.uid||'',at:new Date().toISOString(),panellists:n,passed:pass,total:s.samples.length};
+    s.status='closed';if(STATE.currentSetId===id)STATE.currentSetId=id; // vẫn xem báo cáo được
+    logAudit('Xác nhận kết quả Set: '+setLabel(s)+' ('+pass+'/'+s.samples.length+' Passed, '+n+' phiếu)');save();renderSummary();toast('Đã xác nhận kết quả','ok');});
+}
+function unapproveSet(id){ if(!canSupervise())return toast('Chỉ Giám sát nếm / Admin được huỷ xác nhận','err');const s=STATE.sets.find(x=>x.id===id);if(!s?.approval)return;
+  confirmAsk('Huỷ xác nhận của '+s.approval.by+' cho Set '+setLabel(s)+'? Set sẽ mở khoá để QC/Admin chỉnh sửa (Set vẫn ở trạng thái đã đóng).','Huỷ xác nhận',()=>{
+    const by=s.approval.by;delete s.approval;logAudit('Huỷ xác nhận Set: '+setLabel(s)+' (trước đó: '+by+')');save();renderSummary();toast('Đã huỷ xác nhận','ok');});
 }
 function sumPickSet(id){ STATE.currentSetId=id||null; $('#hdrSet').textContent=setLabel(curSet()); renderSummary(); }
 function renderSummary(){
@@ -804,6 +862,7 @@ function renderSummary(){
       <div class="kpi"><div class="num">${set.samples.length}</div><div class="lbl">Tổng mẫu · ${attWarn}</div></div>
       <div class="kpi ok"><div class="num">${nPass}</div><div class="lbl">Passed (≥${CONFIG.PASS_THRESHOLD}%)</div></div>
       <div class="kpi fail"><div class="num">${nFail}</div><div class="lbl">Failed (&lt;${CONFIG.PASS_THRESHOLD}%)</div></div></div>
+    ${approvalCardHTML(set)}
     <div class="sf-paper">${summaryFormHTML(set)}</div>`;
 }
 
@@ -821,19 +880,23 @@ function renderLookup(){
   });
   const rows=list.map(s=>{ const res=s.samples.map(sm=>calcSample(s,sm.no));
     const pass=res.filter(r=>r.pass).length,fail=res.filter(r=>r.pct!==null&&!r.pass).length;
+    const nTaster=Object.keys(s.scores||{}).length;
     return `<tr><td class="l">${esc(s.name)}</td><td>${esc(fmtDate(s.date))}</td><td>${s.shift}</td><td>${esc(s.sampleType)}</td><td>${s.samples.length}</td>
+      <td title="Số người đã nộp phiếu nếm"><b>${nTaster}</b>${nTaster<CONFIG.MIN_PANELLIST?` <span class="badge fail" title="Cần tối thiểu ${CONFIG.MIN_PANELLIST} người">⚠</span>`:''}</td>
       <td><span class="badge pass">${pass}</span></td><td><span class="badge fail">${fail}</span></td>
       <td>${s.status==='open'?'<span class="badge gray">đang mở</span>':'đã đóng'}</td>
+      <td>${s.approval?`<span class="badge pass" title="${esc(s.approval.by)} · ${esc(fmtDateTime(s.approval.at))}">✔ Đã xác nhận</span>`:'<span class="hint">Chưa</span>'}</td>
       <td style="white-space:nowrap"><button class="btn sm sec" onclick="lookupOpen('${s.id}')">Xem</button>
-        <button class="btn sm sec admin-only" onclick="lookupEdit('${s.id}')">✎ Sửa</button>
+        <button class="btn sm sec qc-only" onclick="lookupEdit('${s.id}')">✎ Sửa</button>
+        ${s.status==='open'?`<button class="btn sm sec qc-only" onclick="lookupCloseSet('${s.id}')">🔒 Đóng Set</button>`:''}
         <button class="btn sm danger admin-only" onclick="lookupDelete('${s.id}')">Xoá</button></td></tr>`; }).join('');
   box.innerHTML=`<div class="card"><div class="toolbar">
       <input class="t" style="max-width:260px" placeholder="Tìm tên Set / ngày / mẫu / batch…" value="${esc(LK.q)}" oninput="LK.q=this.value;renderLookup()">
       <select class="s" style="max-width:180px" onchange="LK.type=this.value;renderLookup()">${typeOpts}</select>
       <span class="spacer"></span><span class="hint">${list.length} Set</span></div>
     <div class="tbl-wrap"><table class="grid">
-      <thead><tr><th class="l">Tên Set</th><th>Ngày</th><th>Ca</th><th>Loại</th><th>Số mẫu</th><th>Passed</th><th>Failed</th><th>Trạng thái</th><th></th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="9" class="hint" style="padding:14px">Không có kết quả</td></tr>'}</tbody></table></div></div>`;
+      <thead><tr><th class="l">Tên Set</th><th>Ngày</th><th>Ca</th><th>Loại</th><th>Số mẫu</th><th>Số người nếm</th><th>Passed</th><th>Failed</th><th>Trạng thái</th><th>Giám sát</th><th></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="11" class="hint" style="padding:14px">Không có kết quả</td></tr>'}</tbody></table></div></div>`;
 }
 /* ===================== [SUBMISSIONS] Dữ liệu nộp phiếu (1 dòng = 1 mẫu trong 1 phiếu) ===================== */
 let SUB={setId:'',q:'',result:'',from:'',to:''};
@@ -890,6 +953,7 @@ function subPaint(){ const rows=filteredSubmissions(),LIMIT=500,sheets=new Set(r
 function subFind(setId,pid,no){const set=STATE.sets.find(s=>s.id===setId),sm=set?.samples.find(x=>x.no===no),sc=set?.scores?.[pid]?.[no];return {set,sm,sc,p:STATE.panellists.find(x=>x.id===pid)};}
 const subWho=(f,pid)=>(f.p?.name||pid)+' · '+f.set.name+' · mẫu '+sampleCode(f.sm);
 function subEdit(setId,pid,no){ if(!isAdmin())return toast('Chỉ Admin được sửa','err');const f=subFind(setId,pid,no);if(!f.sc)return;
+  if(setLocked(f.set))return toast('Set đã được Giám sát xác nhận — cần huỷ xác nhận trước khi sửa','err');
   const cur=scRemarkValue(f.sc),opts=(list,pre)=>list.map(e=>`<option value="${pre}:${esc(e)}" ${cur===pre+':'+e?'selected':''}>${esc(e)}</option>`).join('');
   $('#acctModal').innerHTML=`<h3>Sửa dữ liệu nộp phiếu</h3><p>${esc(f.p?.name||pid)} · ${esc(setLabel(f.set))}<br>Mẫu <b>${esc(sampleCode(f.sm))}</b> — ${esc(f.sm.name)}</p>
     <label class="f">Kết quả</label><select class="s" id="seResult">${Object.entries(RESULT_LABEL).map(([k,v])=>`<option value="${k}" ${f.sc.result===k?'selected':''}>${v}</option>`).join('')}</select>
@@ -909,10 +973,12 @@ function subSave(setId,pid,no){ if(!isAdmin())return;const f=subFind(setId,pid,n
 }
 function subRemoveSheetIfEmpty(set,pid){ if(Object.keys(set.scores[pid]||{}).length)return;delete set.scores[pid];set.attendees=(set.attendees||[]).filter(x=>x!==pid); }
 function subDeleteRow(setId,pid,no){ if(!isAdmin())return toast('Chỉ Admin được xoá','err');const f=subFind(setId,pid,no);if(!f.sc)return;
+  if(setLocked(f.set))return toast('Set đã được Giám sát xác nhận — cần huỷ xác nhận trước khi xoá','err');
   confirmAsk('Xoá dòng dữ liệu: '+subWho(f,pid)+' ('+(RESULT_LABEL[f.sc.result]||f.sc.result)+')? Kết quả % của mẫu sẽ tính lại.','Xoá dòng',()=>{
     delete f.set.scores[pid][no];subRemoveSheetIfEmpty(f.set,pid);logAudit('Xoá dòng nộp phiếu · '+subWho(f,pid));save();subPaint();toast('Đã xoá dòng','ok');});
 }
 function subDeleteSheet(setId,pid){ if(!isAdmin())return toast('Chỉ Admin được xoá','err');const set=STATE.sets.find(s=>s.id===setId);if(!set?.scores?.[pid])return;
+  if(setLocked(set))return toast('Set đã được Giám sát xác nhận — cần huỷ xác nhận trước khi xoá','err');
   const name=STATE.panellists.find(x=>x.id===pid)?.name||pid,n=Object.keys(set.scores[pid]).length;
   confirmAsk('Xoá toàn bộ phiếu của "'+name+'" trong Set '+setLabel(set)+' ('+n+' mẫu)? Không thể hoàn tác (nên Sao lưu JSON trước).','Xoá phiếu',()=>{
     delete set.scores[pid];set.attendees=(set.attendees||[]).filter(x=>x!==pid);logAudit('Xoá phiếu nộp · '+name+' · '+set.name+' ('+n+' mẫu)');save();subPaint();toast('Đã xoá phiếu','ok');});
@@ -922,7 +988,8 @@ function exportSubmissions(){ const rows=filteredSubmissions(); if(!rows.length)
   logAudit('Xuất dữ liệu nộp phiếu: '+rows.length+' dòng'); save(); toast('Đã xuất '+rows.length+' dòng','ok'); }
 
 /* ---- Admin: sửa / xoá Set trong Truy xuất kết quả (điểm đã nộp giữ theo STT mẫu nên không thêm/bớt mẫu ở đây) ---- */
-function lookupEdit(id){ if(!isAdmin())return toast('Chỉ Admin được sửa','err');const s=STATE.sets.find(x=>x.id===id);if(!s)return;
+function lookupEdit(id){ if(!canQC())return toast('Chỉ QC / Admin được sửa Set','err');const s=STATE.sets.find(x=>x.id===id);if(!s)return;
+  if(setLocked(s))return toast('Set đã được Giám sát xác nhận — cần huỷ xác nhận trước khi sửa','err');
   const types=[...new Set([...CONFIG.SAMPLE_TYPES,s.sampleType])].map(t=>`<option ${s.sampleType===t?'selected':''}>${esc(t)}</option>`).join('');
   const rows=s.samples.map(sm=>`<tr><td>${sm.no}</td><td><input class="t" data-k="code" data-no="${sm.no}" value="${esc(sampleCode(sm))}" style="font-weight:700;text-align:center"></td>
     <td><input class="t" data-k="name" data-no="${sm.no}" value="${esc(sm.name)}"></td><td><input class="t" data-k="sscc" data-no="${sm.no}" value="${esc(sm.sscc||'')}"></td>
@@ -938,7 +1005,7 @@ function lookupEdit(id){ if(!isAdmin())return toast('Chỉ Admin được sửa'
     <div class="actions"><button class="btn sec" onclick="authCloseAccount()">Huỷ</button><button class="btn" onclick="lookupSave('${id}')">Lưu</button></div>`;
   $('#acctOverlay').classList.add('show');
 }
-function lookupSave(id){ if(!isAdmin())return;const s=STATE.sets.find(x=>x.id===id);if(!s)return;
+function lookupSave(id){ if(!canQC())return;const s=STATE.sets.find(x=>x.id===id);if(!s)return;
   const m={name:$('#leName').value.trim(),date:dateVal('leDate'),shift:$('#leShift').value,sampleType:$('#leType').value,status:$('#leStatus').value};
   if(!m.name)return toast('Nhập tên Set','err');if(!m.date)return toast('Ngày không hợp lệ — nhập dd/mm/yyyy','err');
   if(STATE.sets.some(x=>x.id!==id&&x.date===m.date&&x.shift===m.shift&&x.name.toLowerCase()===m.name.toLowerCase()))return toast('Trùng tên Set trong ca '+m.shift+' ngày '+fmtDate(m.date),'err');
@@ -948,6 +1015,12 @@ function lookupSave(id){ if(!isAdmin())return;const s=STATE.sets.find(x=>x.id===
   const before=setLabel(s);Object.assign(s,m);s.samples.forEach(sm=>{const e=edits[sm.no];sm.code=e.code||String(sm.no);sm.name=e.name;sm.sscc=e.sscc;sm.batch=e.batch;});
   if(s.status!=='open'&&STATE.currentSetId===id){STATE.currentSetId=null;}
   logAudit('Sửa Set: '+before+(before!==setLabel(s)?' → '+setLabel(s):''));save();authCloseAccount();$('#hdrSet').textContent=setLabel(curSet());renderLookup();toast('Đã lưu Set','ok');
+}
+function lookupCloseSet(id){ if(!canQC())return toast('Chỉ QC / Admin được đóng Set','err');const s=STATE.sets.find(x=>x.id===id);if(!s||s.status!=='open')return;
+  const n=Object.keys(s.scores||{}).length;
+  confirmAsk('Đóng Set "'+setLabel(s)+'"? Đã có '+n+' người nếm'+(n<CONFIG.MIN_PANELLIST?' (⚠ ít hơn '+CONFIG.MIN_PANELLIST+')':'')+'. Sau khi đóng, người nếm không chọn được Set này để nộp phiếu (vẫn tra cứu/báo cáo được; mở lại bằng ✎ Sửa → Trạng thái).','Đóng Set',()=>{
+    s.status='closed';if(STATE.currentSetId===id){STATE.currentSetId=null;$('#hdrSet').textContent=setLabel(curSet());}
+    logAudit('Đóng Set: '+setLabel(s)+' ('+n+' người nếm)');save();renderLookup();toast('Đã đóng Set','ok');});
 }
 function lookupDelete(id){ if(!isAdmin())return toast('Chỉ Admin được xoá','err');const s=STATE.sets.find(x=>x.id===id);if(!s)return;
   const n=Object.keys(s.scores||{}).length;
@@ -1207,7 +1280,7 @@ document.getElementById('fileSetSamples').addEventListener('change',async e=>{ c
   }catch(err){ toast('Import lỗi: '+err.message,'err'); } });
 
 function exportSummaryCSV(){ const set=curSet(); if(!set)return toast('Chưa có Set','err');
-  const rows=[['iLD SUMMARY TASTING RESULT'],['Set',set.name,'Ngày',fmtDate(set.date),'Ca',set.shift,'Loại',set.sampleType],[],
+  const rows=[['iLD SUMMARY TASTING RESULT'],['Set',set.name,'Ngày',fmtDate(set.date),'Ca',set.shift,'Loại',set.sampleType],['Giám sát xác nhận',set.approval?set.approval.by+' · '+fmtDateTime(set.approval.at):'Chưa xác nhận'],[],
     ['No.','Tên mã hóa','Tên mẫu','SSCC/Hour','Batch','IN','Just In','Out','Total','Result %','Kết luận','Comments (Lỗi)','Taster (Người nếm)']];
   set.samples.forEach(sm=>{ const r=calcSample(set,sm.no),x=sumSampleInfo(set,sm.no);
     rows.push([sm.no,sampleCode(sm),sm.name,sm.sscc||'',sm.batch||'',r.IN,r.JI,r.OUT,r.total,r.pct===null?'':r.pct.toFixed(1),
@@ -1580,7 +1653,15 @@ function cloudRetryLocalConflict(i){const c=CLOUD.sync.conflicts[i];if(!c)return
 var AUTH={profile:null,offline:false,mode:'shared'};
 const authEmail=u=>{u=(u||'').trim().toLowerCase();return u.includes('@')?u:u+'@'+AUTH_EMAIL_DOMAIN;};
 const authIsOwner=u=>!!u&&u.emailVerified&&(u.email||'').toLowerCase()===CLOUD_ALLOWED_EMAIL;
+/* Vai trò: user (chấm nếm) · qc (tạo & sửa Set) · supervisor (Giám sát nếm: xác nhận kết quả Set) · admin (toàn quyền) */
+const ROLES=['user','qc','supervisor','admin'];
+const ROLE_LABEL={user:'User',qc:'QC · Tạo Set',supervisor:'Giám sát nếm',admin:'Admin'};
+const ROLE_ICON={user:'👤',qc:'🧪',supervisor:'✅',admin:'🛡'};
+const ROLE_BADGE={user:'gray',qc:'pass',supervisor:'pass',admin:'fail'};
 function isAdmin(){return AUTH.profile?.role==='admin';}
+function hasRole(...r){const role=AUTH.profile?.role;return role==='admin'||r.includes(role);}
+const canQC=()=>hasRole('qc'), canSupervise=()=>hasRole('supervisor');
+const setLocked=s=>!!s?.approval;
 function authCacheGet(){try{return JSON.parse(localStorage.getItem(AUTH_CACHE_KEY)||'null');}catch{return null;}}
 function authCacheSet(p){try{if(p)localStorage.setItem(AUTH_CACHE_KEY,JSON.stringify({uid:p.uid,email:p.email,username:p.username,displayName:p.displayName,role:p.role,shared:!!p.shared,owner:!!p.owner}));else localStorage.removeItem(AUTH_CACHE_KEY);}catch{}}
 async function authLoadProfile(user){
@@ -1588,7 +1669,7 @@ async function authLoadProfile(user){
   try{const snap=await CLOUD.m.getDoc(CLOUD.m.doc(CLOUD.db,USERS_COL,user.uid));
     if(!snap.exists())return {error:'Tài khoản chưa được cấp quyền vào app'};const d=snap.data();
     if(d.active===false)return {error:'Tài khoản đã bị khoá — liên hệ Admin'};
-    AUTH.offline=false;return {uid:user.uid,email:user.email,username:d.username||user.email,displayName:d.displayName||d.username||user.email,role:d.role==='admin'?'admin':'user',shared:!!d.shared};
+    AUTH.offline=false;return {uid:user.uid,email:user.email,username:d.username||user.email,displayName:d.displayName||d.username||user.email,role:ROLES.includes(d.role)?d.role:'user',shared:!!d.shared};
   }catch(e){const c=authCacheGet();if(c&&c.uid===user.uid){AUTH.offline=true;return {...c,fromCache:true};}
     return {error:(e.code==='permission-denied'?'Không có quyền đọc hồ sơ tài khoản (kiểm tra Firestore Rules)':'Không kiểm tra được quyền: '+e.message)};}
 }
@@ -1597,11 +1678,12 @@ function authErrMsg(e){if((e.code||'').startsWith('auth/requests-from-referer'))
   'auth/user-disabled':'Tài khoản đã bị vô hiệu hoá','auth/weak-password':'Mật khẩu tối thiểu 6 ký tự','auth/email-already-in-use':'Tên đăng nhập đã tồn tại',
   'auth/operation-not-allowed':'Chưa bật Email/Password trong Firebase Authentication','permission-denied':'Không có quyền (kiểm tra Firestore Rules)'}[e.code])||e.message;}
 function authApply(){ const p=AUTH.profile,admin=isAdmin();
-  document.body.classList.toggle('is-admin',admin);
-  $('#acctLabel').textContent=p?(admin?'🛡 ':'👤 ')+p.displayName+(admin?' · Admin':'')+(AUTH.offline?' · offline':''):'Chưa đăng nhập';
+  document.body.classList.toggle('is-admin',admin);document.body.classList.toggle('can-qc',!!p&&canQC());document.body.classList.toggle('can-sup',!!p&&canSupervise());
+  $('#acctLabel').textContent=p?(ROLE_ICON[p.role]||'👤')+' '+p.displayName+(p.role!=='user'?' · '+ROLE_LABEL[p.role]:'')+(AUTH.offline?' · offline':''):'Chưa đăng nhập';
   $('#acctBtn').classList.toggle('admin',admin);$('#acctBtn').classList.toggle('off',!p||AUTH.offline);
   $('#authGate').classList.toggle('show',!p);if(!p)authGateRender();$('#logoutBtn').style.display=p?'':'none';
-  if(!admin&&$('#tab-users')?.classList.contains('active'))switchTab('tab-scoring');
+  if((!admin&&$('#tab-users')?.classList.contains('active'))||(!canQC()&&$('#tab-setup')?.classList.contains('active')))switchTab('tab-scoring');
+  const act=document.querySelector('.panel.active')?.id;if(p&&['tab-summary','tab-lookup','tab-submissions'].includes(act))switchTab(act); // vẽ lại nút theo quyền
   if($('#acctOverlay').classList.contains('show'))authRenderAccount();
   cloudRefreshSettings();
 }
@@ -1628,7 +1710,7 @@ function authUseOffline(){const c=authCacheGet();if(!c)return;AUTH.profile={...c
 function authOpenAccount(){authRenderAccount();$('#acctOverlay').classList.add('show');setTimeout(()=>$('#acctUser')?.focus(),50);}
 function authCloseAccount(){$('#acctOverlay').classList.remove('show');$('#acctModal').style.width='';}
 function authRenderAccount(){ const p=AUTH.profile,admin=isAdmin();
-  const who=p?`<p>Đang dùng: <b>${esc(p.displayName)}</b> · ${admin?'Admin':'User'}${p.shared?' (mật khẩu chung)':''}${AUTH.offline?' · offline':''}</p>`:'<p>Chưa đăng nhập</p>';
+  const who=p?`<p>Đang dùng: <b>${esc(p.displayName)}</b> · ${ROLE_LABEL[p.role]||'User'}${p.shared?' (mật khẩu chung)':''}${AUTH.offline?' · offline':''}</p>`:'<p>Chưa đăng nhập</p>';
   const form=admin&&!p.shared?'':`<h3 style="margin-top:14px">Đăng nhập Admin / tài khoản riêng</h3>
     <input class="t" id="acctUser" placeholder="Tên đăng nhập" autocomplete="username" autocapitalize="off" style="margin:8px 0">
     <input class="t" id="acctPass" type="password" placeholder="Mật khẩu" autocomplete="current-password" onkeydown="if(event.key==='Enter')authAccountLogin()">
@@ -1682,11 +1764,11 @@ async function renderUsers(){ const box=$('#usersBody');
   catch(e){box.innerHTML=`<div class="card"><b>Không đọc được danh sách người dùng:</b> ${esc(authErrMsg(e))}<p class="hint">Cần Publish Firestore Rules mới (file <code>firestore.rules</code>) trong Firebase Console.</p></div>`;return;}
   const staff=USERS_LIST.find(u=>u.shared),me=AUTH.profile.uid;
   const rows=USERS_LIST.map(u=>`<tr><td class="l"><b>${esc(u.username)}</b>${u.shared?' <span class="badge gray">mật khẩu chung</span>':''}</td><td class="l">${esc(u.displayName||'')}</td>
-    <td>${u.role==='admin'?'<span class="badge fail">Admin</span>':'<span class="badge gray">User</span>'}</td>
+    <td><span class="badge ${ROLE_BADGE[u.role]||'gray'}">${esc(ROLE_LABEL[u.role]||'User')}</span></td>
     <td>${u.active===false?'<span class="badge fail">Đã khoá</span>':'<span class="badge pass">Hoạt động</span>'}</td>
     <td style="white-space:nowrap">${esc(u.createdAt?fmtDate(new Date(u.createdAt)):'')}</td>
     <td style="white-space:nowrap">${u.uid===me?'<span class="hint">(bạn)</span>':`
-      ${u.shared?'':`<button class="btn sec sm" onclick="userSetRole('${u.uid}','${u.role==='admin'?'user':'admin'}')">${u.role==='admin'?'→ User':'→ Admin'}</button>`}
+      ${u.shared?'':`<select class="s" style="width:auto;display:inline-block;padding:5px 8px;font-size:12.5px" onchange="userSetRole('${u.uid}',this.value)">${ROLES.map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${ROLE_LABEL[r]}</option>`).join('')}</select>`}
       <button class="btn sec sm" onclick="userSetActive('${u.uid}',${u.active===false})">${u.active===false?'Mở khoá':'Khoá'}</button>
       <button class="btn sec sm" onclick="userPasswordForm('${u.uid}')">Đổi mật khẩu</button>
       <button class="btn danger sm" onclick="userRemove('${u.uid}')">Xoá</button>`}</td></tr>`).join('');
@@ -1703,7 +1785,7 @@ async function renderUsers(){ const box=$('#usersBody');
       <div class="row" style="grid-template-columns:1fr 1.3fr .8fr 1fr 1fr auto">
         <div><label class="f">Tên đăng nhập</label><input class="t" id="nuUser" placeholder="vd: binh.qa" autocapitalize="off"></div>
         <div><label class="f">Họ tên hiển thị</label><input class="t" id="nuName" placeholder="Đặng Thanh Bình"></div>
-        <div><label class="f">Vai trò</label><select class="s" id="nuRole"><option value="user">User</option><option value="admin">Admin</option></select></div>
+        <div><label class="f">Vai trò</label><select class="s" id="nuRole">${ROLES.map(r=>`<option value="${r}">${ROLE_LABEL[r]}</option>`).join('')}</select></div>
         <div><label class="f">Mật khẩu</label><input class="t" type="password" id="nuPass" autocomplete="new-password"></div>
         <div><label class="f">Nhập lại</label><input class="t" type="password" id="nuPass2" autocomplete="new-password"></div>
         <div style="align-self:end"><button class="btn" id="nuBtn" onclick="userCreate()">+ Tạo</button></div></div>
@@ -1740,7 +1822,7 @@ async function userCreate(){ const u=$('#nuUser').value.trim().toLowerCase(),nam
 async function userUpdate(uid,patch,msg){ const u=USERS_LIST.find(x=>x.uid===uid);if(!u)return;
   try{await CLOUD.m.updateDoc(CLOUD.m.doc(CLOUD.db,USERS_COL,uid),{...patch,updatedAt:new Date().toISOString(),updatedBy:AUTH.profile.username});logAudit(msg+': '+u.username);save();toast('Đã cập nhật '+u.username,'ok');renderUsers();}
   catch(e){toast('Lỗi: '+authErrMsg(e),'err');}}
-function userSetRole(uid,role){userUpdate(uid,{role},'Đổi vai trò → '+role);}
+function userSetRole(uid,role){if(!ROLES.includes(role))return;userUpdate(uid,{role},'Đổi vai trò → '+ROLE_LABEL[role]);}
 function userSetActive(uid,active){userUpdate(uid,{active},active?'Mở khoá tài khoản':'Khoá tài khoản');}
 function userRemove(uid){const u=USERS_LIST.find(x=>x.uid===uid);if(!u)return;
   confirmAsk('Xoá quyền vào app của "'+u.username+'"?'+(u.shared?' Người dùng mật khẩu chung sẽ không vào được nữa cho tới khi tạo lại.':''),'Xoá',async()=>{

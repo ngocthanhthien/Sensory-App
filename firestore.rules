@@ -21,13 +21,31 @@ service cloud.firestore {
       return signedIn() && exists(profilePath()) && get(profilePath()).data.active == true;
     }
 
-    // User chung (mật khẩu cấp 1) và tài khoản riêng đang hoạt động.
-    function isMember() {
-      return isOwner() || activeProfile();
+    function hasRole(roles) {
+      return isOwner() || (activeProfile() && get(profilePath()).data.role in roles);
     }
 
-    function isAdmin() {
-      return isOwner() || (activeProfile() && get(profilePath()).data.role == 'admin');
+    // Vai trò: user (chấm nếm) · qc (tạo & sửa Set) · supervisor (Giám sát nếm: xác nhận kết quả) · admin.
+    function isMember()     { return isOwner() || activeProfile(); }
+    function isAdmin()      { return hasRole(['admin']); }
+    function isQC()         { return hasRole(['qc', 'admin']); }
+    function isSupervisor() { return hasRole(['supervisor', 'admin']); }
+
+    // Các trường kỹ thuật do app đồng bộ tự ghi.
+    function syncKeys() {
+      return ['revision', 'updatedAt', 'updatedBy', 'clientId'];
+    }
+
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    function setPath(setId) {
+      return /databases/$(database)/documents/ild_sensory_sets/$(setId);
+    }
+
+    function setApproved(setId) {
+      return exists(setPath(setId)) && ('approval' in get(setPath(setId)).data);
     }
 
     // Legacy snapshot: chỉ Admin (migration/rollback).
@@ -35,19 +53,31 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Dữ liệu app v2: mọi thành viên được đọc/ghi.
+    // Dữ liệu chung (Master Data, Panellist, audit…): mọi thành viên được đọc/ghi.
     match /ild_sensory_v2/{documentId} {
       allow read, write: if isMember();
     }
 
-    // Set & phiếu nộp: thành viên đọc/tạo/sửa; chỉ Admin được xoá.
+    // Set nếm:
+    // - QC/Admin tạo & sửa (Set đã được Giám sát xác nhận thì chỉ Admin sửa).
+    // - Thành viên chỉ được cập nhật danh sách người đã nộp (attendees) khi nộp phiếu.
+    // - Giám sát/Admin xác nhận hoặc huỷ xác nhận (approval, status).
+    // - Chỉ Admin được xoá.
     match /ild_sensory_sets/{setId} {
-      allow read, create, update: if isMember();
+      allow read: if isMember();
+      allow create: if isQC();
+      allow update: if isMember() && (
+        changedKeys().hasOnly(syncKeys().concat(['attendees']))
+        || (isSupervisor() && changedKeys().hasOnly(syncKeys().concat(['approval', 'status'])))
+        || (isQC() && !changedKeys().hasAny(['approval']) && (!('approval' in resource.data) || isAdmin()))
+      );
       allow delete: if isAdmin();
     }
 
+    // Phiếu nộp ({setId}__{panellistId}): thành viên nộp/nộp lại khi Set chưa được xác nhận; chỉ Admin xoá.
     match /ild_sensory_scores/{scoreId} {
-      allow read, create, update: if isMember();
+      allow read: if isMember();
+      allow create, update: if isMember() && (!setApproved(scoreId.split('__')[0]) || isAdmin());
       allow delete: if isAdmin();
     }
 
@@ -56,7 +86,7 @@ service cloud.firestore {
       allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow list: if isAdmin();
       allow create, update: if isAdmin()
-        && request.resource.data.role in ['user', 'admin']
+        && request.resource.data.role in ['user', 'qc', 'supervisor', 'admin']
         && request.resource.data.active is bool;
       allow delete: if isAdmin();
     }
