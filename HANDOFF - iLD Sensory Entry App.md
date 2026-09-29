@@ -194,6 +194,7 @@ ild_sensory_theme          giao diện sáng/tối
 ild_sensory_cloud_auto     bật/tắt tự đồng bộ
 ild_sensory_cloud_client   ID thiết bị để tránh nhận lại chính bản ghi vừa gửi
 ild_sensory_cloud_sync_v2  bases, revision, outbox và conflict đang chờ xử lý
+ild-crafted-appearance-v1  Theme ILD Crafted {v:1, mode: light|dark|system, contrast: standard|high, emphasis: light|standard|bold}
 ```
 
 - `save()` là alias của `persist()`.
@@ -381,3 +382,13 @@ Không push nhầm dữ liệu demo từ một trình duyệt mới trước khi
 ## 14. Prompt bàn giao gợi ý
 
 > Tôi có app một file `index.html` để nhập và tổng hợp kết quả nếm cảm quan tại ILD Coffee Vietnam. Hãy đọc `HANDOFF - iLD Sensory Entry App.md` trước khi sửa. Giữ tương thích LocalStorage key `ild_sensory_v1`, công thức Result%, tab Items Code và luồng Firebase hiện có. Không làm mất dữ liệu local/cloud. Việc cần làm: [mô tả yêu cầu]. Sau khi sửa, kiểm tra cú pháp JavaScript, Items Code, backup/restore và Firebase offline fallback.
+
+---
+
+## 15. Giao diện ILD Crafted & Theme
+
+- Nhận diện: nền kem `#F7F0E6`, espresso `#382E28`, bề mặt trắng; logo gốc (ILD_LOGO.dark) luôn đặt trên ô trắng — không dùng bản đổi màu.
+- Toàn bộ nằm trong `<style id="ild-theme-style">` (token `--c-*`, ánh xạ sang biến cũ `--bg/--panel/--line/...`) và script `[ILD-THEME]` cuối file; script áp dụng sớm trong `<head>`.
+- Thuộc tính trên `<html>`: `data-ild-appearance` (lựa chọn), `data-ild-scheme` (sáng/tối thực tế), `data-ild-contrast`, `data-ild-emphasis`.
+- Nút 🌓 cũ vẫn hoạt động: module Theme theo dõi `body[data-theme]` và ghi nhận thành Sáng/Tối thủ công.
+- Phiếu QA.F.072 (`.sf-paper`) và bản in luôn nền trắng.

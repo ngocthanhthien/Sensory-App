@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>iLD Sensory Entry – Nhập kết quả nếm</title>
+<script>/* [ILD-THEME] áp dụng sớm — chỉ đặt thuộc tính trên <html>, không đụng dữ liệu app */
+(function(){var d=document.documentElement,c={mode:'light',contrast:'standard',emphasis:'standard'};
+  try{var v=JSON.parse(localStorage.getItem('ild-crafted-appearance-v1')||'null');
+    if(v&&v.v===1){if(['light','dark','system'].indexOf(v.mode)>-1)c.mode=v.mode;if(['standard','high'].indexOf(v.contrast)>-1)c.contrast=v.contrast;if(['light','standard','bold'].indexOf(v.emphasis)>-1)c.emphasis=v.emphasis;}}catch(e){}
+  var dark=c.mode==='dark'||(c.mode==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);
+  d.setAttribute('data-ild-appearance',c.mode);d.setAttribute('data-ild-scheme',dark?'dark':'light');d.setAttribute('data-ild-contrast',c.contrast);d.setAttribute('data-ild-emphasis',c.emphasis);})();
+</script>
 <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFNklEQVR42u2aW2gdRRjHfzvZbk7StLZN6i0gjSDUtkZbLUSQxBulL4VWUNoXHxShfZAqgg8iKohoRfRB0EcfBAv1VkpAahSUFlSoopQWb9Ui0USFJr3ktmcvPuy3zWazs+dssgk5df7wsZwzs/PNfLf55psFAwMDAwMDAwMDAwOD/yGsd+wVz23Cvs8lDMGyLMLQtcLhl/yJJwYCd1gBwcx3moBNgEr8dxE4C3g5vF4BngJcwJnnvANgFPgVOA4MACfkv2L4x+kIh532yzTktIcjTkd42lkz2GEpZQHWzFd2AmEG/QbcmsPqlPSrat4vgz4G7hIl1QU1RuhOQRCTC8EooduO1dmJaglnC6BNtHhBnjF1Ad8D12t4jS2ABQdidW5COceAX4DeugSgwFbRM0m2B4E/y/pBGDoZNCltL2p4Vckebz5QgJ1wKU/m0QV8CRwCltcaQNega7M0/zsymR5Nn0+En7uAMc0GKiLoSeBBYBBYp13nOOEQ4IXlacfW/P+GaKhVJlcWeRrFVkTYK4HfgQ2ZAjgSuM+sQdlVGPfB9cHzYdLB8q62rLY8lRfEGHAD8I1MriyyReOuxirjtlPCf6a2XvbG3t2wrKlvm+U8comQEPDBbsNin2p59ouguj8sz0SHgDuBtaKZucrXAlYBG4FdwI7EYtOubYuVeMAPwHViOdPMW7GsvU2V3j7l7G7G6iAShN+G1XzAH3+8P3AHE/nAHuA9GaSSisgK+BlYL9vSYmEV8BjwaiIYpl0xzj/eBx6qGdFiNM/usUcWN5Hag315/lSe1xTGtaLlEJjKyBPiOW+9bB6yz1sK7ADCcLpzADC1qIoE4HngXhEospATwNvAXzXeHQbuAI4A2zMsIXaHg8BNsZUq4DNJZ88DIzJQP3BbBpOFtACl0VxMPQV2opMyp6rGCm5PRsq89HTbIgvgrMxnSp5V4TUlPOo9R6zVpN5VGedQzDCUtDZOK4PE1jEJHC3h8FI0j0hTJRFkN9Y5zr/A0/K+m5Gn7AKWq4Tk05Rc9I1L5PQa5Jw1svBWQnDpdN4GNqsC28xSQBwjiiRfHyaCXxr3q4Rk8zC5yFrOw0TB8Q4mtJ52g956LcBbQkWcovvy6ZxD4Hq1QEyXEs7nnHxXqwK595Ip45UdVBqujlmw/1U5sWVENaCgis7l5pxA+2MjukBRAezOKNTEQf14IwqgqUDfVimLeZpK1cCV7gL7pL+XkW57wHdX8i7QAbwmC61kmP9hYKzeTLDRYAOfoy/rK+BAo26D9Sz+MNAtArBT0d8mqhJ/m1fCXux0tawgeA3R/cNmzR2kK+4Q1zSwF2CyTcLYLyiwIPGsdcJLYyXwKPB66vYqa/EfEJXmZ+yNQYnRuYuo/F3vyc+X5xaiUpxTY/y7gT+B1ZLk7AQeSK3D1vj9BeDhLJ8ZTpW1tPWznJLYXKmaqvfp5pJHfk4tMdm2rt5rrKJn9Pn0d1OFjlpHby/jbG9rLMdNtHUT1RszBRAUWJAqOVlRqeAW1FkzrDXf2OcvEVW3z+iY+0Ql8aDO5OPvROG0zOwuPrePMF2cLYr4ejy+HP2I6CrsTK0XXxAfuZjyvQn5vTXRtyXhu3Gpeq4Ux5GRhAXs18xF59/VDP//A7iniOSaga/RXyV1p/r3lPhZy4TsHEkTPzrHsfqBviIHJivFeAewF7gFWCFmdIzomil9/dwJPEl0FbVsDuY6RfQVx5vAuQyX2C5z2SJFjfi7AkfaR4k+hfkK+FT29nMYGBgYGBgYGBgYGBgY1MZ/dUc81I1VfSsAAAAASUVORK5CYII=">
 <!-- ============================================================
      iLD SENSORY ENTRY  ·  Hoàn chỉnh P1→P5
@@ -329,17 +336,267 @@ footer .spacer{flex:1}
   #printArea .sf-title h2{margin:0}
 }
 </style>
+<style id="ild-theme-style">
+/* ===================== [ILD CRAFTED] Nhận diện + Theme — chỉ màu/viền/bo góc/bóng/độ đậm; không đổi bố cục nghiệp vụ ===================== */
+/* Token: Sáng · tiêu chuẩn (mặc định) */
+html[data-ild-appearance]{
+  --c-bg:#F7F0E6;--c-surface2:#FBF4E8;--c-surface:#FFFFFF;--c-raised:#FFFFFF;--c-selected:#F6E8CF;--c-line:#E6D6BA;--c-input:#99897A;
+  --c-text:#2A2018;--c-muted:#6B5842;--c-primary:#382E28;--c-primary-hover:#514135;--c-primary-text:#FFFFFF;--c-accent:#8A5A2F;
+  --c-red:#E30613;--c-focus:#2563EB;--c-th:#FBF4E8;--c-zebra:#FDF9F3;--c-overlay:rgba(42,32,24,.45);
+  --c-ok:#1B7A36;--c-warn:#A15C07;--c-fail:#B3261E;--c-ok-bg:#E4F2E7;--c-warn-bg:#FBEFD9;--c-fail-bg:#F9E4E1;--c-gray-bg:#F1E7D8;
+  --c-shadow:0 1px 2px rgba(56,46,40,.08),0 2px 8px rgba(56,46,40,.06);--c-shadow-pop:0 14px 40px rgba(42,32,24,.22);
+  --w-body:400;--w-strong:600;--w-title:700;--bw:1px;--focus-w:2px;
+}
+/* Tối · tiêu chuẩn — hệ nâu ấm */
+html[data-ild-scheme="dark"]{
+  --c-bg:#1F1A17;--c-surface2:#261F1B;--c-surface:#2A231F;--c-raised:#342B25;--c-selected:#3F332B;--c-line:#4A3F37;--c-input:#968575;
+  --c-text:#F5EEE5;--c-muted:#C7B8A8;--c-primary:#E5D8C8;--c-primary-hover:#F2E8DC;--c-primary-text:#382E28;--c-accent:#D9A774;
+  --c-red:#FF4B55;--c-focus:#8AB0FF;--c-th:#342B25;--c-zebra:#2F2722;--c-overlay:rgba(0,0,0,.6);
+  --c-ok:#7CD699;--c-warn:#F2B24C;--c-fail:#FF8A80;--c-ok-bg:#1E3A27;--c-warn-bg:#44321A;--c-fail-bg:#4A2320;--c-gray-bg:#3A302A;
+  --c-shadow:0 1px 2px rgba(0,0,0,.35);--c-shadow-pop:0 14px 40px rgba(0,0,0,.55);
+}
+/* Tương phản cao */
+html[data-ild-scheme="light"][data-ild-contrast="high"]{
+  --c-text:#17100A;--c-muted:#46362A;--c-line:#C9B08C;--c-input:#5E4E40;--c-primary:#231B16;--c-primary-hover:#3A2E26;--c-selected:#EFD9B0;
+  --c-focus:#1D4ED8;--c-ok:#12612A;--c-warn:#7C4504;--c-fail:#8E1B14;--focus-w:3px;
+}
+html[data-ild-scheme="dark"][data-ild-contrast="high"]{
+  --c-text:#FFFFFF;--c-muted:#E3D6C7;--c-line:#7A6A5C;--c-input:#B8A694;--c-primary:#F5ECE1;--c-primary-hover:#FFFFFF;--c-selected:#54443A;
+  --c-focus:#A9C4FF;--c-ok:#9BE8B2;--c-warn:#FFC977;--c-fail:#FFA59C;--focus-w:3px;
+}
+/* Độ đậm (không đổi cỡ chữ/padding) */
+html[data-ild-emphasis="light"]{--w-body:400;--w-strong:500;--w-title:600;--bw:1px;--c-shadow:none}
+html[data-ild-emphasis="bold"]{--w-body:500;--w-strong:700;--w-title:700;--bw:1.5px}
+
+/* Ánh xạ sang biến cũ của app (giữ tên biến cũ) — đặt trên body để thắng body[data-theme] */
+html[data-ild-appearance] body{
+  --bg:var(--c-bg);--panel:var(--c-surface);--line:var(--c-line);--muted:var(--c-muted);--text:var(--c-text);--ink:var(--c-primary);
+  --ok:var(--c-ok);--warn:var(--c-warn);--fail:var(--c-fail);--radius:14px;--shadow:var(--c-shadow);
+  --bg-dark:var(--c-surface2);--bg-dark-2:var(--c-selected);--font:'Segoe UI',Arial,sans-serif;
+  background:var(--c-bg);color:var(--c-text);font-weight:var(--w-body);
+}
+html[data-ild-appearance]{background:var(--c-bg)}
+html[data-ild-appearance] :focus-visible{outline:var(--focus-w) solid var(--c-focus);outline-offset:2px}
+
+/* Header · điều hướng · footer */
+html[data-ild-appearance] header{background:var(--c-surface2);color:var(--c-text);border-bottom:1px solid var(--c-line);box-shadow:none}
+html[data-ild-appearance] .logo{height:42px;padding:7px 9px;background:#FFFFFF;border:1px solid var(--c-line);border-radius:8px;box-sizing:border-box}
+html[data-ild-appearance] .app-title{color:var(--c-text);font-weight:var(--w-strong)}
+html[data-ild-appearance] .app-title small{color:var(--c-muted)}
+html[data-ild-appearance] .set-badge,html[data-ild-appearance] .role-pill{background:var(--c-surface);border:var(--bw) solid var(--c-line);color:var(--c-muted)}
+html[data-ild-appearance] .set-badge b{color:var(--c-text)}
+html[data-ild-appearance] .acct-btn:hover{border-color:var(--c-input)}
+html[data-ild-appearance] .hbtn{background:var(--c-primary);color:var(--c-primary-text);border-radius:6px}
+html[data-ild-appearance] .hbtn:hover{background:var(--c-primary-hover)}
+html[data-ild-appearance] .hbtn.ghost{background:var(--c-surface);border:var(--bw) solid var(--c-line);color:var(--c-text)}
+html[data-ild-appearance] .hbtn.ghost:hover{background:var(--c-selected)}
+html[data-ild-appearance] nav.side{background:var(--c-surface2);color:var(--c-muted);border-bottom:1px solid var(--c-line);scrollbar-color:var(--c-line) transparent}
+html[data-ild-appearance] .nav-item{color:var(--c-muted)}
+html[data-ild-appearance] .nav-item:hover{background:var(--c-selected);color:var(--c-text)}
+html[data-ild-appearance] .nav-item.active{background:var(--c-selected);color:var(--c-text);border-bottom-color:var(--c-red);font-weight:var(--w-strong)}
+html[data-ild-appearance] footer{background:var(--c-surface2);color:var(--c-muted);border-top:1px solid var(--c-line)}
+
+/* Trang · khối · chữ */
+html[data-ild-appearance] .page-head h1{font-size:22px;font-weight:var(--w-title);color:var(--c-text)}
+html[data-ild-appearance] .page-head .tag{background:var(--c-selected);color:var(--c-muted)}
+html[data-ild-appearance] .card,html[data-ild-appearance] .kpi{background:var(--c-surface);border:var(--bw) solid var(--c-line);border-radius:14px;box-shadow:var(--c-shadow)}
+html[data-ild-appearance] .card h3,html[data-ild-appearance] h3{font-weight:var(--w-strong)}
+html[data-ild-appearance] label.f{font-weight:var(--w-strong);color:var(--c-text)}
+html[data-ild-appearance] .hint,html[data-ild-appearance] .card p{color:var(--c-muted)}
+html[data-ild-appearance] .ph{background:var(--c-surface);border-color:var(--c-line)}
+
+/* Nút */
+html[data-ild-appearance] .btn{background:var(--c-primary);color:var(--c-primary-text);border-radius:6px;font-weight:var(--w-strong)}
+html[data-ild-appearance] .btn:hover{background:var(--c-primary-hover)}
+html[data-ild-appearance] .btn.sec{background:var(--c-surface);color:var(--c-text);border:var(--bw) solid var(--c-input)}
+html[data-ild-appearance] .btn.sec:hover{background:var(--c-selected)}
+html[data-ild-appearance] .btn.danger{background:var(--c-surface);color:var(--c-fail);border:var(--bw) solid var(--c-fail)}
+html[data-ild-appearance] .btn.danger:hover{background:var(--c-fail-bg)}
+html[data-ild-appearance] .btn:disabled,html[data-ild-appearance] .hbtn:disabled{background:var(--c-gray-bg);color:var(--c-muted);border-color:var(--c-line);opacity:1}
+html[data-ild-appearance] .all-in-btn{background:var(--c-ok);color:#FFFFFF;box-shadow:none}
+html[data-ild-scheme="dark"] .all-in-btn{color:#10281A}
+
+/* Biểu mẫu */
+html[data-ild-appearance] input.t,html[data-ild-appearance] select.s,html[data-ild-appearance] textarea.t{background:var(--c-surface);color:var(--c-text);border:var(--bw) solid var(--c-input);border-radius:6px}
+html[data-ild-scheme="dark"] input.t,html[data-ild-scheme="dark"] select.s,html[data-ild-scheme="dark"] textarea.t{background:var(--c-raised)}
+html[data-ild-appearance] .item-table .edit-cell{border-color:transparent;background:transparent}
+html[data-ild-appearance] .item-table .edit-cell:hover{border-color:var(--c-input);background:var(--c-surface)}
+
+/* Bảng */
+html[data-ild-appearance] table.grid{background:var(--c-surface)}
+html[data-ild-appearance] table.grid th,html[data-ild-appearance] table.grid td{border-color:var(--c-line)}
+html[data-ild-appearance] table.grid th{background:var(--c-th);color:var(--c-text);font-weight:var(--w-strong)}
+html[data-ild-appearance] table.grid tr:nth-child(even) td{background:var(--c-zebra)}
+html[data-ild-appearance] .tbl-wrap{border-color:var(--c-line);border-radius:14px}
+html[data-ild-appearance] .item-table .filter-row th{background:var(--c-surface)}
+
+/* Trạng thái (giữ ý nghĩa: đạt xanh lá · cảnh báo hổ phách · lỗi đỏ sẫm · trung tính xám) */
+html[data-ild-appearance] .badge.pass{background:var(--c-ok-bg);color:var(--c-ok)}
+html[data-ild-appearance] .badge.fail{background:var(--c-fail-bg);color:var(--c-fail)}
+html[data-ild-appearance] .badge.gray{background:var(--c-gray-bg);color:var(--c-muted)}
+html[data-ild-appearance] .pill-done{background:var(--c-ok-bg);color:var(--c-ok)}
+html[data-ild-appearance] .pill-wait{background:var(--c-surface2);color:var(--c-muted);border-color:var(--c-line)}
+
+/* Phiếu chấm (F.071) */
+html[data-ild-appearance] .scoring-start-card{background:var(--c-surface);border:var(--bw) solid var(--c-line);border-radius:14px;box-shadow:var(--c-shadow)}
+html[data-ild-appearance] .scoring-start-card select.s,html[data-ild-appearance] .scoring-start-card input.t{border:var(--bw) solid var(--c-input);border-radius:6px;box-shadow:none;background:var(--c-surface)}
+html[data-ild-scheme="dark"] .scoring-start-card select.s,html[data-ild-scheme="dark"] .scoring-start-card input.t{background:var(--c-raised)}
+html[data-ild-appearance] .score-sheet{background:var(--c-surface);border:var(--bw) solid var(--c-line);border-radius:14px;box-shadow:var(--c-shadow)}
+html[data-ild-appearance] .score-sheet:before{height:4px;background:var(--c-red)}
+html[data-ild-appearance] .score-form-head{background:var(--c-surface);border-bottom:1px solid var(--c-line)}
+html[data-ild-appearance] .score-form-title{color:var(--c-text);text-shadow:none}
+html[data-ild-appearance] .score-meta>div{background:var(--c-surface2);border:var(--bw) solid var(--c-line);border-radius:8px;box-shadow:none}
+html[data-ild-appearance] .score-meta b{color:var(--c-muted)}
+html[data-ild-appearance] .score-table thead th{background:var(--c-th);color:var(--c-text);border-color:var(--c-line)}
+html[data-ild-appearance] .score-table .seg label{background:var(--c-surface);border:var(--bw) solid var(--c-input);color:var(--c-text);border-radius:6px!important;box-shadow:0 2px 0 var(--c-line)}
+html[data-ild-scheme="dark"] .score-table .seg label{background:var(--c-raised);box-shadow:0 2px 0 #15110E}
+html[data-ild-appearance] .score-table .seg label:hover{background:var(--c-selected);box-shadow:0 3px 0 var(--c-line)}
+html[data-ild-appearance] .score-table .seg label.in.on{background:var(--c-ok-bg);color:var(--c-ok);border-color:var(--c-ok);box-shadow:0 2px 0 var(--c-ok)}
+html[data-ild-appearance] .score-table .seg label.ji.on{background:var(--c-warn-bg);color:var(--c-warn);border-color:var(--c-warn);box-shadow:0 2px 0 var(--c-warn)}
+html[data-ild-appearance] .score-table .seg label.out.on{background:var(--c-fail-bg);color:var(--c-fail);border-color:var(--c-fail);box-shadow:0 2px 0 var(--c-fail)}
+html[data-ild-appearance] .score-table .remark-box select,html[data-ild-appearance] .score-table .remark-box input{border:var(--bw) solid var(--c-input);border-radius:6px;box-shadow:none}
+html[data-ild-appearance] .score-instructions{background:var(--c-surface2);border-top-color:var(--c-line);color:var(--c-muted)}
+html[data-ild-appearance] .item-table .add-row td{background:var(--c-ok-bg)!important;border-bottom-color:var(--c-ok)}
+
+/* Ô tìm kiếm · hộp thoại · thông báo · màn hình đăng nhập */
+html[data-ild-appearance] .combo-list{background:var(--c-surface);border-color:var(--c-line);box-shadow:var(--c-shadow-pop)}
+html[data-ild-appearance] .combo-item.on,html[data-ild-appearance] .combo-item:hover{background:var(--c-selected)}
+html[data-ild-appearance] .overlay{background:var(--c-overlay)}
+html[data-ild-appearance] .modal{background:var(--c-surface);color:var(--c-text);border-radius:18px;box-shadow:var(--c-shadow-pop)}
+html[data-ild-appearance] #toast{background:var(--c-primary);color:var(--c-primary-text)}
+html[data-ild-appearance] #toast.ok{background:var(--c-ok);color:#FFFFFF}html[data-ild-appearance] #toast.err{background:var(--c-fail);color:#FFFFFF}
+html[data-ild-scheme="dark"] #toast.ok,html[data-ild-scheme="dark"] #toast.err{color:#1F1A17}
+html[data-ild-appearance] .auth-gate{background:var(--c-bg)}
+html[data-ild-appearance] .auth-card{background:var(--c-surface);border:1px solid var(--c-line);border-radius:18px;box-shadow:var(--c-shadow-pop)}
+html[data-ild-appearance] .auth-card img{height:64px;padding:12px 14px;background:#FFFFFF;border-radius:10px;box-sizing:border-box}
+html[data-ild-scheme="light"] .auth-card img{border:1px solid var(--c-line)}
+html[data-ild-appearance] .auth-link{color:var(--c-muted)}
+html[data-ild-appearance] .perm-table input{accent-color:var(--c-primary)}
+html[data-ild-appearance] .perm-table tr.perm-fixed td{background:var(--c-surface2)}
+html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid var(--c-line)} /* phiếu QA.F.072 luôn giấy trắng */
+
+/* ---- Nút & panel Theme ---- */
+.ild-theme-open{white-space:nowrap}
+.ild-theme-overlay{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--c-overlay,rgba(0,0,0,.45))}
+.ild-theme-overlay[hidden]{display:none}
+.ild-theme-dialog{background:var(--c-surface,#fff);color:var(--c-text,#2A2018);border:1px solid var(--c-line,#E6D6BA);border-radius:18px;box-shadow:var(--c-shadow-pop);
+  width:440px;max-width:100%;max-height:calc(100vh - 32px);overflow-y:auto;padding:20px 22px;font-family:'Segoe UI',Arial,sans-serif}
+.ild-theme-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ild-theme-head h2{margin:0;font-size:17px;font-weight:var(--w-title,700);flex:1}
+.ild-theme-x{background:var(--c-surface);border:var(--bw,1px) solid var(--c-input);color:var(--c-text);border-radius:6px;width:34px;height:34px;font-size:16px;cursor:pointer}
+.ild-theme-x:hover{background:var(--c-selected)}
+.ild-theme-status{font-size:12.5px;color:var(--c-muted);margin:0 0 10px}
+.ild-theme-status b{color:var(--c-text)}
+.ild-theme-dialog fieldset{border:0;margin:0 0 12px;padding:0}
+.ild-theme-dialog legend{font-size:12.5px;font-weight:var(--w-strong,600);color:var(--c-text);margin-bottom:6px;padding:0}
+.ild-theme-opts{display:grid;gap:6px}
+.ild-theme-opts.c2{grid-template-columns:1fr 1fr}.ild-theme-opts.c3{grid-template-columns:repeat(3,1fr)}
+.ild-theme-opt{position:relative;display:flex;align-items:center;gap:8px;padding:8px 10px;border:var(--bw,1px) solid var(--c-line);border-radius:6px;background:var(--c-surface);cursor:pointer;font-size:13px;color:var(--c-text)}
+.ild-theme-opt:hover{background:var(--c-surface2)}
+.ild-theme-opt input{accent-color:var(--c-primary);margin:0;flex:none}
+.ild-theme-opt:has(input:checked){border-color:var(--c-primary);background:var(--c-selected);font-weight:var(--w-strong,600)}
+.ild-theme-opt small{display:block;color:var(--c-muted);font-size:11.5px;font-weight:400}
+.ild-theme-sw{width:22px;height:22px;border-radius:5px;flex:none;border:1px solid rgba(0,0,0,.2)}
+.ild-theme-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:6px}
+.ild-theme-actions button{border-radius:6px;padding:8px 14px;font-size:13px;font-weight:var(--w-strong,600);cursor:pointer;font-family:inherit}
+.ild-theme-reset{background:var(--c-surface);color:var(--c-text);border:var(--bw,1px) solid var(--c-input)}
+.ild-theme-reset:hover{background:var(--c-selected)}
+.ild-theme-done{background:var(--c-primary);color:var(--c-primary-text);border:0}
+.ild-theme-done:hover{background:var(--c-primary-hover)}
+@media(max-width:480px){.ild-theme-opts.c3{grid-template-columns:1fr}.ild-theme-dialog{padding:16px}}
+@media(max-width:600px){.ild-theme-open .ild-theme-lbl{display:none}}
+@media(prefers-reduced-motion:reduce){html[data-ild-appearance] *{transition:none!important;animation:none!important}}
+@media print{
+  html[data-ild-appearance],html[data-ild-appearance] body{background:#FFFFFF!important;color:#000000!important}
+  .ild-theme-overlay,.ild-theme-open{display:none!important}
+}
+</style>
+<style id="scoring-touch-style">
+/* ===================== [SCORING · TABLET/PHONE] Chỉ tab "Chấm điểm nếm" (#tab-scoring): cảm ứng, vừa màn hình, thanh Nộp phiếu luôn trong tầm tay.
+   Các tab khác giữ bố cục PC/Laptop. Không đổi DOM/logic. ===================== */
+#tab-scoring .seg label{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+@media(hover:none){#tab-scoring .score-table .seg label:hover{transform:none}#tab-scoring .score-table tbody tr:hover{filter:none}}
+
+/* ---- Máy tính bảng (601–1180px: iPad dọc & ngang) ---- */
+@media(min-width:601px) and (max-width:1180px){
+  #tab-scoring .page-head{margin-bottom:12px}
+  #tab-scoring .scoring-start-card{padding:14px 16px}
+  #tab-scoring .scoring-start-card .row.c4{grid-template-columns:1.35fr 1.35fr 1fr;gap:12px;margin-bottom:6px}
+  #tab-scoring .scoring-start-card .row.c4>div:nth-child(4){grid-column:1 / -1;align-self:auto}
+  #tab-scoring .scoring-start-card select.s,#tab-scoring .scoring-start-card input.t{min-height:48px;font-size:16px}
+  #tab-scoring .score-form-head{padding:16px 16px 14px}
+  #tab-scoring .score-form-title{font-size:16px}
+  #tab-scoring .score-meta{grid-template-columns:1.4fr 1fr 1fr 1fr .7fr;gap:8px;margin-top:12px}
+  #tab-scoring .score-meta>div:last-child{grid-column:auto}
+  #tab-scoring .score-meta>div{padding:7px 9px}
+  #tab-scoring .all-in-btn{min-height:44px;padding:8px 18px;font-size:15px}
+  #tab-scoring .score-sheet .tbl-wrap{max-height:none;overflow:visible}
+  #tab-scoring .score-table{min-width:0;table-layout:fixed}
+  #tab-scoring .score-table thead tr:first-child th:nth-child(1){width:44px}#tab-scoring .score-table thead tr:first-child th:nth-child(2){width:13%}
+  #tab-scoring .score-table thead tr:first-child th:nth-child(3){width:300px} /* 3 cột IN · Just In · OUT (bảng fixed lấy độ rộng từ hàng đầu) */
+  #tab-scoring .score-table th.result-col{width:96px}#tab-scoring .score-table th.remark-col{min-width:0}
+  #tab-scoring .score-table tbody td{padding:8px 6px}
+  #tab-scoring .score-table .seg label{min-width:0;width:100%;min-height:50px;display:flex;align-items:center;justify-content:center;font-size:15px;padding:8px 4px}
+  #tab-scoring .score-table .seg{display:block}
+  #tab-scoring .score-table .remark-box{min-width:0}
+  #tab-scoring .score-table .remark-box select,#tab-scoring .score-table .remark-box input{min-height:44px;font-size:16px;width:100%}
+}
+@media(min-width:601px) and (max-width:767px){
+  #tab-scoring .score-meta{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #tab-scoring .score-table thead tr:first-child th:nth-child(3){width:246px}
+  #tab-scoring .score-table .seg label{font-size:13.5px}
+}
+
+/* ---- Thanh Nộp phiếu dính đáy (bảng & điện thoại) ---- */
+@media(max-width:1180px){
+  #tab-scoring .score-actions{position:sticky;bottom:6px;z-index:6;margin:12px -4px 0;padding:10px 12px;gap:10px;
+    background:var(--c-surface2,var(--panel));border:1px solid var(--c-line,var(--line));border-radius:14px;box-shadow:0 -6px 18px rgba(42,32,24,.12)}
+  #tab-scoring .score-actions .btn{min-height:48px;font-size:15px;padding:10px 20px}
+  #tab-scoring .score-actions .hint{margin:0;font-size:13px;font-weight:600;color:var(--c-text,var(--text))}
+}
+
+/* ---- Điện thoại (≤600px): thẻ từng mẫu, nút to, thanh nộp 2 nút ---- */
+@media(max-width:600px){
+  #tab-scoring .scoring-start-card .row.c4{gap:10px;margin-bottom:4px}
+  #tab-scoring .score-form-head{padding:14px 10px 12px}
+  #tab-scoring .all-in-btn{width:100%;min-height:48px;font-size:15px;margin:0 0 12px}
+  #tab-scoring .score-table tbody tr{gap:8px;padding:10px}
+  #tab-scoring .score-table .seg label{min-height:50px;display:flex;align-items:center;justify-content:center;font-size:14px;padding:8px 4px}
+  #tab-scoring .score-table tbody td:nth-child(5){grid-column:3 / 4}
+  #tab-scoring .score-table tbody tr{grid-template-columns:40px repeat(3,minmax(0,1fr))}
+  #tab-scoring .score-table tbody td:nth-child(3){grid-column:2 / 3}#tab-scoring .score-table tbody td:nth-child(4){grid-column:3 / 4}#tab-scoring .score-table tbody td:nth-child(5){grid-column:4 / 5}
+  #tab-scoring .score-table tbody td:nth-child(3),#tab-scoring .score-table tbody td:nth-child(4),#tab-scoring .score-table tbody td:nth-child(5){grid-row:2}
+  #tab-scoring .score-table tbody td:nth-child(1){grid-row:1 / 3;align-self:center}
+  #tab-scoring .score-table .remark-box select,#tab-scoring .score-table .remark-box input{min-height:46px}
+  #tab-scoring .score-actions{bottom:4px;margin:10px 0 0;display:grid;grid-template-columns:1fr 1.6fr;padding:10px}
+  #tab-scoring .score-actions .hint{grid-column:1 / -1;text-align:center}
+  #tab-scoring .score-actions .spacer{display:none}
+  #tab-scoring .score-actions .btn{width:100%;min-height:50px;padding:10px 8px}
+}
+/* Header gọn trên điện thoại (dùng chủ yếu để chấm nếm): ẩn tên app cạnh logo, các nút về 1 hàng */
+@media(max-width:600px){
+  header{gap:6px;row-gap:6px}
+  header .hbtn[title="Sáng/Tối"]{display:none} /* đã có trong 🎨 Giao diện → Sáng/Tối */
+  header .app-title{display:none}
+  header .logo{height:38px;padding:6px 8px}
+  header .acct-btn{max-width:42vw;overflow:hidden;text-overflow:ellipsis;padding:5px 10px}
+  header .hbtn{min-height:38px}
+  header .set-badge{width:100%;order:9}
+}
+@media print{#tab-scoring .score-actions{position:static;box-shadow:none}}
+</style>
 </head>
 <body data-theme="light">
 
 <!-- ===================== HEADER ===================== -->
 <header class="noprint">
-  <img class="logo" data-logo="light" alt="iLD">
+  <img class="logo" data-logo="dark" alt="iLD">
   <div class="app-title">Sensory Entry<small>Nhập &amp; tổng hợp kết quả nếm · ILD Coffee Vietnam</small></div>
   <div class="header-spacer"></div>
   <span class="set-badge">Set: <b id="hdrSet">— chưa mở —</b></span>
   <button class="role-pill acct-btn off" id="acctBtn" onclick="authOpenAccount()" title="Tài khoản · đăng nhập Admin"><span class="dot"></span><span id="acctLabel">Chưa đăng nhập</span></button>
   <button class="hbtn ghost" id="logoutBtn" onclick="authLogout()" title="Đăng xuất & xoá dữ liệu tạm trên trình duyệt" style="display:none">🚪 Đăng xuất</button>
+  <button type="button" class="hbtn ghost ild-theme-open noprint" id="ild-theme-open" aria-haspopup="dialog" aria-controls="ild-theme-overlay" title="Giao diện">🎨<span class="ild-theme-lbl"> Giao diện</span></button>
   <button class="hbtn ghost" onclick="toggleTheme()" title="Sáng/Tối">🌓</button>
 </header>
 
@@ -429,7 +686,7 @@ footer .spacer{flex:1}
 
 <!-- ĐĂNG NHẬP cấp 1 (mật khẩu User chung) / tài khoản riêng -->
 <div class="auth-gate show noprint" id="authGate"><div class="auth-card">
-  <img data-logo="dark" class="logo-for-light" alt="iLD"><img data-logo="light" class="logo-for-dark" alt="iLD"><h2>Sensory Entry</h2><p id="gateSub">Đang kiểm tra đăng nhập…</p>
+  <img data-logo="dark" alt="iLD"><h2>Sensory Entry</h2><p id="gateSub">Đang kiểm tra đăng nhập…</p>
   <div id="gateUserRow" style="display:none"><input class="t" id="gateUser" placeholder="Tên đăng nhập" autocomplete="username" autocapitalize="off"></div>
   <input class="t" id="gatePass" type="password" placeholder="Mật khẩu" autocomplete="current-password" onkeydown="if(event.key==='Enter')authGateSubmit()">
   <div class="auth-err" id="gateErr"></div>
@@ -445,6 +702,34 @@ footer .spacer{flex:1}
 <div class="overlay noprint" id="cfOverlay">
   <div class="modal"><h3 id="cfTitle">Xác nhận</h3><p id="cfMsg"></p>
     <div class="actions"><button class="btn sec" onclick="cfNo()">Huỷ</button><button class="btn" id="cfYes">Đồng ý</button></div></div>
+</div>
+<!-- [ILD-THEME] Panel tùy chỉnh giao diện -->
+<div class="ild-theme-overlay noprint" id="ild-theme-overlay" hidden>
+  <div class="ild-theme-dialog" role="dialog" aria-modal="true" aria-labelledby="ild-theme-title">
+    <div class="ild-theme-head"><h2 id="ild-theme-title">Giao diện</h2><button type="button" class="ild-theme-x" data-ild-theme-close aria-label="Đóng">✕</button></div>
+    <p class="ild-theme-status" aria-live="polite">Cấu hình: <b id="ild-theme-current">Crafted tiêu chuẩn</b></p>
+    <fieldset><legend>Cấu hình mẫu</legend><div class="ild-theme-opts c2">
+      <label class="ild-theme-opt"><input type="radio" name="ild-theme-preset" value="standard"><span class="ild-theme-sw" style="background:#F7F0E6"></span><span>Crafted tiêu chuẩn<small>Sáng · nền kem</small></span></label>
+      <label class="ild-theme-opt"><input type="radio" name="ild-theme-preset" value="soft"><span class="ild-theme-sw" style="background:#FBF4E8"></span><span>Crafted dịu<small>Sáng · nét nhẹ</small></span></label>
+      <label class="ild-theme-opt"><input type="radio" name="ild-theme-preset" value="dark"><span class="ild-theme-sw" style="background:#1F1A17"></span><span>Crafted tối<small>Tối · nâu ấm</small></span></label>
+      <label class="ild-theme-opt"><input type="radio" name="ild-theme-preset" value="clear"><span class="ild-theme-sw" style="background:#382E28"></span><span>Crafted rõ nét<small>Tương phản cao · đậm</small></span></label>
+    </div></fieldset>
+    <fieldset><legend>Chế độ hiển thị</legend><div class="ild-theme-opts c3">
+      <label class="ild-theme-opt"><input type="radio" name="ild-theme-mode" value="light">Sáng</label>
+      <label class="ild-theme-opt"><input type="radio" name="ild-theme-mode" value="dark">Tối</label>
+      <label class="ild-theme-opt"><input type="radio" name="ild-theme-mode" value="system">Theo hệ thống</label>
+    </div></fieldset>
+    <fieldset><legend>Tương phản</legend><div class="ild-theme-opts c2">
+      <label class="ild-theme-opt"><input type="radio" name="ild-theme-contrast" value="standard">Tiêu chuẩn</label>
+      <label class="ild-theme-opt"><input type="radio" name="ild-theme-contrast" value="high">Cao</label>
+    </div></fieldset>
+    <fieldset><legend>Độ đậm hiển thị</legend><div class="ild-theme-opts c3">
+      <label class="ild-theme-opt"><input type="radio" name="ild-theme-emphasis" value="light">Nhẹ</label>
+      <label class="ild-theme-opt"><input type="radio" name="ild-theme-emphasis" value="standard">Tiêu chuẩn</label>
+      <label class="ild-theme-opt"><input type="radio" name="ild-theme-emphasis" value="bold">Đậm</label>
+    </div></fieldset>
+    <div class="ild-theme-actions"><button type="button" class="ild-theme-reset" id="ild-theme-reset">Khôi phục mặc định</button><button type="button" class="ild-theme-done" data-ild-theme-close>Đóng</button></div>
+  </div>
 </div>
 <div id="toast" class="noprint"></div>
 
@@ -2056,5 +2341,51 @@ function boot(){
   boot();firebaseInit();
 })();
 </script>
+<script>/* ===================== [ILD-THEME] Mô-đun Theme độc lập — chỉ đổi thuộc tính giao diện; không gọi hàm/dữ liệu nghiệp vụ ===================== */
+(function(){
+  'use strict';
+  var KEY='ild-crafted-appearance-v1',DEF={mode:'light',contrast:'standard',emphasis:'standard'};
+  var PRESETS={standard:{mode:'light',contrast:'standard',emphasis:'standard',label:'Crafted tiêu chuẩn'},soft:{mode:'light',contrast:'standard',emphasis:'light',label:'Crafted dịu'},
+               dark:{mode:'dark',contrast:'standard',emphasis:'standard',label:'Crafted tối'},clear:{mode:'light',contrast:'high',emphasis:'bold',label:'Crafted rõ nét'}};
+  var OK={mode:['light','dark','system'],contrast:['standard','high'],emphasis:['light','standard','bold']};
+  var root=document.documentElement,mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null,state=read(),lastFocus=null;
+  function read(){var c={mode:DEF.mode,contrast:DEF.contrast,emphasis:DEF.emphasis};
+    try{var v=JSON.parse(localStorage.getItem(KEY)||'null');if(v&&v.v===1)Object.keys(OK).forEach(function(k){if(OK[k].indexOf(v[k])>-1)c[k]=v[k];});}catch(e){}return c;}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify({v:1,mode:state.mode,contrast:state.contrast,emphasis:state.emphasis}));}catch(e){/* lưu lỗi → vẫn dùng trong phiên */}}
+  function scheme(){return state.mode==='dark'||(state.mode==='system'&&mq&&mq.matches)?'dark':'light';}
+  function presetOf(){for(var k in PRESETS){var p=PRESETS[k];if(p.mode===state.mode&&p.contrast===state.contrast&&p.emphasis===state.emphasis)return k;}return '';}
+  function apply(){var sc=scheme();
+    root.setAttribute('data-ild-appearance',state.mode);root.setAttribute('data-ild-scheme',sc);root.setAttribute('data-ild-contrast',state.contrast);root.setAttribute('data-ild-emphasis',state.emphasis);
+    // đồng bộ với cơ chế sáng/tối có sẵn (body[data-theme]) để các quy tắc cũ phối hợp; không ghi khóa lưu của app
+    if(document.body&&document.body.dataset.theme!==sc)document.body.dataset.theme=sc;
+    sync();}
+  function sync(){var pk=presetOf(),cur=document.getElementById('ild-theme-current');if(cur)cur.textContent=pk?PRESETS[pk].label:'Tùy chỉnh';
+    [['preset',pk],['mode',state.mode],['contrast',state.contrast],['emphasis',state.emphasis]].forEach(function(x){
+      var r=document.querySelectorAll('input[name="ild-theme-'+x[0]+'"]');for(var i=0;i<r.length;i++)r[i].checked=r[i].value===x[1];});}
+  function set(patch){for(var k in patch)if(OK[k]&&OK[k].indexOf(patch[k])>-1)state[k]=patch[k];save();apply();}
+  var ov=document.getElementById('ild-theme-overlay'),dlg=ov&&ov.querySelector('.ild-theme-dialog'),btn=document.getElementById('ild-theme-open');
+  function open(){lastFocus=document.activeElement;sync();ov.hidden=false;var f=ov.querySelector('input:checked')||ov.querySelector('input');if(f)f.focus();}
+  function close(){ov.hidden=true;if(lastFocus&&lastFocus!==document.body&&document.contains(lastFocus)&&lastFocus.focus)lastFocus.focus();else if(btn)btn.focus();}
+  if(btn&&ov){
+    btn.addEventListener('click',open);
+    ov.addEventListener('click',function(e){if(e.target===ov||e.target.closest('[data-ild-theme-close]'))close();});
+    ov.addEventListener('change',function(e){var t=e.target;if(!t||t.type!=='radio')return;var g=t.name.replace('ild-theme-','');
+      if(g==='preset'){var p=PRESETS[t.value];if(p)set({mode:p.mode,contrast:p.contrast,emphasis:p.emphasis});}else{var o={};o[g]=t.value;set(o);}});
+    document.getElementById('ild-theme-reset').addEventListener('click',function(){set(DEF);}); // chỉ đặt lại Theme
+    dlg.addEventListener('keydown',function(e){ // chỉ xử lý phím trong panel
+      if(e.key==='Escape'){e.preventDefault();close();return;}
+      if(e.key==='Tab'){ // giữ focus trong panel: nút + radio đang chọn của mỗi nhóm
+        var all=[].slice.call(dlg.querySelectorAll('button,input')).filter(function(x){return x.offsetParent!==null&&(x.type!=='radio'||x.checked||!dlg.querySelector('input[name="'+x.name+'"]:checked'));});
+        if(!all.length)return;var first=all[0],last=all[all.length-1];
+        if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
+  }
+  if(mq){var onSys=function(){if(state.mode==='system')apply();};if(mq.addEventListener)mq.addEventListener('change',onSys);else if(mq.addListener)mq.addListener(onSys);}
+  // Nút 🌓 cũ đổi body[data-theme] → ghi nhận thành lựa chọn Sáng/Tối thủ công
+  if(window.MutationObserver&&document.body)new MutationObserver(function(){var t=document.body.dataset.theme; // Theme tự đặt luôn khớp scheme() → chỉ phản ứng khi khác
+    if((t==='dark'||t==='light')&&t!==scheme()){state.mode=t;save();apply();}}).observe(document.body,{attributes:true,attributeFilter:['data-theme']});
+  apply();
+})();
+</script>
+
 </body>
 </html>
