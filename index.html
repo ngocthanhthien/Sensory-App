@@ -254,6 +254,7 @@ body[data-theme="dark"] .auth-card .logo-for-light,body:not([data-theme="dark"])
 .acct-btn{cursor:pointer;font-family:inherit;white-space:nowrap}.acct-btn:hover{border-color:#6b7480}
 .acct-btn.admin .dot{background:#f4b942}.acct-btn.off .dot{background:var(--muted)}
 body:not(.is-admin) .admin-only{display:none!important}
+body.is-shared nav.side .nav-item:not([data-tab="tab-scoring"]){display:none!important} /* User chung: chỉ tab Chấm nếm */
 .approval-box{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .date-field{position:relative;display:flex;align-items:center;width:100%}.date-field .t{width:100%;padding-right:34px}
 .date-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;font-size:15px;padding:4px;line-height:1}
@@ -844,7 +845,7 @@ function toggleTheme(){ const b=document.body; const dark=b.dataset.theme==='dar
 const navItems=document.querySelectorAll('.nav-item');
 const panels=document.querySelectorAll('.panel');
 function switchTab(tabId){
-  if((tabId==='tab-users'&&!isAdmin())||(tabId==='tab-setup'&&AUTH.profile&&!can('createSet')))tabId='tab-scoring';
+  if((tabId==='tab-users'&&!isAdmin())||(tabId==='tab-setup'&&AUTH.profile&&!can('createSet'))||(isSharedUser()&&tabId!=='tab-scoring'))tabId='tab-scoring';
   const previousTab=document.querySelector('.panel.active')?.id;
   if(tabId==='tab-scoring'&&previousTab!=='tab-scoring'&&typeof SC_SESSION!=='undefined'){SC_SESSION={setId:'',panelId:''};STATE.currentPanellistId=null;SC_DRAFT={};}
   panels.forEach(p=>p.classList.toggle('active',p.id===tabId));
@@ -1990,7 +1991,9 @@ const PERM_DEFAULT={user:{createSet:true,editMaster:true},qc:{createSet:true,edi
 const PERM_CACHE_KEY='ild_sensory_perms';
 const permNormalize=m=>Object.fromEntries(PERM_ROLES.map(r=>[r,Object.fromEntries(PERM_DEFS.map(([k])=>[k,!!(m?.[r]?.[k])]))]));
 let PERMS=(()=>{try{const c=JSON.parse(localStorage.getItem(PERM_CACHE_KEY)||'null');if(c)return permNormalize(c);}catch{}return permNormalize(PERM_DEFAULT);})();
-function can(perm){const r=AUTH.profile?.role;if(!r)return false;return r==='admin'||!!PERMS[r]?.[perm];}
+/* Tài khoản User chung (mật khẩu chung, shared) chỉ dùng tab Chấm nếm: không có quyền nào khác */
+const isSharedUser=()=>!!AUTH.profile?.shared&&AUTH.profile?.role!=='admin';
+function can(perm){const r=AUTH.profile?.role;if(!r||isSharedUser())return false;return r==='admin'||!!PERMS[r]?.[perm];}
 function permApply(m){PERMS=permNormalize(m);try{localStorage.setItem(PERM_CACHE_KEY,JSON.stringify(PERMS));}catch{}if(AUTH.profile)authApply();}
 document.head.insertAdjacentHTML('beforeend','<style>'+PERM_DEFS.map(([k])=>`body:not(.perm-${k}) .need-${k}{display:none!important}`).join('')+
   'body:not(.perm-editMaster) .master-edit .edit-cell{pointer-events:none;background:transparent}</style>');
@@ -2018,7 +2021,8 @@ function authApply(){ const p=AUTH.profile,admin=isAdmin();
   $('#acctLabel').textContent=p?(ROLE_ICON[p.role]||'👤')+' '+p.displayName+(p.role!=='user'?' · '+ROLE_LABEL[p.role]:'')+(AUTH.offline?' · offline':''):'Chưa đăng nhập';
   $('#acctBtn').classList.toggle('admin',admin);$('#acctBtn').classList.toggle('off',!p||AUTH.offline);
   $('#authGate').classList.toggle('show',!p);if(!p)authGateRender();$('#logoutBtn').style.display=p?'':'none';
-  if((!admin&&$('#tab-users')?.classList.contains('active'))||(p&&!can('createSet')&&$('#tab-setup')?.classList.contains('active')))switchTab('tab-scoring');
+  document.body.classList.toggle('is-shared',isSharedUser());
+  if((!admin&&$('#tab-users')?.classList.contains('active'))||(p&&!can('createSet')&&$('#tab-setup')?.classList.contains('active'))||(isSharedUser()&&!$('#tab-scoring')?.classList.contains('active')))switchTab('tab-scoring');
   const act=document.querySelector('.panel.active')?.id;if(p&&['tab-summary','tab-lookup','tab-submissions'].includes(act))switchTab(act); // vẽ lại nút theo quyền
   if($('#acctOverlay').classList.contains('show'))authRenderAccount();
   cloudRefreshSettings();
@@ -2098,7 +2102,7 @@ function permMatrixHTML(){ const roles=[...PERM_ROLES,'admin'],fixed=[['Chấm n
   const cb=(r,k,on,fix)=>`<td><input type="checkbox" class="perm-cb" data-role="${r}" data-perm="${k}" ${on?'checked':''} ${fix||r==='admin'?'disabled':''}></td>`;
   return `<div class="card"><div class="toolbar"><h3 style="margin:0">Ma trận phân quyền</h3><span class="spacer"></span>
       <button class="btn sec sm" onclick="permResetForm()">↺ Mặc định</button><button class="btn sm" id="permSaveBtn" onclick="permSave()">💾 Lưu phân quyền</button></div>
-    <p class="hint">Tích chọn quyền cho từng vai trò rồi bấm Lưu — áp dụng ngay cho mọi thiết bị. Admin luôn có toàn quyền; các dòng xám là quyền cố định.</p>
+    <p class="hint">Tích chọn quyền cho từng vai trò rồi bấm Lưu — áp dụng ngay cho mọi thiết bị. Admin luôn có toàn quyền; các dòng xám là quyền cố định.<br><b>User chung (mật khẩu chung)</b> luôn chỉ vào được tab <b>Chấm nếm</b> — mọi quyền khác tắt, không phụ thuộc ma trận.</p>
     <div class="tbl-wrap"><table class="grid perm-table"><thead><tr><th class="l">Quyền</th>${roles.map(r=>`<th>${ROLE_ICON[r]} ${ROLE_LABEL[r]}</th>`).join('')}</tr></thead><tbody>
       ${PERM_DEFS.map(([k,label,hint])=>`<tr><td class="l"><b>${label}</b><div class="hint">${hint}</div></td>${roles.map(r=>cb(r,k,r==='admin'||PERMS[r]?.[k])).join('')}</tr>`).join('')}
       ${fixed.map(([label,rs])=>`<tr class="perm-fixed"><td class="l">${label}</td>${roles.map(r=>cb(r,'',rs.includes(r),true)).join('')}</tr>`).join('')}

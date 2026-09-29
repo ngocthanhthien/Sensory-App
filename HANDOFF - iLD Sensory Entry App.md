@@ -226,6 +226,7 @@ Allowed account: binhdangthanh94@gmail.com
   - Xác nhận ghi `set.approval = {by, byUid, at, panellists, passed, total}`, đóng Set và khoá: không nộp phiếu, không sửa Set/phiếu cho tới khi Giám sát/Admin huỷ xác nhận. Tên + thời gian hiện ở ô "Check by" của phiếu Summary.
   - Firestore Rules kiểm tra tương ứng (tạo Set: mọi thành viên; sửa Set: qc/admin; user chỉ đổi `attendees`; supervisor chỉ đổi `approval`/`status`; phiếu của Set đã xác nhận chỉ Admin ghi). Chủ dự án (`binhdangthanh94@gmail.com`) luôn là Admin theo Rules.
   - **Ma trận phân quyền** (tab Người dùng, Admin tích chọn): `ild_sensory_v2/permissions.matrix[role][perm]`, perm ∈ createSet, editSet, closeSet, confirmSet, deleteSet, editSubmission, editMaster. Client: `can(perm)`, class `need-<perm>`; Rules đọc cùng ma trận. Admin luôn toàn quyền; nếu chưa có document, Admin đăng nhập sẽ tạo bằng mặc định.
+  - **User chung (shared)**: chỉ thấy/vào tab Chấm nếm, `can()` luôn false (không phụ thuộc ma trận); Rules `isShared()` chặn tương ứng.
   - Ghi bị Rules từ chối (`permission-denied`) → bỏ khỏi outbox và tải lại bản Firebase (không kẹt hàng chờ).
 - Bước ② Tạo Set: **📥 Nhập Excel từ SAP** — ánh xạ theo tên cột ITEMNAME → Tên mẫu, SSCC → SSCC/Hour, BATCH → Batch; Tên mã hóa tự đánh; nếu có dòng Selection = Checked thì chỉ nhập các dòng đó; bỏ qua SSCC trùng.
 - Admin thấy thêm tab **Người dùng** (tạo tài khoản, đổi vai trò, khoá/mở, đổi mật khẩu khi biết mật khẩu cũ, xoá quyền) và các thao tác thay thế dữ liệu (Reset, Phục hồi JSON, Tải đè từ Firebase).

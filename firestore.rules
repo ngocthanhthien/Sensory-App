@@ -30,9 +30,14 @@ service cloud.firestore {
       return /databases/$(database)/documents/ild_sensory_v2/permissions;
     }
 
+    // Tài khoản User chung (shared = true, mật khẩu chung) chỉ được chấm nếm: không có quyền nào trong ma trận.
+    function isShared() {
+      return activeProfile() && get(profilePath()).data.get('shared', false) == true;
+    }
+
     function can(perm) {
       return isAdmin()
-        || (activeProfile() && exists(permPath())
+        || (activeProfile() && !isShared() && exists(permPath())
             && get(permPath()).data.matrix[get(profilePath()).data.role][perm] == true);
     }
 
