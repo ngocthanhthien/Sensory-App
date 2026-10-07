@@ -1742,98 +1742,95 @@ function renderSensory(){
 
 /* ===================== [GUIDE] Hướng dẫn sử dụng (QA) ===================== */
 function renderGuide(){
-  const box=$('#guideBody');
+  const box=$('#guideBody'),L='style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px"',p=AUTH.profile;
+  const mine=PERM_DEFS.filter(([k])=>can(k)).map(([,l])=>l);
   box.innerHTML=`
   <div class="card">
-    <h3>📖 Tổng quan</h3>
-    <p>App số hoá phiếu chấm cá nhân (QA.F.071) và bảng tổng hợp (QA.F.072). Mở app vào thẳng
-    <b>Chấm điểm nếm</b>. Mọi tab dùng tự do, không cần mật khẩu.
-    Dữ liệu <b>tự lưu trong máy</b>; nên <b>Sao lưu JSON</b> định kỳ (tab Cài đặt).</p>
+    <h3>📖 App này làm gì</h3>
+    <p>Thay phiếu giấy <b>QA.F.071</b> (phiếu chấm của từng người nếm) và <b>QA.F.072</b> (bảng tổng hợp kết quả). Một buổi nếm đi qua 4 bước:</p>
+    <p style="margin-top:8px;font-size:14px;color:var(--text)"><b>① Tạo Set</b> → <b>② Chấm nếm</b> → <b>③ Đóng Set</b> → <b>④ Xác nhận kết quả</b></p>
+    ${p?`<p class="hint">Bạn đang dùng tài khoản <b>${esc(p.displayName)}</b> (${esc(ROLE_LABEL[p.role]||'User')}). Ngoài chấm nếm và xem báo cáo, bạn được: ${mine.length?mine.map(esc).join(' · '):'— không có quyền nào khác —'}.</p>`:''}
   </div>
 
   <div class="card">
-    <h3>① Tạo Set nếm</h3>
-    <p style="margin-bottom:8px">Mở một buổi nếm để panellist chấm.</p>
-    <ol style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
-      <li>Vào tab <b>Tạo Set nếm</b>.</li>
-      <li><b>Bước ①</b>: chọn <b>Ca · Ngày</b>, <b>Tên Set</b> (tự đánh số theo ca, sửa được), <b>Loại mẫu</b> → bấm <b>Tiếp</b>. Không trùng tên trong cùng ca/ngày.</li>
-      <li><b>Bước ②</b>: thêm từng mẫu (<b>Tên mẫu · SSCC/Hour · Batch</b>) → bấm <b>+ Thêm mẫu</b>. Xoá bằng nút ✕.
-        Hoặc <b>Import CSV/Excel</b>: bấm <b>⤓ Tải template</b>, điền danh sách mẫu rồi <b>⤒ Import mẫu</b> để nạp hàng loạt.</li>
-      <li>Bấm <b>✔ Tạo Set &amp; mở buổi nếm</b> → app tự chuyển sang màn Chấm điểm.</li>
-      <li>Khi nếm xong, quay lại tab này bấm <b>Đóng Set</b> (vẫn tra cứu được sau).</li>
+    <h3>🔑 Đăng nhập</h3>
+    <ul ${L}>
+      <li><b>Người nếm:</b> nhập <b>mật khẩu chung</b> ở màn hình đầu → chỉ thấy tab <b>Chấm nếm</b>.</li>
+      <li><b>QC / Giám sát / Admin:</b> bấm <b>Đăng nhập tài khoản riêng / Admin</b> (hoặc nút tài khoản ở góc phải) → nhập tên đăng nhập và mật khẩu.</li>
+      <li><b>🚪 Đăng xuất:</b> app gửi nốt dữ liệu lên máy chủ rồi xoá dữ liệu tạm trên máy. Nên đăng xuất khi dùng máy chung.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>① Tạo Set nếm <span class="badge gray">tab Tạo Set</span></h3>
+    <ol ${L}>
+      <li>Chọn <b>Ca</b>, <b>Ngày</b>, <b>Loại mẫu</b>. <b>Tên Set</b> tự đánh số theo ca (sửa được) → bấm <b>Tiếp</b>.</li>
+      <li>Thêm mẫu bằng một trong ba cách:
+        <ul style="margin:2px 0;padding-left:18px">
+          <li><b>📥 Nhập Excel từ SAP</b> — dùng thẳng file xuất từ SAP (cột ITEMNAME, BATCH, SSCC). Nếu có dòng đánh dấu <i>Checked</i> thì chỉ lấy các dòng đó.</li>
+          <li><b>⤒ Nhập mẫu từ Excel</b> — tải template, điền rồi nạp lại.</li>
+          <li>Gõ tay từng mẫu → <b>+ Thêm mẫu</b>.</li>
+        </ul></li>
+      <li><b>Tên mã hóa</b> là tên người nếm nhìn thấy (mẫu mù). Muốn đánh lại hàng loạt: gõ tiền tố (vd. <b>CHO</b>) → <b>↻ Đánh mã lại</b>.</li>
+      <li>Bấm <b>✔ Tạo Set &amp; mở buổi nếm</b>.</li>
     </ol>
-    <p class="hint">Thứ tự mẫu (STT) trên app khớp thứ tự trên bàn nếm — sắp mẫu chuẩn (STD) trước theo SOP.</p>
+    <p class="hint">Thứ tự mẫu trên app phải khớp thứ tự trên bàn nếm.</p>
   </div>
 
   <div class="card">
-    <h3>✍️ Panellist chấm điểm (F.071)</h3>
-    <ol style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
-      <li>Chọn <b>tên panellist</b> ở ô người nếm.</li>
-      <li>Mỗi mẫu chọn <b>IN / Just In / Out</b>. Nếu Just In hoặc Out, cột <b>Remark</b> tự hiện droplist tình huống (ngoại quan / thử nếm); chọn một tình huống hoặc nhập ghi chú khác.</li>
-      <li>Bấm <b>💾 Nộp phiếu</b>. Danh sách trên cùng hiện ✓ những người đã nộp.</li>
+    <h3>② Chấm nếm <span class="badge gray">tab Chấm nếm · F.071</span></h3>
+    <ol ${L}>
+      <li>Chọn <b>Set nếm</b>, rồi gõ <b>tên</b> hoặc <b>Mã NV</b> để chọn người nếm.</li>
+      <li>Mỗi mẫu bấm <b>IN</b>, <b>Just In</b> hoặc <b>Out</b>. Tất cả đều đạt thì bấm <b>✔ All IN</b>.</li>
+      <li>Mẫu <b>Just In / Out</b> bắt buộc chọn lỗi hoặc ghi chú ở cột Remark.</li>
+      <li>Bấm <b>💾 Nộp phiếu</b>. Muốn làm lại từ đầu: <b>↺ Discard</b>.</li>
     </ol>
-    <p class="hint">Cần tối thiểu ${CONFIG.MIN_PANELLIST} panellist/mẫu. Nộp lại sẽ hỏi xác nhận ghi đè phiếu cũ.</p>
+    <p class="hint">Set loại <b>Green coffee</b> chỉ có IN / OUT. Nộp lại sẽ hỏi ghi đè phiếu cũ. Set đã được Giám sát xác nhận thì không nộp thêm được.</p>
   </div>
 
   <div class="card">
-    <h3>② Tổng hợp &amp; Báo cáo (F.072)</h3>
-    <p style="margin-bottom:8px">Vào tab <b>Tổng hợp &amp; Báo cáo</b> để xem kết quả Set đang mở.</p>
-    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
-      <li>3 thẻ KPI: <b>Tổng mẫu · Passed · Failed</b>.</li>
-      <li>Bảng đếm <b>IN/Just In/Out</b>, <b>Total</b> và <b>Result %</b> tự tính:
-        <b>Result% = (1 − [(Out×3 + JustIn×0.5)/(Total×3)]) × 100</b>. Passed khi ≥ ${CONFIG.PASS_THRESHOLD}%.</li>
-      <li>Badge <span class="badge pass">Passed</span> / <span class="badge fail">Failed</span> / <span class="badge gray">chưa đủ</span> (khi thiếu phiếu).</li>
-      <li>Cảnh báo đỏ nếu < ${CONFIG.MIN_PANELLIST} panellist.</li>
-      <li><b>⤓ Xuất Excel</b> (file CSV mở bằng Excel) · <b>🖨️ Xuất PDF</b> (in bảng, có ô "Check by").</li>
+    <h3>③ Đóng Set <span class="badge gray">tab Danh sách Set</span></h3>
+    <ul ${L}>
+      <li>Khi đủ <b>ít nhất ${CONFIG.MIN_PANELLIST} người nếm</b>, bấm <b>🔒 Đóng Set</b>. Sau đó người nếm không chọn được Set này nữa.</li>
+      <li>Cần mở lại: <b>✎ Sửa</b> → Trạng thái → <b>Đang mở</b>.</li>
     </ul>
   </div>
 
   <div class="card">
-    <h3>🔍 Danh sách Set</h3>
-    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
-      <li>Xem danh sách tất cả Set (đang mở &amp; đã đóng) kèm số Passed/Failed.</li>
-      <li>Bấm <b>tên cột</b> để sắp xếp (mặc định: ngày gần nhất lên đầu); ô lọc nằm ngay dưới tên cột — cột số nhận cả <b>&gt;3</b>, <b>&lt;=5</b>. Ô tìm chung theo <b>tên Set · ngày · tên mẫu · batch</b>.</li>
-      <li>Bấm <b>Xem</b> để mở Set đó sang tab Tổng hợp (xuất Excel/PDF lại được).</li>
+    <h3>④ Báo cáo &amp; xác nhận <span class="badge gray">tab Báo cáo · F.072</span></h3>
+    <ol ${L}>
+      <li>Chọn Set để xem phiếu tổng hợp: số IN / Just In / Out, <b>Result %</b> và người nếm của từng mẫu.</li>
+      <li><b>Passed</b> khi Result % ≥ ${CONFIG.PASS_THRESHOLD}%, dưới mức đó là <b>Failed</b>. App tự tính, không cần nhập.</li>
+      <li><b>Giám sát</b> bấm <b>✔ Xác nhận kết quả</b> → Set bị khoá, tên Giám sát hiện ở ô <b>Check by</b>. Cần sửa thì bấm <b>Huỷ xác nhận</b> trước.</li>
+      <li><b>⤓ Xuất Excel</b> hoặc <b>🖨️ Xuất PDF</b> (in A4 ngang).</li>
+    </ol>
+    <p class="hint">Result % = (1 − (Out×3 + Just In×0,5) / (Tổng phiếu×3)) × 100.</p>
+  </div>
+
+  <div class="card">
+    <h3>🔍 Tìm lại dữ liệu</h3>
+    <ul ${L}>
+      <li><b>Danh sách Set:</b> mọi Set, mới nhất ở trên. Bấm <b>tên cột</b> để sắp xếp, gõ vào <b>ô ngay dưới tên cột</b> để lọc (cột số nhận cả <b>&gt;3</b>, <b>&lt;=5</b>). Bấm <b>Xem</b> để mở báo cáo.</li>
+      <li><b>Dữ liệu nộp phiếu:</b> mỗi dòng là kết quả một mẫu của một người nếm. Lọc theo Set, kết quả, ngày; <b>⤓ Xuất Excel</b> để phân tích.</li>
     </ul>
   </div>
 
   <div class="card">
-    <h3>👥 Quản lý Panellist</h3>
-    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
-      <li>Thêm panellist: nhập <b>Tên · Bộ phận</b> → <b>+ Thêm</b> (chặn trùng tên).</li>
-      <li><b>Xoá</b> panellist (có xác nhận). Danh sách này hiện ở ô chọn người nếm khi chấm.</li>
+    <h3>👥 Danh mục (Master Data)</h3>
+    <ul ${L}>
+      <li><b>Panellist:</b> danh sách người nếm. Thêm tay hoặc <b>📥 Nhập từ Excel</b> (cột Employee code · Full name · Function · Dept.); trùng Mã NV thì cập nhật, không nhân đôi.</li>
+      <li><b>SP &amp; Lô</b> và <b>Items Code:</b> bảng tra cứu sản phẩm, recipe, PO, batch. Sửa ngay trên ô, lọc theo cột, nhập/xuất Excel.</li>
     </ul>
   </div>
 
   <div class="card">
-    <h3>📦 Quản lý Sản phẩm · Recipe · PO · Batch</h3>
-    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
-      <li>Bốn danh mục nhập tay: <b>Sản phẩm · Recipe · PO · Batch</b> (nút + Thêm / Xoá).</li>
-      <li><b>⤓ Tải template CSV</b>: file mẫu 2 cột <b>Type</b> (Product/Recipe/PO/Batch) và <b>Name</b>.</li>
-      <li><b>⤒ Import CSV/Excel</b>: điền vào template rồi import để nạp danh sách hàng loạt (bỏ qua dòng trùng).</li>
+    <h3>⚙️ Lưu dữ liệu &amp; mẹo</h3>
+    <ul ${L}>
+      <li>Dữ liệu <b>tự lưu</b> và tự đồng bộ giữa các máy. Mất mạng vẫn dùng được, có mạng lại app tự gửi.</li>
+      <li>Tab <b>Cài đặt</b>: xem trạng thái đồng bộ, <b>⤓ Sao lưu JSON</b>, nhật ký thao tác.</li>
+      <li><b>🎨 Giao diện:</b> đổi sáng/tối, tương phản, độ đậm chữ.</li>
+      <li>Thiếu nút hoặc tab nào đó? Tài khoản của bạn chưa được cấp quyền — liên hệ Admin.</li>
     </ul>
-    <p class="hint">Excel: lưu file dạng <b>CSV UTF-8</b> trước khi import để không lỗi dấu tiếng Việt.</p>
-  </div>
-
-  <div class="card">
-    <h3>🔗 Quản lý Items Code</h3>
-    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
-      <li>Mỗi dòng liên kết <b>Loại (FGs/RW) · Item Code · Tên sản phẩm · Recipe</b>. Một Item Code có thể xuất hiện ở nhiều liên kết khác nhau.</li>
-      <li><b>Xuất template Excel</b> để lấy đúng cấu trúc nhập liệu; app hỗ trợ file <b>.xlsx, .xls và .csv</b>.</li>
-      <li>File hai khối <b>FGs CODE / RW CODE</b> như danh sách nguồn cũng được nhận diện tự động.</li>
-      <li>Import sẽ thêm dòng mới và bỏ qua dòng trùng hoàn toàn. Dùng ô tìm kiếm để lọc theo code, sản phẩm hoặc Recipe.</li>
-      <li><b>Xuất dữ liệu Excel</b> để tải toàn bộ danh sách hiện tại.</li>
-    </ul>
-  </div>
-
-  <div class="card">
-    <h3>⚙️ Cài đặt (Admin) &amp; mẹo</h3>
-    <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
-      <li><b>Sao lưu / Phục hồi JSON</b>: chuyển dữ liệu giữa các máy hoặc lưu trữ dài hạn.</li>
-      <li>Xem <b>Nhật ký thao tác</b> · <b>Xoá toàn bộ dữ liệu</b> (thận trọng).</li>
-      <li>Nút <b>🌓</b> đổi giao diện Sáng/Tối. Trên iPad dùng nút <b>☰</b> mở menu.</li>
-    </ul>
-    <p class="hint">⚠ Luôn sao lưu JSON trước khi xoá/phục hồi dữ liệu.</p>
   </div>`;
 }
 

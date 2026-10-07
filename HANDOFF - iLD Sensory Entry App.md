@@ -49,7 +49,7 @@ Biểu mẫu nghiệp vụ được số hóa: **QA.F.071** (phiếu chấm cá 
 | 👥 Panellist (`tab-panellist`) | Thêm/xóa, Nhập Excel (Employee code · Full name · Function · Dept.), **Xuất Excel** | Tài khoản riêng (sửa theo `editMaster`) |
 | 📦 SP & Lô (`tab-product`) | Bảng liên tục Sản phẩm · Recipe · PO · Batch (`STATE.lots`), lọc/sắp xếp, nhập/xuất Excel | như trên |
 | 🔗 Items Code (`tab-items`) | Loại (FGs/RW) · Item Code · Tên SP · Recipe (~3.100 dòng), lọc/sắp xếp/sửa tại ô, nhập/xuất | như trên |
-| ☕ Sensory · 📖 Hướng dẫn | Kiến thức cảm quan; hướng dẫn trong app (**nội dung chưa cập nhật các tính năng mới** — xem backlog) | Tài khoản riêng |
+| ☕ Sensory · 📖 Hướng dẫn | Kiến thức cảm quan; hướng dẫn trong app theo 4 bước Tạo Set → Chấm nếm → Đóng Set → Xác nhận (`renderGuide`, cập nhật 07/10/2026 — sửa khi thêm tính năng) | Tài khoản riêng |
 | ⚙️ Cài đặt (`tab-settings`) | Trạng thái đồng bộ, Đẩy/Tải Firebase, auto-sync, Sao lưu/Phục hồi JSON, audit log, Reset | Tài khoản riêng (thao tác thay thế dữ liệu: Admin) |
 | 🛡️ Người dùng (`tab-users`) | **Ma trận phân quyền**, mật khẩu User chung, tạo/sửa/khóa/xóa tài khoản | Admin |
 
@@ -250,7 +250,7 @@ Hàm chính: `render*` (Scoring, Setup, Summary, Lookup, Submissions, Panellists
 ## 13. Backlog / việc còn mở
 
 1. **Kiểm tra & Publish** `firestore.rules` bản có `isShared()` (nếu chưa).
-2. Cập nhật nội dung tab **📖 Hướng dẫn** trong app theo tính năng mới (vai trò, SAP, Green coffee, xác nhận…).
+2. ~~Cập nhật nội dung tab 📖 Hướng dẫn~~ — xong 07/10/2026.
 3. Xóa tài khoản thừa `sensory@ild-sensory.local` trong Authentication (nếu không dùng).
 4. Tách Items Code khỏi `meta` khi gần giới hạn 1 MiB.
 5. Firebase App Check cho GitHub Pages; audit bất biến qua Cloud Function (cần gói Blaze).
