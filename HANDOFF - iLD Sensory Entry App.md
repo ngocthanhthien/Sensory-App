@@ -95,6 +95,7 @@ Header (phải): Set đang mở · **nút đồng bộ** (✓ Đã đồng bộ 
 - `isOwner`, `activeProfile`, `isMember`, `isAdmin`, `isShared()`, `can(perm)` đọc **cùng ma trận** `ild_sensory_v2/permissions`.
 - Set: tạo `can('createSet')`; cập nhật: thành viên chỉ đổi `attendees` (+ khóa đồng bộ) · `can('confirmSet')` đổi `approval/status` · `can('closeSet')` đổi `status` · `can('editSet')` sửa khác (Set đã xác nhận chỉ Admin); xóa `can('deleteSet')`.
 - Phiếu `ild_sensory_scores/{setId}__{panellistId}`: thành viên ghi khi Set chưa xác nhận; xóa `can('editSubmission')`.
+- `ild_sensory_v2/log` và `ild_sensory_v2/tombstones` dùng chung luật `ild_sensory_v2/{documentId}` (thành viên đọc/ghi) → **không cần đổi/Publish Rules** cho thay đổi 07/10/2026.
 - `ild_sensory_v2/meta`: đổi trường Master Data (`panellists, products, recipes, pos, batches, lots, itemCodes`) cần `can('editMaster')`.
 - `ild_sensory_users`: tự đọc hồ sơ mình; Admin list/tạo/sửa/xóa; `role ∈ {user,qc,supervisor,admin}`.
 - **Trạng thái Publish:** bản có ma trận phân quyền đã Publish **28/09/2026 16:18**. Bản trong repo có thêm `isShared()` (chặn tài khoản User chung ở server) — **cần kiểm tra đã Publish chưa** (Firestore → Rules → so nội dung với file).
@@ -122,7 +123,7 @@ Header (phải): Set đang mở · **nút đồng bộ** (✓ Đã đồng bộ 
     attendees: [panellistId],
     approval?: { by, byUid, at, panellists, passed, total }   // Giám sát xác nhận → Set khóa
   }],
-  currentSetId, currentPanellistId /*chỉ phiên*/, audit: [{ t /*dd/mm/yyyy HH:mm:ss*/, role /*tên người*/, action }]  // tối đa 500
+  currentSetId /*đồng bộ qua document log*/, currentPanellistId /*chỉ phiên*/, audit: [{ t /*dd/mm/yyyy HH:mm:ss*/, role /*tên người*/, action }]  // tối đa 500
 }
 ```
 - `sampleCode(sm)` = `code` hoặc `no` (Set cũ chưa có mã).
@@ -158,7 +159,9 @@ CONFIG: PASS_THRESHOLD 80 · SCORE {OUT:3, JUSTIN:0.5, IN:0} · MIN_PANELLIST 3 
 ## 7. Đồng bộ Firebase (schema v2)
 
 ```text
-ild_sensory_v2/meta          panellists, products, recipes, pos, batches, lots, itemCodes (~3.100), currentSetId, audit, schemaVersion 2
+ild_sensory_v2/meta          panellists, products, recipes, pos, batches, lots, itemCodes (~3.100), schemaVersion 2   (chỉ đổi khi sửa Master Data)
+ild_sensory_v2/log           audit (≤ 500), currentSetId   — tách khỏi meta 07/10/2026; gửi thưa (5 phút, User chung 30 phút)
+ild_sensory_v2/tombstones    items: { "<set|score>:<id>": thời điểm xoá }   — báo cho máy khác biết document đã bị xoá (giữ 90 ngày)
 ild_sensory_v2/permissions   ma trận phân quyền
 ild_sensory_sets/{setId}     Set (không gồm scores)
 ild_sensory_scores/{setId}__{panellistId}   { setId, panellistId, scores }
@@ -168,8 +171,17 @@ ild_sensory/shared_state     legacy (giữ để rollback, chỉ Admin)
 - Mỗi document có `revision, updatedAt, updatedBy, clientId`; ghi bằng transaction kiểm tra `baseRevision`.
 - Lệch revision → **gộp 3 chiều** `cloudMerge3(base, local, remote)` (mảng theo `id`/`no`, audit theo nội dung; cùng sửa giá trị đơn → bản máy thắng); gộp lỗi/quá 5 lần → conflict UI ở Cài đặt.
 - Không tự nhận dữ liệu cloud đè lên máy khi còn outbox/conflict, **đang gõ chữ trong 20 giây gần nhất**, đang mở hộp thoại hoặc **đang chấm dở phiếu** → `pendingRemote`, áp dụng sau. Ô chọn (select) đang focus **không** chặn (`cloudUiBusy`) — trước 07/10/2026 nó chặn, làm tablet không thấy Set mới.
-- Chống chậm/kẹt trên tablet & điện thoại (07/10/2026): nhịp 5 giây `cloudTick` áp dụng dữ liệu đang chờ; `cloudWake` kiểm tra lại khi màn hình sáng lại sau ≥ 30 giây; `cloudPullSilent` bỏ lượt tải cũ về sau (`pullSeq`) và không nạp lại khi revision không đổi (`cloudUpToDate`); listener có xử lý lỗi và tự bật lại; User chung tự gỡ xung đột (`cloudAutoResolveShared`: phiếu chấm gửi lại, phần khác lấy bản Firebase).
-- **Chưa làm (nhóm B):** mỗi lần lưu vẫn ghi lại cả `meta` (Items Code + audit) và mỗi lần nhận vẫn tải lại toàn bộ `meta` + mọi Set + mọi phiếu → tách audit/`currentSetId` khỏi `meta`, nhận thay đổi theo từng document.
+- Chống chậm/kẹt trên tablet & điện thoại (07/10/2026): nhịp 5 giây `cloudTick` áp dụng dữ liệu đang chờ; `cloudWake` mở lại kênh nghe khi màn hình sáng lại sau ≥ 30 giây; listener có xử lý lỗi và tự bật lại (lỗi liên tục → `cloudReconcile` tối đa 5 phút/lần); User chung tự gỡ xung đột (`cloudAutoResolveShared`).
+- **Giảm Egress/Reads (07/10/2026) — không được quay lại kiểu "tải lại tất cả":**
+  - **Nhận theo từng document:** 3 listener (`ild_sensory_v2`, `ild_sensory_sets`, `ild_sensory_scores`) dùng `where('updatedAt','>', watermark − 2 phút)`; dữ liệu lấy thẳng từ snapshot → `cloudOnSnap` xếp vào `CLOUD.incoming` → `cloudApplyIncoming` gộp từng thực thể (máy chưa sửa: lấy bản mới; máy có thay đổi chưa gửi: `cloudMerge3` rồi gửi lại). Không còn `getDocs` toàn bộ sau mỗi thay đổi.
+  - **`watermark`** (lưu trong `ild_sensory_cloud_sync_v2`) = `updatedAt` lớn nhất đã áp dụng → mở lại app / thức dậy / có mạng lại chỉ đọc các document đổi trong lúc vắng. Mở lại listener (`cloudStartListener`) chính là thao tác "đồng bộ lại nhẹ".
+  - **Tải đủ (`cloudFetchV2`)** chỉ còn ở: máy mới đăng nhập (`cloudFirstSync`), đối soát định kỳ 14 ngày / nâng cấp từ bản cũ (`cloudReconcile`), Admin bấm "Tải dữ liệu từ Firebase".
+  - **Xoá:** `cloudWriteEntity` ghi thêm `tombstones` trong cùng transaction; máy khác thấy qua listener `ild_sensory_v2`. Document bị xoá rồi tạo lại (revision quay về 1) được nhận nhờ so thời gian (`replace`).
+  - **meta không còn bị ghi lại sau mỗi thao tác:** audit + `currentSetId` nằm ở `log` (thực thể `log:main`), gửi thưa qua `cloudQueueEntities(force)`; nộp phiếu chỉ ghi document phiếu + Set.
+  - Bị Rules từ chối → `cloudRevertEntity` trả thực thể về bản đã đồng bộ (không tải lại).
+  - Bản app cũ (chưa tải lại trang) vẫn ghi audit vào `meta` và xoá không có tombstone → máy mới bỏ qua `meta.audit`, và phát hiện document bị xoá ở lần đối soát. **Sau khi deploy cần tải lại trang trên mọi thiết bị.**
+  - Còn lại: máy mới/đăng xuất rồi đăng nhập lại vẫn tải đủ 1 lần (meta ~vài trăm KB + mọi Set + mọi phiếu) — muốn giảm tiếp thì cho User chung chỉ tải Set đang mở, và tách Items Code khỏi `meta`.
+- Kiểm thử đồng bộ không cần Firebase thật: `.claude/sync_test.js` (không nằm trong git) mô phỏng Firestore + kịch bản PC/Tablet, đếm số lần đọc; chạy `python -m http.server`, mở app rồi `eval` file và gọi `runSyncTest()`.
 - `cloudEntities()` trả **bản sao sâu** (tránh base trỏ chung STATE). Thiết bị chưa từng đồng bộ: cloud có dữ liệu → tải về (máy mới) hoặc hỏi; cloud trống → đẩy lên. Auto-sync mặc định **bật**. Web Locks: 1 tab chỉnh sửa chính.
 - Dữ liệu thật đã có trên Firestore (kiểm tra 28/09/2026: 49 panelist, ~3.100 Items Code, 3 Set, 7 phiếu, 4 tài khoản).
 - ⚠ `meta` chứa ~3.100 Items Code — Firestore giới hạn **1 MiB/document**; nếu Items Code tăng nhiều, cần tách ra document/collection riêng.
@@ -177,7 +189,7 @@ ild_sensory/shared_state     legacy (giữ để rollback, chỉ Admin)
 ### Khóa LocalStorage
 ```text
 ild_sensory_v1             dữ liệu chính (STATE)
-ild_sensory_cloud_sync_v2  bases, outbox, conflicts
+ild_sensory_cloud_sync_v2  bases, outbox, conflicts, watermark, fullAt, logAt
 ild_sensory_cloud_auto     '0' = tắt auto-sync (mặc định bật)
 ild_sensory_cloud_client   ID thiết bị
 ild_sensory_editor_lock    khóa tab
