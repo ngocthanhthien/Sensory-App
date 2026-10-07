@@ -763,6 +763,7 @@ document.querySelectorAll('img[data-logo]').forEach(i=>i.src=ILD_LOGO[i.dataset.
 const CONFIG = {
   PASS_THRESHOLD:80, SCORE:{OUT:3,JUSTIN:0.5,IN:0},
   MIN_PANELLIST:3, MAX_IMPORT_MB:3,
+  SHIFTS:['Ca 1','Ca 2','Ca 3'], // Set cũ lưu AM/PM vẫn giữ nguyên và hiển thị như cũ
   SAMPLE_TYPES:['Green coffee','Freeze-dried','Semi product','KQ','Complaint','Other'],
   DEFAULT_SAMPLE_TYPE:'Freeze-dried', // chọn sẵn khi tạo Set mới
   ERR_APPEARANCE:['màu sậm','hai màu','lumpy (lump dầu)','hạt cháy','bụi','bề mặt bị rổ','vụn'],
@@ -1032,11 +1033,11 @@ function renderSetup(){
 }
 function wizStep1(){ const curType=WIZ.meta.sampleType||CONFIG.DEFAULT_SAMPLE_TYPE;
   const types=CONFIG.SAMPLE_TYPES.map(t=>`<option ${curType===t?'selected':''}>${t}</option>`).join('');
-  const date=WIZ.meta.date||todayStr(), shift=WIZ.meta.shift||'AM';
+  const date=WIZ.meta.date||todayStr(), shift=WIZ.meta.shift||CONFIG.SHIFTS[0];
   const suggested=WIZ.meta.name||suggestSetName(date,shift);
   return `<div class="card"><h3>Bước ① — Thông tin buổi nếm</h3>
     <div class="row c4">
-      <div><label class="f">Ca</label><select class="s" id="wShift" onchange="wizMetaLive()"><option ${shift==='AM'?'selected':''}>AM</option><option ${shift==='PM'?'selected':''}>PM</option></select></div>
+      <div><label class="f">Ca</label><select class="s" id="wShift" onchange="wizMetaLive()">${CONFIG.SHIFTS.map(c=>`<option ${shift===c?'selected':''}>${c}</option>`).join('')}</select></div>
       <div><label class="f">Ngày</label>${dateField('wDate',date,'wizMetaLive()')}</div>
       <div><label class="f">Tên Set (số thứ tự)</label><input class="t" id="wName" value="${esc(suggested)}" oninput="WIZ.nameAuto=false"></div>
       <div><label class="f">Loại mẫu</label><select class="s" id="wType" onchange="WIZ.meta.sampleType=this.value">${types}</select></div>
@@ -1180,7 +1181,7 @@ const LK_COLS=[['name','Tên Set','text'],['date','Ngày','text'],['shift','Ca',
   ['pass','Passed','num'],['fail','Failed','num'],['status','Trạng thái','sel'],['approval','Giám sát','sel']];
 const lkBlank=()=>Object.fromEntries(LK_COLS.map(([k])=>[k,'']));
 let LK={q:'',f:lkBlank(),sortKey:'date',sortDir:-1}; // mặc định: ngày gần nhất lên đầu
-function lkOpts(k){ return ({shift:[['AM','AM'],['PM','PM']],status:[['open','Đang mở'],['closed','Đã đóng']],approval:[['yes','Đã xác nhận'],['no','Chưa']],
+function lkOpts(k){ return ({shift:[...new Set([...CONFIG.SHIFTS,...STATE.sets.map(s=>s.shift).filter(Boolean)])].map(c=>[c,c]),status:[['open','Đang mở'],['closed','Đã đóng']],approval:[['yes','Đã xác nhận'],['no','Chưa']],
   type:[...new Set([...CONFIG.SAMPLE_TYPES,...STATE.sets.map(s=>s.sampleType).filter(Boolean)])].map(t=>[t,t])})[k]||[]; }
 function lkSort(k){ if(LK.sortKey===k)LK.sortDir*=-1;else{LK.sortKey=k;LK.sortDir=1;} renderLookup(); }
 function lkFilter(k,v){ LK.f[k]=v; lkPaint(); }
@@ -1337,7 +1338,7 @@ function lookupEdit(id){ if(!can('editSet'))return toast('Bạn không có quy�
   $('#acctModal').innerHTML=`<h3>Sửa Set nếm</h3><p>${Object.keys(s.scores||{}).length} phiếu đã nộp · ${s.samples.length} mẫu</p>
     <div class="row c4"><div><label class="f">Tên Set</label><input class="t" id="leName" value="${esc(s.name)}"></div>
       <div><label class="f">Ngày</label>${dateField('leDate',s.date)}</div>
-      <div><label class="f">Ca</label><select class="s" id="leShift"><option ${s.shift==='AM'?'selected':''}>AM</option><option ${s.shift==='PM'?'selected':''}>PM</option></select></div>
+      <div><label class="f">Ca</label><select class="s" id="leShift">${[...new Set([...CONFIG.SHIFTS,s.shift])].map(c=>`<option ${s.shift===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
       <div><label class="f">Loại mẫu</label><select class="s" id="leType">${types}</select></div></div>
     <div style="margin-top:10px"><label class="f">Trạng thái</label><select class="s" id="leStatus" style="max-width:200px"><option value="open" ${s.status==='open'?'selected':''}>Đang mở</option><option value="closed" ${s.status!=='open'?'selected':''}>Đã đóng</option></select></div>
     <div class="tbl-wrap" style="margin-top:12px;max-height:45vh"><table class="grid" id="leSamples"><thead><tr><th style="width:44px">STT</th><th style="width:130px">Tên mã hóa</th><th class="l">Tên mẫu</th><th>SSCC/Hour</th><th>Batch</th></tr></thead><tbody>${rows}</tbody></table></div>
@@ -2379,7 +2380,7 @@ function seed(){
   STATE.products=[{id:'prd1',name:'Freeze-dried Coffee'},{id:'prd2',name:'Spray-dried Coffee'}];
   STATE.recipes=[{id:'rcp1',name:'Standard 100%'},{id:'rcp2',name:'Less bitter'}];
   STATE.pos=[{id:'po1',name:'PO-2508-01'}]; STATE.batches=[{id:'bat1',name:'L2508A'},{id:'bat2',name:'L2508B'}]; STATE.lots=[];
-  const set={id:'set_demo',name:'Set Demo',date:todayStr(),shift:'AM',sampleType:'Freeze-dried',creator:'QA',status:'open',
+  const set={id:'set_demo',name:'Set Demo',date:todayStr(),shift:CONFIG.SHIFTS[0],sampleType:'Freeze-dried',creator:'QA',status:'open',
     attendees:['pnl_a','pnl_b','pnl_c'],
     samples:[{no:1,name:'FD STD',sscc:'08:00',batch:'L2508A'},{no:2,name:'FD Mẫu 1',sscc:'09:00',batch:'L2508A'},{no:3,name:'FD Mẫu 2',sscc:'10:00',batch:'L2508B'}],
     scores:{ pnl_a:{1:{result:'IN',appearance:[],taste:[],note:''},2:{result:'JUSTIN',appearance:[],taste:['less aroma'],note:''},3:{result:'IN',appearance:[],taste:[],note:''}},

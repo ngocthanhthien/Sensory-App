@@ -116,7 +116,7 @@ Header (phải): Set đang mở · nút tài khoản (đăng nhập cấp 2) · 
   lots:      [{ id, product, recipe, po, batch }],         // bảng liên tục SP·Recipe·PO·Batch (migrateLots)
   itemCodes: [{ id, group, item, name, recipe }],          // group: FGs | RW
   sets: [{
-    id, name, date /*yyyy-mm-dd*/, shift /*AM|PM*/, sampleType, creator, status /*open|closed*/,
+    id, name, date /*yyyy-mm-dd*/, shift /*Ca 1|Ca 2|Ca 3 (`CONFIG.SHIFTS`); Set cũ: AM|PM*/, sampleType, creator, status /*open|closed*/,
     samples: [{ no, code /*Tên mã hóa – mẫu mù*/, name, sscc, batch }],
     scores: { [panellistId]: { [sampleNo]: { result /*IN|JUSTIN|OUT*/, appearance:[], taste:[], note, at /*ISO nộp*/, editedAt?, editedBy? } } },
     attendees: [panellistId],
