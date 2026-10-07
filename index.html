@@ -624,7 +624,7 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
     <div class="nav-item" data-tab="tab-lookup"><span class="ico">🔍</span> Danh sách Set</div>
     <div class="nav-item" data-tab="tab-submissions"><span class="ico">🗂️</span> Dữ liệu nộp phiếu</div>
     <div class="nav-group">Master Data</div>
-    <div class="nav-item" data-tab="tab-panellist"><span class="ico">👥</span> Panellist</div>
+    <div class="nav-item" data-tab="tab-panellist"><span class="ico">👥</span> Panelist</div>
     <div class="nav-item" data-tab="tab-product"><span class="ico">📦</span> SP &amp; Lô</div>
     <div class="nav-item" data-tab="tab-items"><span class="ico">🔗</span> Items Code</div>
     <div class="nav-group">Kiến thức</div>
@@ -638,7 +638,7 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
   <!-- ===================== MAIN ===================== -->
   <main>
     <section class="panel active" id="tab-scoring">
-      <div class="page-head"><h1>Chấm điểm nếm</h1><span class="tag">Panellist · F.071</span><span class="form-code">QA.F.071 v4</span></div>
+      <div class="page-head"><h1>Chấm điểm nếm</h1><span class="tag">Panelist · F.071</span><span class="form-code">QA.F.071 v4</span></div>
       <div id="scoringBody"></div>
     </section>
     <section class="panel" id="tab-setup">
@@ -658,7 +658,7 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
       <div id="lookupBody"></div>
     </section>
     <section class="panel" id="tab-panellist">
-      <div class="page-head"><h1>Quản lý Panellist</h1><span class="tag">Master Data</span></div>
+      <div class="page-head"><h1>Quản lý Panelist</h1><span class="tag">Master Data</span></div>
       <div id="panellistBody"></div>
     </section>
     <section class="panel" id="tab-product">
@@ -1000,7 +1000,7 @@ function scSubmit(){
     if(!set.attendees.includes(pid))set.attendees.push(pid);
     logAudit('Nộp phiếu nếm · '+(STATE.panellists.find(p=>p.id===pid)?.name||pid)+' · '+set.name); save();
     SC_SESSION.panelId='';STATE.currentPanellistId=null;SC_DRAFT={};toast('Đã nộp phiếu ✓','ok'); renderScoring(); if(CLOUD.user)setTimeout(cloudMaybeApplyPending,2500); };
-  if(set.scores[pid]) confirmAsk('Panellist này đã có phiếu. Ghi đè phiếu cũ?','Ghi đè',doSubmit); else doSubmit();
+  if(set.scores[pid]) confirmAsk('Panelist này đã có phiếu. Ghi đè phiếu cũ?','Ghi đè',doSubmit); else doSubmit();
 }
 
 /* ===================== [SETUP] wizard ===================== */
@@ -1013,7 +1013,7 @@ function suggestSetName(date,shift){
 /* Khi đổi Ca/Ngày, cập nhật lại số gợi ý nếu người dùng chưa sửa tay */
 function wizMetaLive(){ WIZ.meta.shift=$('#wShift').value; const d=dateVal('wDate'); if(!d)return toast('Ngày không hợp lệ — nhập dd/mm/yyyy','err'); WIZ.meta.date=d;
   if(WIZ.nameAuto)$('#wName').value=suggestSetName(WIZ.meta.date,WIZ.meta.shift); }
-/* Mã hóa mẫu (blind code) — panellist chỉ thấy mã này khi chấm. Set cũ chưa có mã → dùng số thứ tự. */
+/* Mã hóa mẫu (blind code) — panelist chỉ thấy mã này khi chấm. Set cũ chưa có mã → dùng số thứ tự. */
 const sampleCode=sm=>(sm.code||'').toString().trim()||String(sm.no);
 function wizNextCode(){ const codes=WIZ.samples.map(x=>(x.code||'').trim()),last=codes[codes.length-1]||'';
   const m=last.match(/^(.*?)(\d+)$/); let c=m?m[1]+(Number(m[2])+1):String(WIZ.samples.length+1);
@@ -1064,7 +1064,7 @@ function wizStep2(){ const rows=WIZ.samples.map((s,i)=>`<tr><td>${i+1}</td>
     <div class="tbl-wrap" style="margin-top:6px"><table class="grid">
       <thead><tr><th style="width:44px">STT</th><th style="width:140px">Tên mã hóa</th><th class="l">Tên mẫu</th><th style="width:190px">SSCC/Hour</th><th style="width:150px">Batch</th><th style="width:56px"></th></tr></thead>
       <tbody>${rows||'<tr><td colspan="6" class="hint" style="padding:14px">Chưa có mẫu nào</td></tr>'}</tbody></table></div>
-    ${WIZ.samples.length?`<div class="toolbar" style="margin:8px 0 0"><span class="hint">Tên mã hóa là tên panellist thấy khi chấm (mẫu mù). Đánh mã lại toàn bộ theo tiền tố:</span>
+    ${WIZ.samples.length?`<div class="toolbar" style="margin:8px 0 0"><span class="hint">Tên mã hóa là tên panelist thấy khi chấm (mẫu mù). Đánh mã lại toàn bộ theo tiền tố:</span>
       <input class="t" id="smPrefix" placeholder="VD: CHO (để trống = 1, 2, 3…)" style="max-width:220px">
       <button class="btn sec sm" onclick="wizRecode()">↻ Đánh mã lại</button></div>`:''}
     <div class="toolbar" style="margin-top:12px"><button class="btn sec" onclick="wizBack()">← Quay lại</button><span class="spacer"></span>
@@ -1144,7 +1144,7 @@ function approveSet(id){ if(!can('confirmSet'))return toast('Bạn không có qu
   const n=Object.keys(s.scores||{}).length,miss=s.samples.filter(sm=>calcSample(s,sm.no).pct===null).length;
   if(!n)return toast('Set chưa có phiếu nào để xác nhận','err');if(miss)return toast(miss+' mẫu chưa có kết quả — chưa thể xác nhận','err');
   const results=s.samples.map(sm=>calcSample(s,sm.no)),pass=results.filter(r=>r.pass).length;
-  confirmAsk('Xác nhận kết quả Set '+setLabel(s)+': '+n+' phiếu, '+pass+'/'+s.samples.length+' mẫu Passed'+(n<CONFIG.MIN_PANELLIST?' (⚠ ít hơn '+CONFIG.MIN_PANELLIST+' panellist)':'')+'? Sau khi xác nhận, Set được đóng và khoá — không nộp/sửa thêm.','Xác nhận',()=>{
+  confirmAsk('Xác nhận kết quả Set '+setLabel(s)+': '+n+' phiếu, '+pass+'/'+s.samples.length+' mẫu Passed'+(n<CONFIG.MIN_PANELLIST?' (⚠ ít hơn '+CONFIG.MIN_PANELLIST+' panelist)':'')+'? Sau khi xác nhận, Set được đóng và khoá — không nộp/sửa thêm.','Xác nhận',()=>{
     s.approval={by:AUTH.profile?.displayName||'Giám sát',byUid:AUTH.profile?.uid||'',at:new Date().toISOString(),panellists:n,passed:pass,total:s.samples.length};
     s.status='closed';if(STATE.currentSetId===id)STATE.currentSetId=id; // vẫn xem báo cáo được
     logAudit('Xác nhận kết quả Set: '+setLabel(s)+' ('+pass+'/'+s.samples.length+' Passed, '+n+' phiếu)');save();renderSummary();toast('Đã xác nhận kết quả','ok');});
@@ -1165,7 +1165,7 @@ function renderSummary(){
   const results=set.samples.map(sm=>calcSample(set,sm.no));
   const nPass=results.filter(r=>r.pass).length, nFail=results.filter(r=>r.pct!==null&&!r.pass).length;
   const nAtt=Object.keys(set.scores).length;
-  const attWarn=nAtt<CONFIG.MIN_PANELLIST?`<span class="badge fail">⚠ ${nAtt} phiếu · cần ≥ ${CONFIG.MIN_PANELLIST} panellist</span>`:`<span class="badge pass">✓ ${nAtt} panellist</span>`;
+  const attWarn=nAtt<CONFIG.MIN_PANELLIST?`<span class="badge fail">⚠ ${nAtt} phiếu · cần ≥ ${CONFIG.MIN_PANELLIST} panelist</span>`:`<span class="badge pass">✓ ${nAtt} panelist</span>`;
   box.innerHTML=picker+`<div class="grid-3">
       <div class="kpi"><div class="num">${set.samples.length}</div><div class="lbl">Tổng mẫu · ${attWarn}</div></div>
       <div class="kpi ok"><div class="num">${nPass}</div><div class="lbl">Passed (≥${CONFIG.PASS_THRESHOLD}%)</div></div>
@@ -1371,14 +1371,17 @@ function lookupDelete(id){ if(!can('deleteSet'))return toast('Bạn không có q
 }
 function lookupOpen(id){ STATE.currentSetId=id; $('#hdrSet').textContent=setLabel(curSet()); switchTab('tab-summary'); }
 
-/* ===================== [MASTER] Panellist ===================== */
+/* ===================== [MASTER] Panelist ===================== */
 function renderPanellists(){
   const box=$('#panellistBody');
   const rows=STATE.panellists.map(p=>`<tr><td>${esc(p.code||'')}</td><td class="l">${esc(p.name)}</td><td>${esc(p.func||'')}</td><td>${esc(p.dept)}</td>
     <td><button class="btn sm danger need-editMaster" onclick="delPanel('${p.id}')">Xoá</button></td></tr>`).join('');
-  box.innerHTML=`<div class="card need-editMaster"><h3>Thêm Panellist</h3>
-    <div class="row c3"><div><label class="f">Tên</label><input class="t" id="pName" placeholder="Họ tên"></div>
-      <div><label class="f">Bộ phận</label><input class="t" id="pDept" placeholder="QA / Production / R&D"></div>
+  box.innerHTML=`<div class="card need-editMaster"><h3>Thêm Panelist</h3>
+    <div class="row" style="grid-template-columns:.8fr 1.6fr 1fr 1fr auto">
+      <div><label class="f">Mã NV</label><input class="t" id="pCode" placeholder="VD: ILD0001" autocapitalize="characters" onkeydown="if(event.key==='Enter')addPanel()"></div>
+      <div><label class="f">Tên</label><input class="t" id="pName" placeholder="Họ tên" onkeydown="if(event.key==='Enter')addPanel()"></div>
+      <div><label class="f">Chức năng</label><input class="t" id="pFunc" placeholder="Production / Lab / QA…" onkeydown="if(event.key==='Enter')addPanel()"></div>
+      <div><label class="f">Bộ phận</label><input class="t" id="pDept" placeholder="OP / QA" onkeydown="if(event.key==='Enter')addPanel()"></div>
       <div style="align-self:end"><button class="btn" onclick="addPanel()">+ Thêm</button></div></div>
     <div class="hint" style="margin-top:10px">Nhập hàng loạt từ Excel (.xlsx/.xls/.csv) với các cột: <b>Employee code · Full name · Function · Dept.</b> — trùng mã NV hoặc trùng tên sẽ được cập nhật, không nhân đôi.</div>
     <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" onclick="document.getElementById('filePanellists').click()">📥 Nhập từ Excel</button>
@@ -1386,19 +1389,23 @@ function renderPanellists(){
     <div class="card"><div class="toolbar"><h3 style="margin:0">Danh sách (${STATE.panellists.length})</h3><span class="spacer"></span>
       <button class="btn sec sm" onclick="exportPanellistsExcel()" ${STATE.panellists.length?'':'disabled'}>📊 Xuất Excel</button></div>
       <div class="tbl-wrap"><table class="grid"><thead><tr><th>Mã NV</th><th class="l">Tên</th><th>Chức năng</th><th>Bộ phận</th><th style="width:80px"></th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="5" class="hint" style="padding:14px">Chưa có panellist</td></tr>'}</tbody></table></div></div>`;
+      <tbody>${rows||'<tr><td colspan="5" class="hint" style="padding:14px">Chưa có panelist</td></tr>'}</tbody></table></div></div>`;
 }
-function addPanel(){ if(!can('editMaster'))return toast('Bạn không có quyền sửa Master Data','err'); const name=$('#pName').value.trim(); if(!name)return toast('Nhập tên','err');
-  if(STATE.panellists.some(p=>p.name.toLowerCase()===name.toLowerCase()))return toast('Panellist đã tồn tại','err');
-  STATE.panellists.push({id:uid('pnl'),name,dept:$('#pDept').value.trim()}); logAudit('Thêm panellist: '+name); save(); toast('Đã thêm','ok'); renderPanellists(); }
+function addPanel(){ if(!can('editMaster'))return toast('Bạn không có quyền sửa Master Data','err');
+  const code=$('#pCode').value.trim().toUpperCase(),name=$('#pName').value.trim().replace(/\s+/g,' '),func=$('#pFunc').value.trim(),dept=$('#pDept').value.trim();
+  if(!code)return toast('Nhập Mã NV','err'); if(!name)return toast('Nhập tên','err');
+  const dupCode=STATE.panellists.find(p=>(p.code||'').toLowerCase()===code.toLowerCase());if(dupCode)return toast('Mã NV '+code+' đã có: '+dupCode.name,'err');
+  if(STATE.panellists.some(p=>p.name.toLowerCase()===name.toLowerCase()))return toast('Panelist "'+name+'" đã tồn tại','err');
+  const id='pnl_'+code.toLowerCase(); // id chuẩn theo Mã NV (giống danh sách chuẩn)
+  STATE.panellists.push({id:STATE.panellists.some(p=>p.id===id)?uid('pnl'):id,code,name,func,dept}); logAudit('Thêm panelist: '+code+' · '+name); save(); toast('Đã thêm '+name,'ok'); renderPanellists(); setTimeout(()=>$('#pCode')?.focus(),30); }
 function delPanel(id){ if(!can('editMaster'))return toast('Bạn không có quyền sửa Master Data','err'); const p=STATE.panellists.find(x=>x.id===id);
-  confirmAsk('Xoá panellist "'+(p?.name||'')+'"?','Xoá',()=>{ STATE.panellists=STATE.panellists.filter(x=>x.id!==id); logAudit('Xoá panellist: '+(p?.name||id)); save(); renderPanellists(); }); }
+  confirmAsk('Xoá panelist "'+(p?.name||'')+'"?','Xoá',()=>{ STATE.panellists=STATE.panellists.filter(x=>x.id!==id); logAudit('Xoá panelist: '+(p?.name||id)); save(); renderPanellists(); }); }
 
-function downloadPanellistTemplate(){ downloadFile('iLD_Panellist_Template.xls',itemsWorkbook([['Employee code','Full name','Function','Dept.'],['ILD0000','Nguyễn Văn A','QA','QA']]),'application/vnd.ms-excel'); }
-/* Xuất danh sách Panellist (.xls) — cùng cấu trúc cột với file nhập (nhập lại được) */
-function exportPanellistsExcel(){ if(!STATE.panellists.length)return toast('Chưa có panellist','err');
-  downloadFile('iLD_Panellist_'+todayStr()+'.xls',itemsWorkbook([['Employee code','Full name','Function','Dept.'],...STATE.panellists.map(p=>[p.code||'',p.name,p.func||'',p.dept||''])],'Panellist'),'application/vnd.ms-excel');
-  logAudit('Xuất danh sách Panellist: '+STATE.panellists.length+' người');save();toast('Đã xuất '+STATE.panellists.length+' panellist','ok'); }
+function downloadPanellistTemplate(){ downloadFile('iLD_Panelist_Template.xls',itemsWorkbook([['Employee code','Full name','Function','Dept.'],['ILD0000','Nguyễn Văn A','QA','QA']]),'application/vnd.ms-excel'); }
+/* Xuất danh sách Panelist (.xls) — cùng cấu trúc cột với file nhập (nhập lại được) */
+function exportPanellistsExcel(){ if(!STATE.panellists.length)return toast('Chưa có panelist','err');
+  downloadFile('iLD_Panelist_'+todayStr()+'.xls',itemsWorkbook([['Employee code','Full name','Function','Dept.'],...STATE.panellists.map(p=>[p.code||'',p.name,p.func||'',p.dept||''])],'Panelist'),'application/vnd.ms-excel');
+  logAudit('Xuất danh sách Panelist: '+STATE.panellists.length+' người');save();toast('Đã xuất '+STATE.panellists.length+' panelist','ok'); }
 function normalizePanellistRows(rows){
   const clean=rows.map(r=>[...r].map(v=>(v??'').toString().trim()));
   const header=clean.findIndex(r=>r.some(x=>/full name|họ tên|ho ten|^tên$|^name$/i.test(x)));
@@ -1414,8 +1421,8 @@ document.getElementById('filePanellists').addEventListener('change',async e=>{co
       if(!p){STATE.panellists.push({id:uid('pnl'),...x});added++;return;}
       const next={code:x.code||p.code||'',name:x.name,func:x.func||p.func||'',dept:x.dept||p.dept||''};
       if(['code','name','func','dept'].every(k=>(p[k]||'')===next[k])){same++;return;}Object.assign(p,next);updated++;});
-    logAudit('Import Panellist: +'+added+', cập nhật '+updated+', trùng '+same);save();renderPanellists();toast('Panellist: thêm '+added+', cập nhật '+updated+', bỏ qua '+same+' dòng trùng','ok');
-  }catch(err){toast('Import Panellist lỗi: '+err.message,'err');}});
+    logAudit('Import Panelist: +'+added+', cập nhật '+updated+', trùng '+same);save();renderPanellists();toast('Panelist: thêm '+added+', cập nhật '+updated+', bỏ qua '+same+' dòng trùng','ok');
+  }catch(err){toast('Import Panelist lỗi: '+err.message,'err');}});
 
 /* ===================== [MASTER] SP/Recipe/PO/Batch ===================== */
 /* Bảng liên tục Sản phẩm · Recipe · PO · Batch: mỗi dòng là 1 bộ liên kết. STATE.lots=[{id,product,recipe,po,batch}]
@@ -1665,7 +1672,7 @@ function renderSensory(){
   <div class="card">
     <h3>☕ Sensory là gì</h3>
     <p>Đánh giá In/Out là <b>bắt buộc</b> để release Nguyên liệu, Bán thành phẩm, Thành phẩm; và cho KQT, mẫu khiếu nại.
-    Mỗi mẫu so với <b>mẫu chuẩn</b>, tối thiểu <b>3 panellist</b>, chấm <b>độc lập</b>.</p>
+    Mỗi mẫu so với <b>mẫu chuẩn</b>, tối thiểu <b>3 panelist</b>, chấm <b>độc lập</b>.</p>
   </div>
 
   <div class="card">
@@ -1684,7 +1691,7 @@ function renderSensory(){
     <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
       <li><b>Mẫu chuẩn (STD):</b> không mùi vị lạ, làm chuẩn so sánh. Thay định kỳ <b>3 tháng</b>.
         Bảo quản cà phê bột / dịch: <b>−20 ± 2 °C</b>; mẫu nếm hằng ngày: tủ mát <b>4 ± 2 °C</b>. Dán nhãn recipe, NSX, HSD.</li>
-      <li><b>Mẫu chèn (Spike):</b> cài ẩn để kiểm tra năng lực panellist — ít nhất 1 lần/quý (green bean ~1 lần/tuần).</li>
+      <li><b>Mẫu chèn (Spike):</b> cài ẩn để kiểm tra năng lực panelist — ít nhất 1 lần/quý (green bean ~1 lần/tuần).</li>
       <li>Pha nếm phải nếm STD trước để chắc chuẩn không hư.</li>
     </ul>
   </div>
@@ -1825,7 +1832,7 @@ function renderGuide(){
   <div class="card">
     <h3>👥 Danh mục (Master Data)</h3>
     <ul ${L}>
-      <li><b>Panellist:</b> danh sách người nếm. Thêm tay hoặc <b>📥 Nhập từ Excel</b> (cột Employee code · Full name · Function · Dept.); trùng Mã NV thì cập nhật, không nhân đôi.</li>
+      <li><b>Panelist:</b> danh sách người nếm. Thêm tay hoặc <b>📥 Nhập từ Excel</b> (cột Employee code · Full name · Function · Dept.); trùng Mã NV thì cập nhật, không nhân đôi.</li>
       <li><b>SP &amp; Lô</b> và <b>Items Code:</b> bảng tra cứu sản phẩm, recipe, PO, batch. Sửa ngay trên ô, lọc theo cột, nhập/xuất Excel.</li>
     </ul>
   </div>
@@ -2032,7 +2039,7 @@ const PERM_DEFS=[
   ['confirmSet','Xác nhận kết quả Set','Giám sát xác nhận / huỷ xác nhận (Báo cáo)'],
   ['deleteSet','Xoá Set nếm','Xoá Set cùng toàn bộ phiếu đã nộp'],
   ['editSubmission','Sửa / xoá dữ liệu nộp phiếu','Tab Dữ liệu nộp phiếu'],
-  ['editMaster','Sửa Master Data','Panellist · SP·Recipe·PO·Batch · Items Code (thêm / sửa / xoá / nhập Excel)']];
+  ['editMaster','Sửa Master Data','Panelist · SP·Recipe·PO·Batch · Items Code (thêm / sửa / xoá / nhập Excel)']];
 const PERM_ROLES=['user','qc','supervisor'];
 const PERM_DEFAULT={user:{createSet:true,editMaster:true},qc:{createSet:true,editSet:true,closeSet:true,editMaster:true},supervisor:{createSet:true,confirmSet:true,editMaster:true}};
 const PERM_CACHE_KEY='ild_sensory_perms';
@@ -2258,7 +2265,7 @@ function renderSettings(){
     <button class="btn sm" onclick="cloudRetryLocalConflict(${i})">Ghi bản trên máy</button></td></tr>`).join('');
   box.innerHTML=`
     <div class="card"><h3>Thông số hệ thống</h3>
-      <p>Ngưỡng đạt: <b>${CONFIG.PASS_THRESHOLD}%</b> · Điểm Out=3, Just In=0.5, In=0 · Tối thiểu <b>${CONFIG.MIN_PANELLIST}</b> panellist/mẫu.</p></div>
+      <p>Ngưỡng đạt: <b>${CONFIG.PASS_THRESHOLD}%</b> · Điểm Out=3, Just In=0.5, In=0 · Tối thiểu <b>${CONFIG.MIN_PANELLIST}</b> panelist/mẫu.</p></div>
     <div class="card"><div class="toolbar"><h3 style="margin:0">Đồng bộ Firebase</h3><span class="spacer"></span>
       <button class="btn sec sm" onclick="authOpenAccount()">👤 Tài khoản</button></div>
       <p><b>${esc(cloudStatus())}</b></p>
@@ -2296,7 +2303,7 @@ $('#fileBackup').addEventListener('change',e=>{ const f=e.target.files[0]; e.tar
       logAudit('Phục hồi từ JSON'); persist(); purgeDemoPanellists(); boot(); toast('Đã phục hồi','ok'); });
   }catch(err){ toast('Phục hồi lỗi: '+err.message,'err'); } }; rd.readAsText(f,'UTF-8'); });
 
-/* Danh sách Panellist chuẩn (nguồn: Panenlist.xlsx, 49 người) — [Mã NV, Họ tên, Chức năng, Bộ phận].
+/* Danh sách Panelist chuẩn (nguồn: Panenlist.xlsx, 49 người) — [Mã NV, Họ tên, Chức năng, Bộ phận].
    Nạp bổ sung một lần cho mỗi thiết bị; không ghi đè/xoá người đã có, không nạp lại người đã bị xoá sau đó. */
 const DEFAULT_PANELLISTS=[
   ['ILD0006','Mai Tiến Đức','Manager','OP'],
@@ -2358,17 +2365,17 @@ function mergeDefaultPanellists(force=false){
     if(p){if(!p.code){Object.assign(p,{code,func:p.func||func,dept:p.dept||dept});n++;}return;}
     STATE.panellists.push({id:'pnl_'+code.toLowerCase(),code,name,func,dept});n++;});
   try{localStorage.setItem(PNL_DEFAULT_KEY,'1');}catch{}
-  if(n){logAudit('Nạp danh sách Panellist chuẩn: '+n+' người');save();}return n;}
+  if(n){logAudit('Nạp danh sách Panelist chuẩn: '+n+' người');save();}return n;}
 
-/* Panellist mô phỏng của bản demo cũ (không có Mã NV) → tự loại khỏi Master Data; điểm trong Set Demo vẫn giữ. */
+/* Panelist mô phỏng của bản demo cũ (không có Mã NV) → tự loại khỏi Master Data; điểm trong Set Demo vẫn giữ. */
 const DEMO_PANELLISTS={pnl_a:'Nguyễn Văn A',pnl_b:'Trần Thị B',pnl_c:'Lê Văn C',pnl_d:'Phạm Thị D'};
 function purgeDemoPanellists(){const before=STATE.panellists.length;
   STATE.panellists=STATE.panellists.filter(p=>p.code||DEMO_PANELLISTS[p.id]!==p.name);const n=before-STATE.panellists.length;
-  if(n){logAudit('Xoá '+n+' panellist mô phỏng (không có Mã NV)');save();}return n;}
+  if(n){logAudit('Xoá '+n+' panelist mô phỏng (không có Mã NV)');save();}return n;}
 
 /* ===================== [SEED] dữ liệu mẫu (chỉ khi trống) ===================== */
 function seed(){
-  STATE.panellists=[]; // danh sách thật nạp từ Excel ở tab Quản lý Panellist
+  STATE.panellists=[]; // danh sách thật nạp từ Excel ở tab Quản lý Panelist
   STATE.products=[{id:'prd1',name:'Freeze-dried Coffee'},{id:'prd2',name:'Spray-dried Coffee'}];
   STATE.recipes=[{id:'rcp1',name:'Standard 100%'},{id:'rcp2',name:'Less bitter'}];
   STATE.pos=[{id:'po1',name:'PO-2508-01'}]; STATE.batches=[{id:'bat1',name:'L2508A'},{id:'bat2',name:'L2508B'}]; STATE.lots=[];

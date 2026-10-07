@@ -46,7 +46,7 @@ Biểu mẫu nghiệp vụ được số hóa: **QA.F.071** (phiếu chấm cá 
 | 📊 Báo cáo (`tab-summary`) | Phiếu QA.F.072 theo Set, KPI, **Xác nhận kết quả** (Giám sát), Xuất Excel (CSV) / PDF | Tài khoản riêng |
 | 🔍 Danh sách Set (`tab-lookup`, tên cũ: Tra cứu) | Sắp xếp + lọc theo từng cột (ô lọc ngay dưới tên cột; mặc định ngày gần nhất lên đầu — `LK`, `LK_COLS`, `lkList`, `lkPaint`): số người nếm, Passed/Failed, trạng thái, Giám sát; ✎ Sửa · 🔒 Đóng Set · Xóa | Tài khoản riêng (nút theo quyền) |
 | 🗂️ Dữ liệu nộp phiếu (`tab-submissions`) | 1 dòng = 1 mẫu trong 1 phiếu; lọc Set/kết quả/ngày; xuất `.xls`; Sửa/Xóa dòng/Xóa phiếu | Tài khoản riêng (sửa/xóa theo `editSubmission`) |
-| 👥 Panellist (`tab-panellist`) | Thêm/xóa, Nhập Excel (Employee code · Full name · Function · Dept.), **Xuất Excel** | Tài khoản riêng (sửa theo `editMaster`) |
+| 👥 Panelist (`tab-panellist`) | Thêm/xóa, Nhập Excel (Employee code · Full name · Function · Dept.), **Xuất Excel** | Tài khoản riêng (sửa theo `editMaster`) |
 | 📦 SP & Lô (`tab-product`) | Bảng liên tục Sản phẩm · Recipe · PO · Batch (`STATE.lots`), lọc/sắp xếp, nhập/xuất Excel | như trên |
 | 🔗 Items Code (`tab-items`) | Loại (FGs/RW) · Item Code · Tên SP · Recipe (~3.100 dòng), lọc/sắp xếp/sửa tại ô, nhập/xuất | như trên |
 | ☕ Sensory · 📖 Hướng dẫn | Kiến thức cảm quan; hướng dẫn trong app theo 4 bước Tạo Set → Chấm nếm → Đóng Set → Xác nhận (`renderGuide`, cập nhật 07/10/2026 — sửa khi thêm tính năng) | Tài khoản riêng |
@@ -128,7 +128,7 @@ Header (phải): Set đang mở · nút tài khoản (đăng nhập cấp 2) · 
 - `sampleCode(sm)` = `code` hoặc `no` (Set cũ chưa có mã).
 - `SAMPLE_TYPES`: Green coffee · Freeze-dried · Semi product · KQ · Complaint · Other (mặc định Freeze-dried). **Green coffee: phiếu chỉ IN / OUT** (`isGreenCoffee`).
 - Lỗi: `ERR_APPEARANCE` (màu sậm, hai màu, lumpy, hạt cháy, bụi, bề mặt bị rổ, vụn) · `ERR_TASTE` (chemical, overdried, less/more aroma, chua, đắng, cook). Just In/Out **bắt buộc** chọn lỗi hoặc ghi chú; IN được ghi chú (không bắt buộc).
-- 49 panellist chuẩn nhúng sẵn `DEFAULT_PANELLISTS` (nạp 1 lần/thiết bị, cờ `ild_sensory_pnl_default_v1`); 4 tên demo (`pnl_a..d`) tự bị loại.
+- 49 panelist chuẩn nhúng sẵn `DEFAULT_PANELLISTS` (nạp 1 lần/thiết bị, cờ `ild_sensory_pnl_default_v1`); 4 tên demo (`pnl_a..d`) tự bị loại.
 - Không lưu cứng % — `calcSample(set,no)` luôn tính lại.
 
 ---
@@ -169,7 +169,7 @@ ild_sensory/shared_state     legacy (giữ để rollback, chỉ Admin)
 - Lệch revision → **gộp 3 chiều** `cloudMerge3(base, local, remote)` (mảng theo `id`/`no`, audit theo nội dung; cùng sửa giá trị đơn → bản máy thắng); gộp lỗi/quá 5 lần → conflict UI ở Cài đặt.
 - Không tự nhận dữ liệu cloud đè lên máy khi còn outbox/conflict, đang gõ hoặc **đang chấm dở phiếu** → `pendingRemote`, áp dụng sau.
 - `cloudEntities()` trả **bản sao sâu** (tránh base trỏ chung STATE). Thiết bị chưa từng đồng bộ: cloud có dữ liệu → tải về (máy mới) hoặc hỏi; cloud trống → đẩy lên. Auto-sync mặc định **bật**. Web Locks: 1 tab chỉnh sửa chính.
-- Dữ liệu thật đã có trên Firestore (kiểm tra 28/09/2026: 49 panellist, ~3.100 Items Code, 3 Set, 7 phiếu, 4 tài khoản).
+- Dữ liệu thật đã có trên Firestore (kiểm tra 28/09/2026: 49 panelist, ~3.100 Items Code, 3 Set, 7 phiếu, 4 tài khoản).
 - ⚠ `meta` chứa ~3.100 Items Code — Firestore giới hạn **1 MiB/document**; nếu Items Code tăng nhiều, cần tách ra document/collection riêng.
 
 ### Khóa LocalStorage
@@ -181,7 +181,7 @@ ild_sensory_cloud_client   ID thiết bị
 ild_sensory_editor_lock    khóa tab
 ild_sensory_auth_cache     hồ sơ đăng nhập cho offline
 ild_sensory_perms          cache ma trận phân quyền
-ild_sensory_pnl_default_v1 đã nạp danh sách panellist chuẩn
+ild_sensory_pnl_default_v1 đã nạp danh sách panelist chuẩn
 ild_sensory_theme          sáng/tối cũ (nút 🌓)
 ild-crafted-appearance-v1  Theme ILD Crafted {v:1, mode, contrast, emphasis}
 ```
@@ -192,7 +192,7 @@ ild-crafted-appearance-v1  Theme ILD Crafted {v:1, mode, contrast, emphasis}
 
 | Nơi | Nhập | Xuất |
 |---|---|---|
-| Panellist | `.xlsx/.xls/.csv` (Employee code · Full name · Function · Dept.) — trùng mã/tên thì cập nhật | `iLD_Panellist_<ngày>.xls` (cùng cột, nhập lại được) |
+| Panelist | `.xlsx/.xls/.csv` (Employee code · Full name · Function · Dept.) — trùng mã/tên thì cập nhật | `iLD_Panelist_<ngày>.xls` (cùng cột, nhập lại được) |
 | Tạo Set Bước ② | Excel mẫu (Tên mã hóa · Tên mẫu · SSCC/Hour · Batch) · **SAP** | `iLD_SetSamples_….xls`, template |
 | SP & Lô | Sản phẩm · Recipe · PO · Batch | `.xls` |
 | Items Code | 4 cột chuẩn hoặc 2 khối FGs/RW | `.xls` |
@@ -258,7 +258,7 @@ Hàm chính: `render*` (Scoring, Setup, Summary, Lookup, Submissions, Panellists
 6. Liên kết Items Code / SP·Lô với mẫu trong Set (gợi ý tên mẫu khi tạo Set).
 7. Xuất `.xlsx` thật thay CSV/SpreadsheetML nếu chấp nhận thư viện.
 8. Thử trên iPad/điện thoại thật (mới thử bằng trình duyệt giả lập kích thước).
-9. Thang điểm riêng Green Bean / mẫu Spike / thống kê năng lực panellist (chờ nghiệp vụ duyệt).
+9. Thang điểm riêng Green Bean / mẫu Spike / thống kê năng lực panelist (chờ nghiệp vụ duyệt).
 
 ---
 
