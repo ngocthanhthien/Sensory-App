@@ -44,7 +44,7 @@ Biểu mẫu nghiệp vụ được số hóa: **QA.F.071** (phiếu chấm cá 
 | ✍️ Chấm nếm (`tab-scoring`) | Phiếu QA.F.071: chọn Set + người nếm (ô tìm kiếm), IN / Just In / Out, Remark, **All IN**, **Discard**, **Nộp phiếu** (thanh dính đáy trên tablet/phone) | Mọi người (User chung **chỉ** thấy tab này) |
 | 🧪 Tạo Set (`tab-setup`) | Wizard 2 bước; Bước ② thêm mẫu tay / Excel / **Nhập Excel từ SAP**; Tên mã hóa (mẫu mù) | Quyền `createSet` |
 | 📊 Báo cáo (`tab-summary`) | Phiếu QA.F.072 theo Set, KPI, **Xác nhận kết quả** (Giám sát), Xuất Excel (CSV) / PDF | Tài khoản riêng |
-| 🔍 Tra cứu (`tab-lookup`) | Danh sách Set: số người nếm, Passed/Failed, trạng thái, Giám sát; ✎ Sửa · 🔒 Đóng Set · Xóa | Tài khoản riêng (nút theo quyền) |
+| 🔍 Danh sách Set (`tab-lookup`, tên cũ: Tra cứu) | Sắp xếp + lọc theo từng cột (ô lọc ngay dưới tên cột; mặc định ngày gần nhất lên đầu — `LK`, `LK_COLS`, `lkList`, `lkPaint`): số người nếm, Passed/Failed, trạng thái, Giám sát; ✎ Sửa · 🔒 Đóng Set · Xóa | Tài khoản riêng (nút theo quyền) |
 | 🗂️ Dữ liệu nộp phiếu (`tab-submissions`) | 1 dòng = 1 mẫu trong 1 phiếu; lọc Set/kết quả/ngày; xuất `.xls`; Sửa/Xóa dòng/Xóa phiếu | Tài khoản riêng (sửa/xóa theo `editSubmission`) |
 | 👥 Panellist (`tab-panellist`) | Thêm/xóa, Nhập Excel (Employee code · Full name · Function · Dept.), **Xuất Excel** | Tài khoản riêng (sửa theo `editMaster`) |
 | 📦 SP & Lô (`tab-product`) | Bảng liên tục Sản phẩm · Recipe · PO · Batch (`STATE.lots`), lọc/sắp xếp, nhập/xuất Excel | như trên |
@@ -141,7 +141,7 @@ Defect  = (Out×3 + JustIn×0.5) / (Total×3)
 Result% = (1 − Defect) × 100      → Passed ≥ 80 · Failed < 80
 CONFIG: PASS_THRESHOLD 80 · SCORE {OUT:3, JUSTIN:0.5, IN:0} · MIN_PANELLIST 3 · MAX_IMPORT_MB 3
 ```
-- **Đóng Set chỉ khi đủ ≥ MIN_PANELLIST người nếm** (`closeBlockedMsg`) — áp dụng ở Tra cứu, Sửa Set và Tạo Set. Giám sát xác nhận vẫn được (có cảnh báo) và tự đóng Set.
+- **Đóng Set chỉ khi đủ ≥ MIN_PANELLIST người nếm** (`closeBlockedMsg`) — áp dụng ở Danh sách Set, Sửa Set và Tạo Set. Giám sát xác nhận vẫn được (có cảnh báo) và tự đóng Set.
 
 ---
 
@@ -151,7 +151,7 @@ CONFIG: PASS_THRESHOLD 80 · SCORE {OUT:3, JUSTIN:0.5, IN:0} · MIN_PANELLIST 3 
 2. **Chấm nếm** (mọi người): chọn Set + tìm người nếm (tên không dấu/Mã NV) → IN/Just In/Out (All IN) → Nộp phiếu. Ghi `at`. Set đã xác nhận thì không nộp được.
 3. **Đóng Set** (QC): khi đủ ≥ 3 người.
 4. **Xác nhận** (Giám sát): tab Báo cáo → ✔ Xác nhận kết quả → `approval` + đóng & khóa; tên + giờ hiện ở ô **Check by** của QA.F.072 (màn hình/PDF/Excel). Hủy xác nhận để mở khóa.
-5. Admin: sửa/xóa phiếu (Dữ liệu nộp phiếu), sửa/xóa Set (Tra cứu) — bị chặn khi Set đã xác nhận.
+5. Admin: sửa/xóa phiếu (Dữ liệu nộp phiếu), sửa/xóa Set (Danh sách Set) — bị chặn khi Set đã xác nhận.
 
 ---
 

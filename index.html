@@ -305,6 +305,10 @@ footer .spacer{flex:1}
 .sf-table thead tr:first-child th.sf-cmt-h{font-size:9.5px;font-weight:400;line-height:1.35;text-align:left}.sf-table th.sf-cmt-h b{font-weight:700}
 .sf-table tbody td{height:24px}.sf-table tbody td:first-child{font-weight:700}
 .sf-table td.c{text-align:center}.sf-cmt{font-size:11px;line-height:1.3}
+.lk-table th{white-space:nowrap}.lk-table th.sortable{cursor:pointer;user-select:none}
+.lk-table .sort-arrow{font-size:10px;opacity:.45;margin-left:3px}.lk-table th.sorted .sort-arrow{opacity:1;color:var(--ild-red)}
+.lk-table .filter-row th{top:33px;padding:5px 6px;background:var(--panel);z-index:2}
+.lk-table .filter-row .t,.lk-table .filter-row .s{min-width:64px;padding:6px 8px;font-size:12.5px;text-align:center}
 .sub-table th,.sub-table td{white-space:nowrap}.sub-table td.sub-err{white-space:normal;min-width:180px}
 .perm-table td{text-align:center}.perm-table td.l{text-align:left;min-width:260px}.perm-table input{width:18px;height:18px;accent-color:var(--ild-red);cursor:pointer}
 .perm-table input:disabled{cursor:not-allowed;opacity:.55}.perm-table tr.perm-fixed td{background:var(--bg);color:var(--muted)}
@@ -616,8 +620,8 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
     <div class="nav-item active" data-tab="tab-scoring"><span class="ico">✍️</span> Chấm nếm</div>
     <div class="nav-item need-createSet" data-tab="tab-setup"><span class="ico">🧪</span> Tạo Set</div>
     <div class="nav-item" data-tab="tab-summary"><span class="ico">📊</span> Báo cáo</div>
-    <div class="nav-group">Tra cứu</div>
-    <div class="nav-item" data-tab="tab-lookup"><span class="ico">🔍</span> Tra cứu</div>
+    <div class="nav-group">Danh sách Set</div>
+    <div class="nav-item" data-tab="tab-lookup"><span class="ico">🔍</span> Danh sách Set</div>
     <div class="nav-item" data-tab="tab-submissions"><span class="ico">🗂️</span> Dữ liệu nộp phiếu</div>
     <div class="nav-group">Master Data</div>
     <div class="nav-item" data-tab="tab-panellist"><span class="ico">👥</span> Panellist</div>
@@ -650,7 +654,7 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
       <div id="submissionsBody"></div>
     </section>
     <section class="panel" id="tab-lookup">
-      <div class="page-head"><h1>Truy xuất kết quả</h1><span class="tag">QA</span></div>
+      <div class="page-head"><h1>Danh sách Set</h1><span class="tag">QA</span></div>
       <div id="lookupBody"></div>
     </section>
     <section class="panel" id="tab-panellist">
@@ -1171,20 +1175,49 @@ function renderSummary(){
 }
 
 /* ===================== [LOOKUP] ===================== */
-let LK={q:'',type:''};
+/* Mỗi cột: [khoá, tiêu đề, kiểu lọc] — text: chứa chuỗi · num: bằng số, hoặc >3, <=5… · sel: chọn giá trị */
+const LK_COLS=[['name','Tên Set','text'],['date','Ngày','text'],['shift','Ca','sel'],['type','Loại','sel'],['samples','Số mẫu','num'],['tasters','Số người nếm','num'],
+  ['pass','Passed','num'],['fail','Failed','num'],['status','Trạng thái','sel'],['approval','Giám sát','sel']];
+const lkBlank=()=>Object.fromEntries(LK_COLS.map(([k])=>[k,'']));
+let LK={q:'',f:lkBlank(),sortKey:'date',sortDir:-1}; // mặc định: ngày gần nhất lên đầu
+function lkOpts(k){ return ({shift:[['AM','AM'],['PM','PM']],status:[['open','Đang mở'],['closed','Đã đóng']],approval:[['yes','Đã xác nhận'],['no','Chưa']],
+  type:[...new Set([...CONFIG.SAMPLE_TYPES,...STATE.sets.map(s=>s.sampleType).filter(Boolean)])].map(t=>[t,t])})[k]||[]; }
+function lkSort(k){ if(LK.sortKey===k)LK.sortDir*=-1;else{LK.sortKey=k;LK.sortDir=1;} renderLookup(); }
+function lkFilter(k,v){ LK.f[k]=v; lkPaint(); }
+function lkClear(){ LK.q='';LK.f=lkBlank(); renderLookup(); }
+function lkNumMatch(v,q){ q=(q||'').trim();if(!q)return true;const m=q.match(/^(>=|<=|>|<|=)?\s*(\d+)$/);if(!m)return true; // đang gõ dở toán tử → chưa lọc
+  const n=+m[2];return ({'>=':v>=n,'<=':v<=n,'>':v>n,'<':v<n})[m[1]]??v===n; }
+function lkRows(){ return STATE.sets.map(s=>{ const res=s.samples.map(sm=>calcSample(s,sm.no));
+  return {s,name:s.name,date:s.date,shift:s.shift,type:s.sampleType,samples:s.samples.length,tasters:Object.keys(s.scores||{}).length,
+    pass:res.filter(r=>r.pass).length,fail:res.filter(r=>r.pct!==null&&!r.pass).length,status:s.status==='open'?'open':'closed',approval:s.approval?'yes':'no'}; }); }
+function lkList(){ const q=LK.q.trim().toLowerCase(),f=LK.f,inc=(v,x)=>(v||'').toString().toLowerCase().includes(x.trim().toLowerCase());
+  const byDate=(a,b)=>(a.date+a.shift).localeCompare(b.date+b.shift)||a.name.localeCompare(b.name,'vi',{numeric:true}),k=LK.sortKey;
+  return lkRows().filter(r=>(!q||inc(r.name,q)||r.date.includes(q)||fmtDate(r.date).includes(q)||r.s.samples.some(sm=>inc(sm.name,q)||inc(sm.code,q)||inc(sm.batch,q)))
+      &&inc(r.name,f.name)&&(inc(fmtDate(r.date),f.date)||inc(r.date,f.date))
+      &&LK_COLS.every(([c,,t])=>t==='sel'?(!f[c]||r[c]===f[c]):(t==='num'?lkNumMatch(r[c],f[c]):true)))
+    .sort((a,b)=>{const c=k==='date'?0:(typeof a[k]==='number'?a[k]-b[k]:String(a[k]).localeCompare(String(b[k]),'vi',{numeric:true}));
+      return c*LK.sortDir||byDate(a,b)*(k==='date'?LK.sortDir:-1);}); // cùng giá trị → Set mới hơn lên trước
+}
 function renderLookup(){
   const box=$('#lookupBody');
-  if(STATE.sets.length===0){ box.innerHTML=`<div class="ph"><span class="big">🔍</span>Chưa có Set nào để tra cứu.</div>`; return; }
-  const typeOpts='<option value="">Tất cả loại</option>'+CONFIG.SAMPLE_TYPES.map(t=>`<option ${LK.type===t?'selected':''}>${t}</option>`).join('');
-  const list=STATE.sets.filter(s=>{
-    const okType=!LK.type||s.sampleType===LK.type;
-    const q=LK.q.toLowerCase();
-    const okQ=!q||s.name.toLowerCase().includes(q)||s.date.includes(q)||fmtDate(s.date).includes(q)||s.samples.some(sm=>(sm.name||'').toLowerCase().includes(q)||(sm.code||'').toLowerCase().includes(q)||(sm.batch||'').toLowerCase().includes(q));
-    return okType&&okQ;
-  });
-  const rows=list.map(s=>{ const res=s.samples.map(sm=>calcSample(s,sm.no));
-    const pass=res.filter(r=>r.pass).length,fail=res.filter(r=>r.pct!==null&&!r.pass).length;
-    const nTaster=Object.keys(s.scores||{}).length;
+  if(STATE.sets.length===0){ box.innerHTML=`<div class="ph"><span class="big">🔍</span>Chưa có Set nào trong danh sách.</div>`; return; }
+  const arrow=k=>LK.sortKey===k?(LK.sortDir>0?'▲':'▼'):'↕';
+  const head=LK_COLS.map(([k,l])=>`<th class="sortable ${k==='name'?'l ':''}${LK.sortKey===k?'sorted':''}" onclick="lkSort('${k}')" title="Bấm để sắp xếp">${l} <span class="sort-arrow">${arrow(k)}</span></th>`).join('');
+  const filt=LK_COLS.map(([k,l,t])=>'<th>'+(t==='sel'
+    ?`<select class="s" aria-label="Lọc ${l}" onchange="lkFilter('${k}',this.value)"><option value="">Tất cả</option>${lkOpts(k).map(([v,x])=>`<option value="${esc(v)}" ${LK.f[k]===v?'selected':''}>${esc(x)}</option>`).join('')}</select>`
+    :`<input class="t" aria-label="Lọc ${l}" placeholder="${t==='num'?'vd: >3':'Lọc…'}" ${t==='num'?'title="Nhập số, hoặc >3 · >=3 · <5 · <=5"':''} value="${esc(LK.f[k])}" oninput="lkFilter('${k}',this.value)">`)+'</th>').join('');
+  box.innerHTML=`<div class="card"><div class="toolbar">
+      <input class="t" style="max-width:260px" placeholder="Tìm tên Set / ngày / mẫu / batch…" value="${esc(LK.q)}" oninput="LK.q=this.value;lkPaint()">
+      <button class="btn sec sm" onclick="lkClear()" title="Xoá ô tìm và mọi bộ lọc cột">✕ Xoá lọc</button>
+      <span class="spacer"></span><span class="hint" id="lkCount"></span></div>
+    <div class="tbl-wrap"><table class="grid lk-table">
+      <thead><tr>${head}<th></th></tr><tr class="filter-row">${filt}<th></th></tr></thead>
+      <tbody id="lkBody"></tbody></table></div></div>`;
+  lkPaint();
+}
+/* Vẽ lại phần thân bảng (không đụng ô lọc → không mất con trỏ khi đang gõ) */
+function lkPaint(){ const body=$('#lkBody');if(!body)return;const list=lkList();
+  const rows=list.map(r=>{ const s=r.s,pass=r.pass,fail=r.fail,nTaster=r.tasters;
     return `<tr><td class="l">${esc(s.name)}</td><td>${esc(fmtDate(s.date))}</td><td>${s.shift}</td><td>${esc(s.sampleType)}</td><td>${s.samples.length}</td>
       <td title="Số người đã nộp phiếu nếm"><b>${nTaster}</b>${nTaster<CONFIG.MIN_PANELLIST?` <span class="badge fail" title="Cần tối thiểu ${CONFIG.MIN_PANELLIST} người">⚠</span>`:''}</td>
       <td><span class="badge pass">${pass}</span></td><td><span class="badge fail">${fail}</span></td>
@@ -1194,13 +1227,8 @@ function renderLookup(){
         <button class="btn sm sec need-editSet" onclick="lookupEdit('${s.id}')">✎ Sửa</button>
         ${s.status==='open'?`<button class="btn sm sec need-closeSet" onclick="lookupCloseSet('${s.id}')" ${closeBlockedMsg(s)?`disabled title="${esc(closeBlockedMsg(s))}"`:'title="Đóng Set nếm"'}>🔒 Đóng Set</button>`:''}
         <button class="btn sm danger need-deleteSet" onclick="lookupDelete('${s.id}')">Xoá</button></td></tr>`; }).join('');
-  box.innerHTML=`<div class="card"><div class="toolbar">
-      <input class="t" style="max-width:260px" placeholder="Tìm tên Set / ngày / mẫu / batch…" value="${esc(LK.q)}" oninput="LK.q=this.value;renderLookup()">
-      <select class="s" style="max-width:180px" onchange="LK.type=this.value;renderLookup()">${typeOpts}</select>
-      <span class="spacer"></span><span class="hint">${list.length} Set</span></div>
-    <div class="tbl-wrap"><table class="grid">
-      <thead><tr><th class="l">Tên Set</th><th>Ngày</th><th>Ca</th><th>Loại</th><th>Số mẫu</th><th>Số người nếm</th><th>Passed</th><th>Failed</th><th>Trạng thái</th><th>Giám sát</th><th></th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="11" class="hint" style="padding:14px">Không có kết quả</td></tr>'}</tbody></table></div></div>`;
+  body.innerHTML=rows||'<tr><td colspan="11" class="hint" style="padding:14px">Không có Set nào khớp bộ lọc</td></tr>';
+  $('#lkCount').textContent=(list.length<STATE.sets.length?list.length+'/':'')+STATE.sets.length+' Set';
 }
 /* ===================== [SUBMISSIONS] Dữ liệu nộp phiếu (1 dòng = 1 mẫu trong 1 phiếu) ===================== */
 let SUB={setId:'',q:'',result:'',from:'',to:''};
@@ -1291,7 +1319,7 @@ function exportSubmissions(){ const rows=filteredSubmissions(); if(!rows.length)
   downloadFile('iLD_DuLieuNopPhieu_'+todayStr()+'.xls',itemsWorkbook([SUB_HEAD,...rows.map(subCols)],'Submissions'),'application/vnd.ms-excel');
   logAudit('Xuất dữ liệu nộp phiếu: '+rows.length+' dòng'); save(); toast('Đã xuất '+rows.length+' dòng','ok'); }
 
-/* ---- Admin: sửa / xoá Set trong Truy xuất kết quả (điểm đã nộp giữ theo STT mẫu nên không thêm/bớt mẫu ở đây) ---- */
+/* ---- Admin: sửa / xoá Set trong Danh sách Set (điểm đã nộp giữ theo STT mẫu nên không thêm/bớt mẫu ở đây) ---- */
 function lookupEdit(id){ if(!can('editSet'))return toast('Bạn không có quyền sửa Set','err');const s=STATE.sets.find(x=>x.id===id);if(!s)return;
   if(setLocked(s))return toast('Set đã được Giám sát xác nhận — cần huỷ xác nhận trước khi sửa','err');
   const types=[...new Set([...CONFIG.SAMPLE_TYPES,s.sampleType])].map(t=>`<option ${s.sampleType===t?'selected':''}>${esc(t)}</option>`).join('');
@@ -1761,10 +1789,10 @@ function renderGuide(){
   </div>
 
   <div class="card">
-    <h3>🔍 Truy xuất kết quả</h3>
+    <h3>🔍 Danh sách Set</h3>
     <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">
       <li>Xem danh sách tất cả Set (đang mở &amp; đã đóng) kèm số Passed/Failed.</li>
-      <li>Ô tìm kiếm theo <b>tên Set · ngày · tên mẫu · batch</b>; lọc theo <b>loại mẫu</b>.</li>
+      <li>Bấm <b>tên cột</b> để sắp xếp (mặc định: ngày gần nhất lên đầu); ô lọc nằm ngay dưới tên cột — cột số nhận cả <b>&gt;3</b>, <b>&lt;=5</b>. Ô tìm chung theo <b>tên Set · ngày · tên mẫu · batch</b>.</li>
       <li>Bấm <b>Xem</b> để mở Set đó sang tab Tổng hợp (xuất Excel/PDF lại được).</li>
     </ul>
   </div>
@@ -1995,8 +2023,8 @@ function isAdmin(){return AUTH.profile?.role==='admin';}
 /* ---- Ma trận phân quyền (Admin tích chọn ở tab Người dùng) · lưu Firestore ild_sensory_v2/permissions, cache LocalStorage ---- */
 const PERM_DEFS=[
   ['createSet','Tạo Set nếm','Thêm / sửa / xoá mẫu khi tạo Set (tab Tạo Set)'],
-  ['editSet','Sửa Set đã tạo','Sửa tên, ngày, ca, mẫu của Set (Tra cứu → ✎ Sửa)'],
-  ['closeSet','Đóng Set nếm','Đóng Set khi đủ người nếm (Tra cứu, Tạo Set)'],
+  ['editSet','Sửa Set đã tạo','Sửa tên, ngày, ca, mẫu của Set (Danh sách Set → ✎ Sửa)'],
+  ['closeSet','Đóng Set nếm','Đóng Set khi đủ người nếm (Danh sách Set, Tạo Set)'],
   ['confirmSet','Xác nhận kết quả Set','Giám sát xác nhận / huỷ xác nhận (Báo cáo)'],
   ['deleteSet','Xoá Set nếm','Xoá Set cùng toàn bộ phiếu đã nộp'],
   ['editSubmission','Sửa / xoá dữ liệu nộp phiếu','Tab Dữ liệu nộp phiếu'],
@@ -2112,7 +2140,7 @@ function permWatch(){ CLOUD.permUnsub?.();
   CLOUD.permUnsub=CLOUD.m.onSnapshot(permRef(),snap=>{ if(snap.exists())permApply(snap.data().matrix);
       else if(isAdmin())CLOUD.m.setDoc(permRef(),{matrix:permNormalize(PERM_DEFAULT),updatedAt:new Date().toISOString(),updatedBy:AUTH.profile?.username||''}).catch(()=>{}); },
     e=>{CLOUD.error='Phân quyền: '+e.message;cloudRefreshSettings();}); }
-function permMatrixHTML(){ const roles=[...PERM_ROLES,'admin'],fixed=[['Chấm nếm & nộp phiếu',['user','qc','supervisor','admin']],['Xem Báo cáo · Tra cứu · Dữ liệu nộp phiếu',['user','qc','supervisor','admin']],
+function permMatrixHTML(){ const roles=[...PERM_ROLES,'admin'],fixed=[['Chấm nếm & nộp phiếu',['user','qc','supervisor','admin']],['Xem Báo cáo · Danh sách Set · Dữ liệu nộp phiếu',['user','qc','supervisor','admin']],
     ['Quản lý người dùng & phân quyền',['admin']],['Phục hồi JSON · Xoá toàn bộ · Tải đè từ Firebase',['admin']]];
   const cb=(r,k,on,fix)=>`<td><input type="checkbox" class="perm-cb" data-role="${r}" data-perm="${k}" ${on?'checked':''} ${fix||r==='admin'?'disabled':''}></td>`;
   return `<div class="card"><div class="toolbar"><h3 style="margin:0">Ma trận phân quyền</h3><span class="spacer"></span>
