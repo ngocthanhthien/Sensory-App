@@ -1209,12 +1209,19 @@ function renderLookup(){
   box.innerHTML=`<div class="card"><div class="toolbar">
       <input class="t" style="max-width:260px" placeholder="Tìm tên Set / ngày / mẫu / batch…" value="${esc(LK.q)}" oninput="LK.q=this.value;lkPaint()">
       <button class="btn sec sm" onclick="lkClear()" title="Xoá ô tìm và mọi bộ lọc cột">✕ Xoá lọc</button>
-      <span class="spacer"></span><span class="hint" id="lkCount"></span></div>
+      <span class="spacer"></span><span class="hint" id="lkCount"></span>
+      <button class="btn sec sm" onclick="exportLookup()" title="Xuất các Set đang hiển thị (theo bộ lọc và thứ tự sắp xếp hiện tại)">⤓ Xuất Excel</button></div>
     <div class="tbl-wrap"><table class="grid lk-table">
       <thead><tr>${head}<th></th></tr><tr class="filter-row">${filt}<th></th></tr></thead>
       <tbody id="lkBody"></tbody></table></div></div>`;
   lkPaint();
 }
+/* Xuất bảng đang hiển thị (đúng bộ lọc + thứ tự sắp xếp) ra .xls */
+function exportLookup(){ const list=lkList(); if(!list.length)return toast('Không có Set nào để xuất','err');
+  const rows=list.map(r=>[r.name,fmtDate(r.date),r.shift,r.type,r.samples,r.tasters,r.pass,r.fail,r.status==='open'?'Đang mở':'Đã đóng',
+    r.s.approval?'Đã xác nhận':'Chưa',r.s.approval?.by||'',r.s.approval?fmtDateTime(r.s.approval.at):'',r.s.creator||'']);
+  downloadFile('iLD_DanhSachSet_'+todayStr()+'.xls',itemsWorkbook([[...LK_COLS.map(c=>c[1]),'Người xác nhận','Thời gian xác nhận','Người tạo'],...rows],'Danh sach Set'),'application/vnd.ms-excel');
+  logAudit('Xuất Danh sách Set: '+list.length+' Set'); save(); toast('Đã xuất '+list.length+' Set','ok'); }
 /* Vẽ lại phần thân bảng (không đụng ô lọc → không mất con trỏ khi đang gõ) */
 function lkPaint(){ const body=$('#lkBody');if(!body)return;const list=lkList();
   const rows=list.map(r=>{ const s=r.s,pass=r.pass,fail=r.fail,nTaster=r.tasters;

@@ -196,6 +196,7 @@ ild-crafted-appearance-v1  Theme ILD Crafted {v:1, mode, contrast, emphasis}
 | Tạo Set Bước ② | Excel mẫu (Tên mã hóa · Tên mẫu · SSCC/Hour · Batch) · **SAP** | `iLD_SetSamples_….xls`, template |
 | SP & Lô | Sản phẩm · Recipe · PO · Batch | `.xls` |
 | Items Code | 4 cột chuẩn hoặc 2 khối FGs/RW | `.xls` |
+| Danh sách Set | — | `iLD_DanhSachSet_<ngày>.xls` (theo bộ lọc + thứ tự đang hiển thị, `exportLookup`) |
 | Dữ liệu nộp phiếu | — | `iLD_DuLieuNopPhieu_<ngày>.xls` |
 | Báo cáo | — | CSV (UTF-8 BOM) · PDF (in A4 ngang, form QA.F.072) |
 | Cài đặt | Phục hồi JSON (Admin) | Sao lưu JSON |
