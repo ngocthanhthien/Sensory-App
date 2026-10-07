@@ -597,6 +597,12 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
   #tab-scoring .score-table.no-ji tbody td:nth-child(5){grid-column:1 / -1;grid-row:auto;text-align:left;padding-top:4px!important}
 }
 @media print{#tab-scoring .score-actions{position:static;box-shadow:none}}
+/* Nút đồng bộ ở header: ✓ đã gửi hết · ↻ còn thay đổi chưa gửi / có dữ liệu mới → bấm để cập nhật */
+.sync-btn{white-space:nowrap}
+html[data-ild-appearance] .hbtn.sync-btn.ok{color:var(--c-ok);border-color:var(--c-ok)}
+html[data-ild-appearance] .hbtn.sync-btn.warn{color:var(--c-warn);border-color:var(--c-warn);background:var(--c-warn-bg);font-weight:700}
+html[data-ild-appearance] .hbtn.sync-btn.off{color:var(--c-muted)}
+@media(max-width:600px){.sync-btn .sync-more,.sync-btn.ok .sync-lbl{display:none}}
 </style>
 </head>
 <body data-theme="light">
@@ -607,6 +613,7 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
   <div class="app-title">Sensory Entry<small>Nhập &amp; tổng hợp kết quả nếm · ILD Coffee Vietnam</small></div>
   <div class="header-spacer"></div>
   <span class="set-badge">Set: <b id="hdrSet">— chưa mở —</b></span>
+  <button type="button" class="hbtn ghost sync-btn off" id="syncBtn" onclick="cloudSyncNow()" style="display:none"><span id="syncIco">↻</span><span class="sync-lbl" id="syncLbl"> Cập nhật</span><span class="sync-more" id="syncMore"></span></button>
   <button class="role-pill acct-btn off" id="acctBtn" onclick="authOpenAccount()" title="Tài khoản · đăng nhập Admin"><span class="dot"></span><span id="acctLabel">Chưa đăng nhập</span></button>
   <button class="hbtn ghost" id="logoutBtn" onclick="authLogout()" title="Đăng xuất & xoá dữ liệu tạm trên trình duyệt" style="display:none">🚪 Đăng xuất</button>
   <button type="button" class="hbtn ghost ild-theme-open noprint" id="ild-theme-open" aria-haspopup="dialog" aria-controls="ild-theme-overlay" title="Giao diện">🎨<span class="ild-theme-lbl"> Giao diện</span></button>
@@ -1842,6 +1849,7 @@ function renderGuide(){
     <h3>⚙️ Lưu dữ liệu &amp; mẹo</h3>
     <ul ${L}>
       <li>Dữ liệu <b>tự lưu</b> và tự đồng bộ giữa các máy. Mất mạng vẫn dùng được, có mạng lại app tự gửi.</li>
+      <li>Nút ở góc phải, cạnh tên tài khoản: <b>✓ Đã đồng bộ</b> là mọi thay đổi đã gửi lên. Nếu hiện <b>↻ Cập nhật</b> (còn thay đổi chưa gửi hoặc có dữ liệu mới, vd. chưa thấy Set vừa tạo) thì <b>bấm vào nút đó</b>.</li>
       <li>Tab <b>Cài đặt</b>: xem trạng thái đồng bộ, <b>⤓ Sao lưu JSON</b>, nhật ký thao tác.</li>
       <li><b>🎨 Giao diện:</b> đổi sáng/tối, tương phản, độ đậm chữ.</li>
       <li>Thiếu nút hoặc tab nào đó? Tài khoản của bạn chưa được cấp quyền — liên hệ Admin.</li>
@@ -1918,8 +1926,12 @@ function cloudQueueEntities(){if(CLOUD.applying)return;const now=cloudEntities()
 function cloudStatus(){if(CLOUD.loading)return 'Đang nạp Firebase…';if(CLOUD.error)return 'Lỗi Firebase: '+CLOUD.error;
   if(!CLOUD.user)return AUTH.offline?'Offline — dùng phiên đăng nhập trước, dữ liệu lưu trên máy':'Chưa đăng nhập';return 'Đã đăng nhập: '+(AUTH.profile?.displayName||CLOUD.user.email)+(isAdmin()?' (Admin)':'')+(CLOUD.lastSync?' · Đồng bộ '+CLOUD.lastSync:'')+
     (CLOUD.auto?' · Tự động bật':'')+(CLOUD.sync.outbox.length?' · Chờ gửi '+CLOUD.sync.outbox.length:'')+(CLOUD.sync.conflicts.length?' · Xung đột '+CLOUD.sync.conflicts.length:'');}
-function cloudRefreshSettings(){if($('#tab-settings').classList.contains('active'))renderSettings();}
-function cloudUiBusy(){const a=document.activeElement;return !!(a&&['INPUT','TEXTAREA','SELECT'].includes(a.tagName))||$('#cfOverlay')?.classList.contains('show');}
+function cloudRefreshSettings(){cloudPaintSync();if($('#tab-settings').classList.contains('active'))renderSettings();}
+/* "Đang bận" = đang gõ chữ trong 20 giây gần nhất, hoặc đang mở hộp thoại. Ô chọn (select) hay ô nhập bỏ không quá lâu KHÔNG chặn nhận dữ liệu
+   (trên màn cảm ứng ô vừa chạm vẫn giữ focus → trước đây làm tablet không thấy Set mới). */
+['input','keydown'].forEach(ev=>document.addEventListener(ev,()=>{CLOUD.lastInput=Date.now();},true));
+function cloudUiBusy(){const a=document.activeElement,typing=!!a&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&!['checkbox','radio','button','submit','file'].includes(a.type)));
+  return (typing&&Date.now()-(CLOUD.lastInput||0)<20000)||!!$('#cfOverlay')?.classList.contains('show')||!!$('#acctOverlay')?.classList.contains('show');}
 async function acquireEditorLock(){
   if(!navigator.locks||CLOUD.lockChecking||CLOUD.lockRelease)return;
   CLOUD.lockChecking=true;
@@ -1959,7 +1971,7 @@ async function cloudSignIn(){if(!CLOUD.ready||!CLOUD.auth)return toast('Firebase
   p.setCustomParameters({login_hint:CLOUD_ALLOWED_EMAIL,prompt:'select_account'});await CLOUD.m.signInWithPopup(CLOUD.auth,p);authCloseAccount();toast('Đã đăng nhập Firebase','ok');}
   catch(e){if(e.code!=='auth/popup-closed-by-user')toast('Đăng nhập lỗi: '+e.message,'err');}}
 async function cloudSignOut(){authCacheSet(null);AUTH.offline=false;if(CLOUD.auth){cloudStopListener();await CLOUD.m.signOut(CLOUD.auth);}AUTH.profile=null;authApply();toast('Đã đăng xuất');}
-function cloudQueuePush(){if(CLOUD.applying||!CLOUD.auto||!CLOUD.user||!CLOUD.editorPrimary)return;CLOUD.localDirty=true;clearTimeout(CLOUD.timer);
+function cloudQueuePush(){if(CLOUD.applying||!CLOUD.auto||!CLOUD.user||!CLOUD.editorPrimary)return;CLOUD.localDirty=true;cloudPaintSync();clearTimeout(CLOUD.timer);
   CLOUD.timer=setTimeout(()=>{cloudQueueEntities();
     if(CLOUD.sync.outbox.length)cloudFlushOutbox();else if(!CLOUD.flushing){CLOUD.localDirty=false;cloudMaybeApplyPending();}},1200);} // không có gì để gửi → hết "đang bẩn" 
 async function cloudWriteEntity(item){const ref=cloudRef(item.key),m=CLOUD.m;return m.runTransaction(CLOUD.db,async tx=>{const snap=await tx.get(ref),remote=snap.exists()?snap.data():null,remoteRev=remote?.revision||0;
@@ -1968,12 +1980,12 @@ async function cloudWriteEntity(item){const ref=cloudRef(item.key),m=CLOUD.m;ret
   if(item.op==='delete'){if(snap.exists())tx.delete(ref);return {revision:remoteRev+1,data:null};}
   const revision=remoteRev+1,payload={...item.data,revision,updatedAt:m.serverTimestamp(),updatedBy:CLOUD.user.email,clientId:CLOUD.clientId};tx.set(ref,payload,{merge:false});return {revision,data:item.data};});}
 async function cloudFlushOutbox(){if(!CLOUD.user||!navigator.onLine||CLOUD.applying||!CLOUD.editorPrimary||!CLOUD.sync.outbox.length)return;
-  if(CLOUD.flushing)return;CLOUD.flushing=true; // chỉ một vòng gửi tại một thời điểm
+  if(CLOUD.flushing)return;CLOUD.flushing=true;cloudPaintSync(); // chỉ một vòng gửi tại một thời điểm
   clearTimeout(CLOUD.retryTimer);CLOUD.localDirty=true;while(CLOUD.sync.outbox.length){const item=CLOUD.sync.outbox[0];try{const result=await cloudWriteEntity(item);
       if(result.data===null)delete CLOUD.sync.bases[item.key];else CLOUD.sync.bases[item.key]={revision:result.revision,data:result.data};CLOUD.sync.outbox.shift();cloudSaveSync();}
     catch(e){if(e.message==='CONFLICT'){const merged=cloudTryMerge(item,e);
         if(merged){item.data=merged;item.baseRevision=e.remoteRev;item.mergeCount=(item.mergeCount||0)+1;CLOUD.mergedAny=true;cloudSaveSync();continue;}
-        CLOUD.sync.conflicts.push({key:item.key,local:item.data,remote:e.remote||null,remoteRevision:e.remoteRev||0,at:new Date().toISOString()});CLOUD.sync.outbox.shift();cloudSaveSync();toast('Có xung đột dữ liệu: '+item.key,'err');break;}
+        CLOUD.sync.conflicts.push({key:item.key,local:item.data,remote:e.remote||null,remoteRevision:e.remoteRev||0,at:new Date().toISOString()});CLOUD.sync.outbox.shift();cloudSaveSync();if(!isSharedUser())toast('Có xung đột dữ liệu: '+item.key,'err');break;} // User chung: tự gỡ ở cloudAutoResolveShared
       if(e.code==='permission-denied'){CLOUD.sync.outbox.shift();CLOUD.pendingRemote=true;cloudSaveSync();
         toast('Không có quyền ghi thay đổi này lên Firebase ('+item.key.split(':')[0]+') — đã bỏ, dùng lại dữ liệu trên Firebase','err');continue;}
       item.retryCount=(item.retryCount||0)+1;cloudSaveSync();const delay=Math.min(60000,2000*Math.pow(2,item.retryCount));CLOUD.retryTimer=setTimeout(cloudFlushOutbox,delay);CLOUD.error=e.message;break;}}
@@ -2004,20 +2016,83 @@ function cloudRemoteChanged(){
   clearTimeout(CLOUD.remoteTimer);
   CLOUD.remoteTimer=setTimeout(()=>cloudPullSilent(),500);
 }
-async function cloudPullSilent(){if(cloudHasLocalPending()){CLOUD.pendingRemote=true;cloudRefreshSettings();if(CLOUD.sync.outbox.length&&!CLOUD.localDirty)cloudFlushOutbox();return;}
-  try{const pack=await cloudFetchV2();if(pack&&!cloudHasLocalPending()){cloudApplyAll(pack.meta,pack.sets,pack.scores,pack.bases);toast('Đã nhận dữ liệu mới từ Firebase','ok');}}catch(e){CLOUD.error=e.message;cloudRefreshSettings();}}
+/* Máy có đúng bản đã đồng bộ không (STATE khớp bases) và cloud có cùng revision không → không cần nạp lại */
+function cloudUpToDate(remoteBases){const kb=Object.keys(CLOUD.sync.bases),kr=Object.keys(remoteBases);
+  if(kb.length!==kr.length||kr.some(k=>CLOUD.sync.bases[k]?.revision!==remoteBases[k].revision))return false;
+  const now=cloudEntities();return now.size===kb.length&&kb.every(k=>now.has(k)&&stableJSON(now.get(k))===stableJSON(CLOUD.sync.bases[k].data));}
+/* Trả về: applied · same · pending · stale · empty · error. Lượt tải bắt đầu trước mà về sau thì bị bỏ (pullSeq). */
+async function cloudPullSilent(quiet=false){
+  if(cloudHasLocalPending()){CLOUD.pendingRemote=true;cloudRefreshSettings();if(CLOUD.sync.outbox.length&&!CLOUD.localDirty)cloudFlushOutbox();return 'pending';}
+  const seq=CLOUD.pullSeq=(CLOUD.pullSeq||0)+1;CLOUD.pulling=true;cloudPaintSync();
+  try{const pack=await cloudFetchV2();
+    if(seq!==CLOUD.pullSeq)return 'stale';
+    if(!pack)return 'empty';
+    if(cloudHasLocalPending()||cloudScoringBusy()||(!quiet&&cloudUiBusy())){CLOUD.pendingRemote=true;return 'pending';}
+    CLOUD.pendingRemote=false;CLOUD.lastPullAt=Date.now();CLOUD.error='';
+    if(cloudUpToDate(pack.bases)){CLOUD.lastSync=new Date().toLocaleTimeString('vi-VN');return 'same';}
+    cloudApplyAll(pack.meta,pack.sets,pack.scores,pack.bases);if(!quiet)toast('Đã nhận dữ liệu mới từ Firebase','ok');return 'applied';
+  }catch(e){CLOUD.error=e.message;return 'error';}
+  finally{if(seq===CLOUD.pullSeq)CLOUD.pulling=false;cloudRefreshSettings();}}
 function cloudApplyPending(){CLOUD.pendingRemote=false;cloudPullSilent();}
 document.addEventListener('focusout',()=>setTimeout(()=>{if(CLOUD.user)cloudMaybeApplyPending();},400));
-function cloudStartListener(){cloudStopListener();if(!CLOUD.user||!CLOUD.auto)return;const m=CLOUD.m,opts={includeMetadataChanges:false};
-  CLOUD.unsubs.push(m.onSnapshot(cloudRef('meta:main'),opts,s=>{if(s.exists()&&s.data().clientId!==CLOUD.clientId)cloudRemoteChanged();},e=>{CLOUD.error=e.message;cloudRefreshSettings();}));
-  CLOUD.unsubs.push(m.onSnapshot(m.collection(CLOUD.db,'ild_sensory_sets'),opts,s=>{if(s.docChanges().some(c=>c.doc.data()?.clientId!==CLOUD.clientId))cloudRemoteChanged();}));
-  CLOUD.unsubs.push(m.onSnapshot(m.collection(CLOUD.db,'ild_sensory_scores'),opts,s=>{if(s.docChanges().some(c=>c.doc.data()?.clientId!==CLOUD.clientId))cloudRemoteChanged();}));}
+function cloudStartListener(){cloudStopListener();clearTimeout(CLOUD.listenRetry);if(!CLOUD.user||!CLOUD.auto)return;const m=CLOUD.m,opts={includeMetadataChanges:false};
+  const onErr=e=>{CLOUD.error=e.message;cloudRefreshSettings();clearTimeout(CLOUD.listenRetry); // kênh nghe bị ngắt → tự bật lại
+    CLOUD.listenRetry=setTimeout(()=>{if(CLOUD.user&&CLOUD.auto&&navigator.onLine)cloudStartListener();},8000);};
+  CLOUD.unsubs.push(m.onSnapshot(cloudRef('meta:main'),opts,s=>{if(s.exists()&&s.data().clientId!==CLOUD.clientId)cloudRemoteChanged();},onErr));
+  CLOUD.unsubs.push(m.onSnapshot(m.collection(CLOUD.db,'ild_sensory_sets'),opts,s=>{if(s.docChanges().some(c=>c.doc.data()?.clientId!==CLOUD.clientId))cloudRemoteChanged();},onErr));
+  CLOUD.unsubs.push(m.onSnapshot(m.collection(CLOUD.db,'ild_sensory_scores'),opts,s=>{if(s.docChanges().some(c=>c.doc.data()?.clientId!==CLOUD.clientId))cloudRemoteChanged();},onErr));}
 function cloudToggleAuto(){if(!CLOUD.user)return toast('Đăng nhập Firebase trước','err');CLOUD.auto=!CLOUD.auto;localStorage.setItem(CLOUD_AUTO_KEY,CLOUD.auto?'1':'0');
   if(CLOUD.auto){cloudStartListener();cloudQueuePush();}else cloudStopListener();cloudRefreshSettings();toast(CLOUD.auto?'Đã bật tự động đồng bộ':'Đã tắt tự động đồng bộ','ok');}
 function cloudUseRemoteConflict(i){const c=CLOUD.sync.conflicts[i];if(!c)return;if(c.remote){CLOUD.sync.bases[c.key]={revision:c.remoteRevision,data:(()=>{const {revision,updatedAt,updatedBy,clientId,...d}=c.remote;return d;})()};}
   CLOUD.sync.conflicts.splice(i,1);cloudSaveSync();cloudPullSilent();}
 function cloudRetryLocalConflict(i){const c=CLOUD.sync.conflicts[i];if(!c)return;CLOUD.sync.bases[c.key]={revision:c.remoteRevision,data:c.remote?((()=>{const {revision,updatedAt,updatedBy,clientId,...d}=c.remote;return d;})()):{}};
   CLOUD.sync.outbox.push({key:c.key,op:'upsert',data:c.local,baseRevision:c.remoteRevision,retryCount:0});CLOUD.sync.conflicts.splice(i,1);cloudSaveSync();cloudFlushOutbox();}
+
+/* ---- Nút đồng bộ ở header (cạnh tên tài khoản): cho biết thay đổi trên máy đã gửi lên chưa; bấm để gửi + nhận ngay ---- */
+function cloudSyncState(){ const n=CLOUD.sync.outbox.length,x=CLOUD.sync.conflicts.length,at=CLOUD.lastSync?' '+CLOUD.lastSync.slice(0,5):'';
+  if(!CLOUD.user)return {c:'off',ico:'⚠',lbl:' Offline',more:'',tip:'Chưa kết nối máy chủ — dữ liệu đang lưu trên máy này'};
+  if(!navigator.onLine)return {c:'warn',ico:'⚠',lbl:' Mất mạng',more:n?' · chờ gửi '+n:'',tip:'Thay đổi sẽ tự gửi khi có mạng lại'};
+  if(CLOUD.syncingNow||CLOUD.flushing||CLOUD.pulling)return {c:'off',ico:'⏳',lbl:' Đang đồng bộ…',more:'',tip:'Đang gửi / nhận dữ liệu'};
+  if(x)return {c:'warn',ico:'↻',lbl:' Cập nhật',more:' · '+x+' xung đột',tip:'Có xung đột dữ liệu — bấm để thử lại'+(isSharedUser()?'':' hoặc xử lý ở tab Cài đặt')};
+  if(n||CLOUD.localDirty)return {c:'warn',ico:'↻',lbl:' Cập nhật',more:' · chưa gửi'+(n?' '+n:''),tip:'Còn thay đổi trên máy chưa gửi lên — bấm để gửi ngay'};
+  if(CLOUD.pendingRemote)return {c:'warn',ico:'↻',lbl:' Cập nhật',more:' · có dữ liệu mới',tip:'Có dữ liệu mới từ máy khác — bấm để nhận ngay'};
+  if(!CLOUD.auto)return {c:'warn',ico:'↻',lbl:' Cập nhật',more:' · tự đồng bộ đang tắt',tip:'Tự động đồng bộ đang tắt — bấm để gửi + nhận thủ công'};
+  return {c:'ok',ico:'✓',lbl:' Đã đồng bộ'+at,more:'',tip:'Mọi thay đổi đã được gửi lên. Bấm để kiểm tra dữ liệu mới.'}; }
+function cloudPaintSync(){ const b=$('#syncBtn');if(!b)return;const on=typeof AUTH!=='undefined'&&!!AUTH.profile;b.style.display=on?'':'none';if(!on)return;
+  const st=cloudSyncState();b.className='hbtn ghost sync-btn '+st.c;b.title=st.tip;
+  [['#syncIco',st.ico],['#syncLbl',st.lbl],['#syncMore',st.more]].forEach(([q,t])=>{const el=$(q);if(el.textContent!==t)el.textContent=t;}); }
+async function cloudSyncNow(){
+  if(!CLOUD.user)return toast(CLOUD.loading?'Đang kết nối máy chủ, thử lại sau giây lát':'Chưa kết nối máy chủ — dữ liệu đang lưu trên máy này','err');
+  if(!navigator.onLine)return toast('Đang mất mạng — thay đổi sẽ tự gửi khi có mạng lại','err');
+  if(!CLOUD.editorPrimary)return toast('App đang mở ở tab khác — tab này chỉ đọc','err');
+  if(CLOUD.syncingNow)return;CLOUD.syncingNow=true;cloudPaintSync();
+  try{ clearTimeout(CLOUD.timer);while(CLOUD.flushing)await new Promise(r=>setTimeout(r,200));
+    cloudAutoResolveShared();cloudQueueEntities();await cloudFlushOutbox();
+    const left=CLOUD.sync.outbox.length,x=CLOUD.sync.conflicts.length;if(!left)CLOUD.localDirty=false;
+    if(left||x)return toast(x?'Còn '+x+' xung đột dữ liệu'+(isSharedUser()?' — thử lại sau ít phút':' — xử lý ở tab Cài đặt'):'Còn '+left+' thay đổi chưa gửi được'+(CLOUD.error?': '+CLOUD.error:''),'err');
+    if(cloudScoringBusy()){CLOUD.pendingRemote=true;return toast('Đã gửi thay đổi. Dữ liệu mới sẽ nhận sau khi nộp phiếu đang chấm','ok');}
+    const r=await cloudPullSilent(true);if(CLOUD.auto&&!CLOUD.unsubs.length)cloudStartListener();
+    toast(r==='applied'?'Đã cập nhật dữ liệu mới':(r==='error'?'Không tải được dữ liệu: '+CLOUD.error:'Dữ liệu đã mới nhất'),r==='error'?'err':'ok');
+  }finally{CLOUD.syncingNow=false;cloudPaintSync();} }
+/* Tài khoản User chung không thấy tab Cài đặt → xung đột tự gỡ: phiếu chấm của máy này được gửi lại; phần còn lại (nhật ký, danh sách đã nộp) lấy bản Firebase */
+function cloudAutoResolveShared(){ if(!isSharedUser()||!CLOUD.sync.conflicts.length)return;
+  for(let i=CLOUD.sync.conflicts.length-1;i>=0;i--){const c=CLOUD.sync.conflicts[i];
+    if(c.key.startsWith('score:')&&c.remote&&c.local){CLOUD.sync.bases[c.key]={revision:c.remoteRevision,data:cloudStrip(c.remote)};
+      CLOUD.sync.outbox.push({key:c.key,op:'upsert',data:c.local,baseRevision:c.remoteRevision,retryCount:0});}
+    else CLOUD.pendingRemote=true;
+    CLOUD.sync.conflicts.splice(i,1);}
+  cloudSaveSync();if(CLOUD.sync.outbox.length)cloudFlushOutbox();else cloudPaintSync(); }
+/* Nhịp 5 giây: gỡ xung đột (User chung), áp dụng dữ liệu đang chờ ngay khi rảnh, vẽ lại nút */
+function cloudTick(){ if(CLOUD.user){cloudAutoResolveShared();if(CLOUD.pendingRemote)cloudMaybeApplyPending();}cloudPaintSync(); }
+setInterval(cloudTick,5000);
+/* Máy vừa sáng màn hình / quay lại tab sau ≥30 giây: trình duyệt di động có thể đã ngắt kết nối nền → gửi nốt và kiểm tra dữ liệu mới */
+function cloudWake(force){ if(document.hidden){CLOUD.hiddenAt=Date.now();return;}
+  const away=CLOUD.hiddenAt?Date.now()-CLOUD.hiddenAt:0;CLOUD.hiddenAt=0;if(!CLOUD.user||!navigator.onLine)return cloudPaintSync();
+  if(CLOUD.sync.outbox.length)cloudFlushOutbox();
+  if(CLOUD.auto&&(force===true||away>=30000)){CLOUD.pendingRemote=true;cloudMaybeApplyPending();}cloudPaintSync(); }
+document.addEventListener('visibilitychange',()=>cloudWake());
+window.addEventListener('pageshow',e=>{if(e.persisted)cloudWake(true);});
+window.addEventListener('online',cloudPaintSync);window.addEventListener('offline',cloudPaintSync);
 
 /* ===================== [AUTH] Đăng nhập 2 cấp · Firebase Auth + vai trò trong Firestore =====================
    Cấp 1: mật khẩu User chung (tài khoản Firebase "staff", do Admin tạo/đổi) → vào app, ghi & lưu dữ liệu.

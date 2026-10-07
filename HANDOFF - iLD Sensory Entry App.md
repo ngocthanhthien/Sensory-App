@@ -53,7 +53,7 @@ Biểu mẫu nghiệp vụ được số hóa: **QA.F.071** (phiếu chấm cá 
 | ⚙️ Cài đặt (`tab-settings`) | Trạng thái đồng bộ, Đẩy/Tải Firebase, auto-sync, Sao lưu/Phục hồi JSON, audit log, Reset | Tài khoản riêng (thao tác thay thế dữ liệu: Admin) |
 | 🛡️ Người dùng (`tab-users`) | **Ma trận phân quyền**, mật khẩu User chung, tạo/sửa/khóa/xóa tài khoản | Admin |
 
-Header (phải): Set đang mở · nút tài khoản (đăng nhập cấp 2) · 🚪 Đăng xuất · 🎨 Giao diện · 🌓 (ẩn trên điện thoại).
+Header (phải): Set đang mở · **nút đồng bộ** (✓ Đã đồng bộ / ↻ Cập nhật — bấm để gửi + nhận ngay, `cloudSyncNow`) · nút tài khoản (đăng nhập cấp 2) · 🚪 Đăng xuất · 🎨 Giao diện · 🌓 (ẩn trên điện thoại).
 
 ---
 
@@ -167,7 +167,9 @@ ild_sensory/shared_state     legacy (giữ để rollback, chỉ Admin)
 ```
 - Mỗi document có `revision, updatedAt, updatedBy, clientId`; ghi bằng transaction kiểm tra `baseRevision`.
 - Lệch revision → **gộp 3 chiều** `cloudMerge3(base, local, remote)` (mảng theo `id`/`no`, audit theo nội dung; cùng sửa giá trị đơn → bản máy thắng); gộp lỗi/quá 5 lần → conflict UI ở Cài đặt.
-- Không tự nhận dữ liệu cloud đè lên máy khi còn outbox/conflict, đang gõ hoặc **đang chấm dở phiếu** → `pendingRemote`, áp dụng sau.
+- Không tự nhận dữ liệu cloud đè lên máy khi còn outbox/conflict, **đang gõ chữ trong 20 giây gần nhất**, đang mở hộp thoại hoặc **đang chấm dở phiếu** → `pendingRemote`, áp dụng sau. Ô chọn (select) đang focus **không** chặn (`cloudUiBusy`) — trước 07/10/2026 nó chặn, làm tablet không thấy Set mới.
+- Chống chậm/kẹt trên tablet & điện thoại (07/10/2026): nhịp 5 giây `cloudTick` áp dụng dữ liệu đang chờ; `cloudWake` kiểm tra lại khi màn hình sáng lại sau ≥ 30 giây; `cloudPullSilent` bỏ lượt tải cũ về sau (`pullSeq`) và không nạp lại khi revision không đổi (`cloudUpToDate`); listener có xử lý lỗi và tự bật lại; User chung tự gỡ xung đột (`cloudAutoResolveShared`: phiếu chấm gửi lại, phần khác lấy bản Firebase).
+- **Chưa làm (nhóm B):** mỗi lần lưu vẫn ghi lại cả `meta` (Items Code + audit) và mỗi lần nhận vẫn tải lại toàn bộ `meta` + mọi Set + mọi phiếu → tách audit/`currentSetId` khỏi `meta`, nhận thay đổi theo từng document.
 - `cloudEntities()` trả **bản sao sâu** (tránh base trỏ chung STATE). Thiết bị chưa từng đồng bộ: cloud có dữ liệu → tải về (máy mới) hoặc hỏi; cloud trống → đẩy lên. Auto-sync mặc định **bật**. Web Locks: 1 tab chỉnh sửa chính.
 - Dữ liệu thật đã có trên Firestore (kiểm tra 28/09/2026: 49 panelist, ~3.100 Items Code, 3 Set, 7 phiếu, 4 tài khoản).
 - ⚠ `meta` chứa ~3.100 Items Code — Firestore giới hạn **1 MiB/document**; nếu Items Code tăng nhiều, cần tách ra document/collection riêng.
