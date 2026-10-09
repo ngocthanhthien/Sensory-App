@@ -41,7 +41,7 @@ Biểu mẫu nghiệp vụ được số hóa: **QA.F.071** (phiếu chấm cá 
 
 | Tab (`data-tab`) | Nội dung | Ai thấy |
 |---|---|---|
-| ✍️ Chấm nếm (`tab-scoring`) | Phiếu QA.F.071: chọn **người nếm trước** (ô tìm kiếm) → lọc **Ngày nếm** → Set; nút **◀ ▶** cạnh All IN chuyển nhanh giữa các Set đang mở cùng ngày + ca (`scNav`, giữ người nếm sau khi nộp); IN / Just In / Out, Remark, **All IN**, **Discard**, **Nộp phiếu** (thanh dính đáy trên tablet/phone) | Mọi người (User chung **chỉ** thấy tab này) |
+| ✍️ Chấm nếm (`tab-scoring`) | Phiếu QA.F.071: chọn **người nếm trước** (ô tìm kiếm; tên được giữ khi đổi Set/ngày/tab, sau khi nộp và khi tải lại trang — nhớ ở `sessionStorage` khóa `ild_sensory_sc_person`, xoá khi Đăng xuất) → lọc **Ngày nếm** → Set; nút **◀ ▶** và **All IN** nằm ở cuối phiếu (`.sc-head-tools`, sau phần Hướng dẫn); ◀ ▶ chuyển nhanh giữa các Set đang mở cùng ngày + ca (`scNav`, giữ người nếm sau khi nộp); IN / Just In / Out, Remark, **All IN**, **Discard**, **Nộp phiếu** (thanh dính đáy trên tablet/phone) | Mọi người (User chung **chỉ** thấy tab này) |
 | 🧪 Tạo Set (`tab-setup`) | Wizard 2 bước; Bước ② thêm mẫu tay / Excel / **Nhập Excel từ SAP**; Tên mã hóa (mẫu mù) | Quyền `createSet` |
 | 📊 Báo cáo (`tab-summary`) | Ô chọn Set có lọc trước theo **Loại mẫu** và **Ngày** (`SUMF`, `sumFilter`); phiếu QA.F.072 theo Set, KPI, **Xác nhận kết quả** (Giám sát), Xuất Excel (CSV) / PDF | Tài khoản riêng |
 | 🔍 Danh sách Set (`tab-lookup`, tên cũ: Tra cứu) | Sắp xếp + lọc theo từng cột (ô lọc ngay dưới tên cột; mặc định ngày gần nhất lên đầu — `LK`, `LK_COLS`, `lkList`, `lkPaint`): số người nếm, Passed/Failed, trạng thái, Giám sát; ✎ Sửa · 🔒 Đóng Set · Xóa | Tài khoản riêng (nút theo quyền) |
