@@ -239,6 +239,7 @@ Hàm chính: `render*` (Scoring, Setup, Summary, Lookup, Submissions, Panellists
 - Theme (🎨 Giao diện): 4 cấu hình mẫu (Crafted tiêu chuẩn/dịu/tối/rõ nét) · Sáng/Tối/Theo hệ thống · Tương phản Tiêu chuẩn/Cao · Độ đậm Nhẹ/Tiêu chuẩn/Đậm; thuộc tính `<html data-ild-appearance|scheme|contrast|emphasis>`; đồng bộ với nút 🌓 cũ qua `body[data-theme]`.
 - Phiếu QA.F.072 (`.sf-paper`) và bản in luôn nền trắng.
 - Cột **Remark** của phiếu chấm co theo nội dung (07/10→09/10/2026): dưới 1000px: chưa có ghi chú thì hẹp tối đa, cột "Mẫu" nhận phần còn lại; từ 1000px (PC/Laptop, tablet ngang): cột Mẫu và cột Remark cùng rộng 34% để nhóm Cupping results nằm giữa màn hình, ô ghi chú bên trong vẫn co theo chữ; ô ghi chú là `textarea.remark-note` tự rộng dần theo chữ (tối đa 44ch, tablet 36vw) rồi xuống dòng (`scNoteSize`). Bảng dùng `table-layout:auto` trên mọi cỡ màn hình; điện thoại vẫn là thẻ từng mẫu.
+- **≤ 1180px (tablet, điện thoại): header + thanh tab không cố định** — cả trang cuộn tự nhiên (body/`.shell`/`main` bỏ vùng cuộn riêng, dùng `overflow-x:clip`) nên chúng trôi lên khi cuộn, nhường màn hình cho phiếu; thanh Nộp phiếu vẫn dính đáy màn hình. PC giữ khung cố định, chỉ `main` cuộn. `switchTab` chỉ cuộn ngang thanh tab (không dùng `scrollIntoView`, tránh kéo trang về đầu khi vẽ lại).
 - Tab Chấm nếm tối ưu **tablet (601–1180px)** & **phone (≤600px)**: nút 50px, không cuộn ngang, thanh Nộp phiếu dính đáy; header gọn trên phone. PC (≥1181px) giữ bố cục cũ; các tab khác ưu tiên PC/Laptop.
 
 ---

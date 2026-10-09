@@ -613,6 +613,14 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
   #tab-scoring .score-table.no-ji tbody td:nth-child(4){grid-column:3 / 4;grid-row:2}
   #tab-scoring .score-table.no-ji tbody td:nth-child(5){grid-column:1 / -1;grid-row:auto;text-align:left;padding-top:4px!important}
 }
+/* Tablet & điện thoại: header + thanh tab KHÔNG cố định — cả trang cuộn tự nhiên nên chúng trôi lên khi cuộn xuống, nhường màn hình cho phiếu nếm.
+   (PC/Laptop giữ khung cố định, chỉ vùng nội dung cuộn.) Dùng overflow-x:clip để không tạo vùng cuộn riêng → thanh Nộp phiếu vẫn dính đáy màn hình. */
+@media(max-width:1180px){
+  html,body{height:auto}
+  body{display:block;min-height:100vh;min-height:100dvh;overflow:visible;overflow-x:clip}
+  .shell{display:block;overflow:visible;overflow-x:clip}
+  main{overflow:visible;overflow-x:clip}
+}
 /* Tablet & điện thoại: ◀ Set n ▶ nằm cố định ở dòng dưới của thanh Discard / Nộp phiếu */
 @media(max-width:1180px){
   #tab-scoring .sc-nav-group.in-sheet{display:none}
@@ -898,7 +906,8 @@ function switchTab(tabId){
     if(!STATE.sets.some(s=>s.id===SC_SESSION.setId&&s.status==='open'))SC_SESSION.setId='';SC_DRAFT={};}
   panels.forEach(p=>p.classList.toggle('active',p.id===tabId));
   navItems.forEach(n=>n.classList.toggle('active',n.dataset.tab===tabId));
-  document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  const navEl=document.querySelector(`.nav-item[data-tab="${tabId}"]`),navBar=navEl?.parentElement; // chỉ cuộn NGANG thanh tab (không kéo cả trang về đầu khi vẽ lại)
+  if(navEl&&navBar)navBar.scrollTo({left:navEl.offsetLeft-(navBar.clientWidth-navEl.offsetWidth)/2,behavior:'smooth'});
   ({'tab-scoring':renderScoring,'tab-setup':renderSetup,'tab-summary':renderSummary,'tab-lookup':renderLookup,'tab-submissions':renderSubmissions,
     'tab-panellist':renderPanellists,'tab-product':renderProducts,'tab-items':renderItems,'tab-sensory':renderSensory,'tab-guide':renderGuide,'tab-settings':renderSettings,'tab-users':renderUsers}[tabId]||(()=>{}))();
 }
