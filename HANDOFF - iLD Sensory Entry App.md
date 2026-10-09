@@ -41,9 +41,9 @@ Biểu mẫu nghiệp vụ được số hóa: **QA.F.071** (phiếu chấm cá 
 
 | Tab (`data-tab`) | Nội dung | Ai thấy |
 |---|---|---|
-| ✍️ Chấm nếm (`tab-scoring`) | Phiếu QA.F.071: chọn Set + người nếm (ô tìm kiếm), IN / Just In / Out, Remark, **All IN**, **Discard**, **Nộp phiếu** (thanh dính đáy trên tablet/phone) | Mọi người (User chung **chỉ** thấy tab này) |
+| ✍️ Chấm nếm (`tab-scoring`) | Phiếu QA.F.071: chọn **người nếm trước** (ô tìm kiếm) → lọc **Ngày nếm** → Set; nút **◀ ▶** cạnh All IN chuyển nhanh giữa các Set đang mở cùng ngày + ca (`scNav`, giữ người nếm sau khi nộp); IN / Just In / Out, Remark, **All IN**, **Discard**, **Nộp phiếu** (thanh dính đáy trên tablet/phone) | Mọi người (User chung **chỉ** thấy tab này) |
 | 🧪 Tạo Set (`tab-setup`) | Wizard 2 bước; Bước ② thêm mẫu tay / Excel / **Nhập Excel từ SAP**; Tên mã hóa (mẫu mù) | Quyền `createSet` |
-| 📊 Báo cáo (`tab-summary`) | Phiếu QA.F.072 theo Set, KPI, **Xác nhận kết quả** (Giám sát), Xuất Excel (CSV) / PDF | Tài khoản riêng |
+| 📊 Báo cáo (`tab-summary`) | Ô chọn Set có lọc trước theo **Loại mẫu** và **Ngày** (`SUMF`, `sumFilter`); phiếu QA.F.072 theo Set, KPI, **Xác nhận kết quả** (Giám sát), Xuất Excel (CSV) / PDF | Tài khoản riêng |
 | 🔍 Danh sách Set (`tab-lookup`, tên cũ: Tra cứu) | Sắp xếp + lọc theo từng cột (ô lọc ngay dưới tên cột; mặc định ngày gần nhất lên đầu — `LK`, `LK_COLS`, `lkList`, `lkPaint`): số người nếm, Passed/Failed, trạng thái, Giám sát; ✎ Sửa · 🔒 Đóng Set · Xóa | Tài khoản riêng (nút theo quyền) |
 | 🗂️ Dữ liệu nộp phiếu (`tab-submissions`) | 1 dòng = 1 mẫu trong 1 phiếu; lọc Set/kết quả/ngày; xuất `.xls`; Sửa/Xóa dòng/Xóa phiếu | Tài khoản riêng (sửa/xóa theo `editSubmission`) |
 | 👥 Panelist (`tab-panellist`) | Thêm/xóa, Nhập Excel (Employee code · Full name · Function · Dept.), **Xuất Excel** | Tài khoản riêng (sửa theo `editMaster`) |
@@ -127,7 +127,8 @@ Header (phải): Set đang mở · **nút đồng bộ** (✓ Đã đồng bộ 
 }
 ```
 - `sampleCode(sm)` = `code` hoặc `no` (Set cũ chưa có mã).
-- `SAMPLE_TYPES`: Green coffee · Freeze-dried · Semi product · KQ · Complaint · Other (mặc định Freeze-dried). **Green coffee: phiếu chỉ IN / OUT** (`isGreenCoffee`).
+- **Semi product:** khi sang Bước ② app nạp sẵn `CONFIG.SEMI_DEFAULT_SAMPLES` (City Water, RO Water, B27960, B27970, Foaming, Aroma, B26600) — người dùng điền SSCC/Hour + Batch, thêm/xoá được; nút "↺ Nạp mẫu mặc định" thêm lại mẫu còn thiếu (`wizSemiDefaults`).
+- `SAMPLE_TYPES`: Green coffee · Freeze-dried · Semi product · KQ · Complaint · Other (mặc định Freeze-dried). **Green coffee: phiếu chỉ IN / OUT** (`isGreenCoffee`). Trên QA.F.072 (màn hình/PDF/Excel) cột Result của Green coffee ghi **IN / OUT** thay cho % (`sumResultText`: IN khi mẫu đạt ngưỡng 80% theo `calcSample`, OUT khi không đạt) — công thức không đổi, chỉ đổi cách hiển thị.
 - Lỗi: `ERR_APPEARANCE` (màu sậm, hai màu, lumpy, hạt cháy, bụi, bề mặt bị rổ, vụn) · `ERR_TASTE` (chemical, overdried, less/more aroma, chua, đắng, cook). Just In/Out **bắt buộc** chọn lỗi hoặc ghi chú; IN được ghi chú (không bắt buộc).
 - 49 panelist chuẩn nhúng sẵn `DEFAULT_PANELLISTS` (nạp 1 lần/thiết bị, cờ `ild_sensory_pnl_default_v1`); 4 tên demo (`pnl_a..d`) tự bị loại.
 - Không lưu cứng % — `calcSample(set,no)` luôn tính lại.

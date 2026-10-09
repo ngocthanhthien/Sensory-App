@@ -130,6 +130,12 @@ body[data-theme="dark"] .item-table .add-row td{background:#173d24!important}
 .all-in-btn{position:absolute;top:18px;right:20px;z-index:3;background:var(--ok);box-shadow:0 3px 0 #127030,0 6px 12px rgba(26,143,60,.25)}
 .all-in-btn:hover{background:#15803d}
 @media(max-width:860px){.all-in-btn{position:static;display:block;margin:0 auto 12px}}
+.sc-who{grid-template-columns:2fr 1fr 1fr}.sc-pick{grid-template-columns:1fr 2fr 1fr;margin-bottom:6px}
+.sc-head-tools{position:absolute;top:16px;right:18px;z-index:3;display:flex;align-items:center;gap:6px}
+.sc-head-tools .all-in-btn{position:static;display:inline-block;margin:0 0 0 6px}
+.sc-nav{min-width:38px;padding-left:0;padding-right:0;text-align:center}.sc-nav-lbl{font-size:12.5px;font-weight:700;white-space:nowrap;color:var(--text);min-width:58px;text-align:center}
+@media(max-width:1280px){.sc-head-tools{position:static;justify-content:flex-end;margin:0 0 12px}}
+@media(max-width:600px){.sc-who,.sc-pick{grid-template-columns:1fr}}
 .score-form-head{position:relative;padding:24px 24px 18px;border-bottom:1px solid rgba(148,163,184,.35);
   background:radial-gradient(circle at 50% -40%,rgba(227,6,19,.12),transparent 46%),linear-gradient(180deg,#fff,#f8fafc)}
 body[data-theme="dark"] .score-form-head{background:radial-gradient(circle at 50% -40%,rgba(227,6,19,.22),transparent 48%),linear-gradient(180deg,#252a31,#1d2229)}
@@ -525,8 +531,10 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
 @media(min-width:601px) and (max-width:1180px){
   #tab-scoring .page-head{margin-bottom:12px}
   #tab-scoring .scoring-start-card{padding:14px 16px}
-  #tab-scoring .scoring-start-card .row.c4{grid-template-columns:1.35fr 1.35fr 1fr;gap:12px;margin-bottom:6px}
-  #tab-scoring .scoring-start-card .row.c4>div:nth-child(4){grid-column:1 / -1;align-self:auto}
+  #tab-scoring .scoring-start-card .row{gap:12px;margin-bottom:8px}
+  #tab-scoring .sc-who{grid-template-columns:1.6fr 1fr}#tab-scoring .sc-who>div:nth-child(3){grid-column:1 / -1;align-self:auto}
+  #tab-scoring .sc-pick{grid-template-columns:1fr 1.6fr}
+  #tab-scoring .sc-nav{min-width:48px;min-height:44px;font-size:16px}#tab-scoring .sc-nav-lbl{font-size:14px}
   #tab-scoring .scoring-start-card select.s,#tab-scoring .scoring-start-card input.t{min-height:48px;font-size:16px}
   #tab-scoring .score-form-head{padding:16px 16px 14px}
   #tab-scoring .score-form-title{font-size:16px}
@@ -561,7 +569,9 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
 
 /* ---- Điện thoại (≤600px): thẻ từng mẫu, nút to, thanh nộp 2 nút ---- */
 @media(max-width:600px){
-  #tab-scoring .scoring-start-card .row.c4{gap:10px;margin-bottom:4px}
+  #tab-scoring .scoring-start-card .row{gap:10px;margin-bottom:6px}
+  #tab-scoring .sc-head-tools{flex-wrap:wrap;justify-content:center}#tab-scoring .sc-nav{min-width:48px;min-height:48px;font-size:16px}
+  #tab-scoring .sc-head-tools .all-in-btn{width:100%;flex:1 1 100%;margin:4px 0 0}
   #tab-scoring .score-form-head{padding:14px 10px 12px}
   #tab-scoring .all-in-btn{width:100%;min-height:48px;font-size:15px;margin:0 0 12px}
   #tab-scoring .score-table tbody tr{gap:8px;padding:10px}
@@ -773,6 +783,7 @@ const CONFIG = {
   SHIFTS:['Ca 1','Ca 2','Ca 3'], // Set cũ lưu AM/PM vẫn giữ nguyên và hiển thị như cũ
   SAMPLE_TYPES:['Green coffee','Freeze-dried','Semi product','KQ','Complaint','Other'],
   DEFAULT_SAMPLE_TYPE:'Freeze-dried', // chọn sẵn khi tạo Set mới
+  SEMI_DEFAULT_SAMPLES:['City Water','RO Water','B27960','B27970','Foaming','Aroma','B26600'], // nạp sẵn khi Loại mẫu = Semi product (chỉ khác giờ & Batch)
   ERR_APPEARANCE:['màu sậm','hai màu','lumpy (lump dầu)','hạt cháy','bụi','bề mặt bị rổ','vụn'],
   ERR_TASTE:['chemical','overdried','less aroma','more aroma','chua','đắng','cook']
 };
@@ -878,23 +889,46 @@ navItems.forEach(item=>item.addEventListener('click',()=>switchTab(item.dataset.
 /* ===================== [SCORING] F.071 ===================== */
 let SC_SESSION={setId:'',panelId:''};
 const scoringSet=()=>STATE.sets.find(s=>s.id===SC_SESSION.setId)||null;
+/* Thứ tự chọn: ① Người nếm → ② Ngày (lọc) → ③ Set nếm. Người nếm được giữ khi đổi Set để chấm liên tiếp nhiều Set. */
+const scNameCmp=(a,b)=>a.name.localeCompare(b.name,'vi',{numeric:true});
+const scOpenSets=()=>STATE.sets.filter(s=>s.status==='open');
+/* Ngày đang lọc: người dùng chọn (SC_SESSION.date, ''=tất cả) hoặc mặc định hôm nay nếu hôm nay có Set đang mở */
+function scDateFilter(){ const dates=new Set(scOpenSets().map(s=>s.date));
+  if(SC_SESSION.date!=null)return SC_SESSION.date===''||dates.has(SC_SESSION.date)?SC_SESSION.date:'';
+  return dates.has(todayStr())?todayStr():''; }
 function renderScoring(){
   const box=$('#scoringBody'),set=scoringSet(),person=STATE.panellists.find(p=>p.id===SC_SESSION.panelId)||null;
-  const setOpts=STATE.sets.filter(s=>s.status==='open').map(s=>`<option value="${s.id}" ${s.id===SC_SESSION.setId?'selected':''}>${esc(setLabel(s))} · ${esc(s.sampleType)}</option>`).join('');
+  const open=scOpenSets(),day=scDateFilter(),dates=[...new Set(open.map(s=>s.date))].sort().reverse();
+  const dateOpts=dates.map(d=>`<option value="${d}" ${d===day?'selected':''}>${esc(fmtDate(d))}${d===todayStr()?' (hôm nay)':''} · ${open.filter(s=>s.date===d).length} Set</option>`).join('');
+  const setOpts=open.filter(s=>!day||s.date===day).sort((a,b)=>(b.date+a.shift).localeCompare(a.date+b.shift)||scNameCmp(a,b))
+    .map(s=>`<option value="${s.id}" ${s.id===SC_SESSION.setId?'selected':''}>${esc(setLabel(s))} · ${esc(s.sampleType)}${person&&s.scores?.[person.id]?' · ✓ đã nộp':''}</option>`).join('');
   const done=set?.scores||{};
   const doneList=set?STATE.panellists.map(p=>done[p.id]?`<span class="pill-done">✓ ${esc(p.name)}</span>`:`<span class="pill-wait">${esc(p.name)}</span>`).join(''):'';
   box.innerHTML=`<div class="card scoring-start-card">
-    <div class="row c4">
-      <div><label class="f">Set nếm</label><select class="s" id="scSet" onchange="scPickSet()"><option value="">— chọn Set nếm —</option>${setOpts}</select></div>
-      <div><label class="f">Người nếm</label><div class="combo"><input class="t" id="scPanelQ" placeholder="${set?'Gõ tên hoặc Mã NV…':'— chọn Set trước —'}" value="${esc(person?.name||'')}" autocomplete="off"
-          onfocus="this.select();scPanelOpen()" oninput="scPanelOpen()" onkeydown="scPanelKey(event)" onblur="setTimeout(scPanelClose,180)" ${set?'':'disabled'}><div class="combo-list" id="scPanelList"></div></div></div>
+    <div class="row sc-who">
+      <div><label class="f">Người nếm</label><div class="combo"><input class="t" id="scPanelQ" placeholder="Gõ tên hoặc Mã NV…" value="${esc(person?.name||'')}" autocomplete="off"
+          onfocus="this.select();scPanelOpen()" oninput="scPanelOpen()" onkeydown="scPanelKey(event)" onblur="setTimeout(scPanelClose,180)"><div class="combo-list" id="scPanelList"></div></div></div>
       <div><label class="f">Bộ phận</label><input class="t" value="${esc(person?.dept||'')}" placeholder="Tự động theo người nếm" disabled></div>
-      <div style="align-self:end"><span class="hint">${set?'Đã nộp: '+Object.keys(done).length+'/'+STATE.panellists.length+' phiếu':'Chọn Set và người nếm để bắt đầu'}</span></div>
+      <div style="align-self:end"><span class="hint">${set?'Đã nộp: '+Object.keys(done).length+'/'+STATE.panellists.length+' phiếu':'Chọn người nếm và Set nếm để bắt đầu'}</span></div>
+    </div>
+    <div class="row sc-pick">
+      <div><label class="f">Ngày nếm</label><select class="s" id="scDate" onchange="scPickDate()"><option value="">Tất cả ngày</option>${dateOpts}</select></div>
+      <div><label class="f">Set nếm</label><select class="s" id="scSet" onchange="scPickSet()"><option value="">— chọn Set nếm —</option>${setOpts}</select></div>
     </div>${person&&doneList?`<details class="sc-status"><summary>Xem trạng thái nộp phiếu</summary>${doneList}</details>`:`<div style="margin-top:4px">${doneList}</div>`}</div>
     <div id="scGrid"></div>`;
   renderScoreGrid();
 }
-function scPickSet(){SC_SESSION.setId=$('#scSet').value||'';SC_SESSION.panelId='';STATE.currentPanellistId=null;SC_DRAFT={};renderScoring();}
+function scPickDate(){SC_SESSION.date=$('#scDate').value||'';const set=scoringSet();if(set&&SC_SESSION.date&&set.date!==SC_SESSION.date){SC_SESSION.setId='';SC_DRAFT={};}renderScoring();}
+function scPickSet(){SC_SESSION.setId=$('#scSet').value||'';SC_DRAFT={};renderScoring();}
+/* Các Set đang mở cùng ngày + ca với Set đang chấm (xếp theo tên Set) → nút ◀ ▶ chuyển nhanh */
+function scSiblings(){const set=scoringSet();if(!set)return [];return STATE.sets.filter(s=>s.date===set.date&&s.shift===set.shift&&(s.status==='open'||s.id===set.id)).sort(scNameCmp);}
+function scNav(step){const list=scSiblings(),target=list[list.findIndex(s=>s.id===SC_SESSION.setId)+step];if(!target)return;
+  const go=()=>{SC_SESSION.setId=target.id;SC_DRAFT={};renderScoring();};
+  scDraftDirty()?confirmAsk('Kết quả đang điền ở Set này chưa nộp. Bỏ và chuyển sang Set '+target.name+'?','Chuyển Set',go):go();}
+/* Bản đang điền có khác phiếu đã nộp (hoặc khác phiếu trắng) không */
+function scDraftDirty(){const set=scoringSet(),pid=SC_SESSION.panelId;if(!set||!pid||!Object.keys(SC_DRAFT||{}).length)return false;
+  const saved=set.scores[pid]||{},k=x=>x?[x.result||'',(x.appearance||[])[0]||'',(x.taste||[])[0]||'',(x.note||'').trim()].join('|'):'|||';
+  return set.samples.some(sm=>k(SC_DRAFT[sm.no])!==k(saved[sm.no]));}
 /* Ô chọn người nếm có tìm kiếm: lọc theo tên (không phân biệt dấu) / Mã NV / bộ phận; ↑↓ Enter để chọn */
 const vnFold=t=>(t||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d');
 let SC_COMBO_I=0;
@@ -920,7 +954,7 @@ function renderBlankScoreSheet(){
     <div class="tbl-wrap"><table class="grid score-table"><thead><tr><th rowspan="2" style="width:44px">No.</th><th rowspan="2" class="l">Mẫu</th><th colspan="3">Cupping results <i>(Kết quả thử nếm)</i></th><th rowspan="2" class="l remark-col">Remark<br><small>Just In/Out: chọn tình huống hoặc ghi chú · IN: ghi chú (không bắt buộc)</small></th></tr>
       <tr><th class="result-col">IN<small>Đạt</small></th><th class="result-col">Just In<small>Chấp nhận</small></th><th class="result-col">OUT<small>Không đạt</small></th></tr></thead><tbody>${blankRows}</tbody></table></div>
     <div class="score-instructions"><b>* Hướng dẫn:</b><br>1. Lỗi ngoại quan: ${CONFIG.ERR_APPEARANCE.map(esc).join(', ')}.<br>2. Lỗi thử nếm: ${CONFIG.ERR_TASTE.map(esc).join(', ')}.</div></div>
-    <div class="hint" style="margin-top:10px;text-align:center">Chọn Set nếm và người nếm để bắt đầu chấm điểm.</div>`;
+    <div class="hint" style="margin-top:10px;text-align:center">Chọn người nếm và Set nếm để bắt đầu chấm điểm.</div>`;
 }
 function renderScoreGrid(){
   const wrap=$('#scGrid'),set=scoringSet(),pid=SC_SESSION.panelId;
@@ -928,6 +962,7 @@ function renderScoreGrid(){
   const person=STATE.panellists.find(p=>p.id===pid)||{name:'',dept:''};
   scDraftInit();
   const noJI=isGreenCoffee(set); // Green coffee: chỉ IN / OUT
+  const sib=scSiblings(),si=sib.findIndex(s=>s.id===set.id);
   const rows=set.samples.map(sm=>{
     const sc=SC_DRAFT[sm.no];
     const seg=(v,c,l)=>`<label class="${c} ${sc.result===v?'on':''}" onclick="scSet('${sm.no}','${v}')">${l}</label>`;
@@ -945,7 +980,11 @@ function renderScoreGrid(){
           <optgroup label="Lỗi thử nếm">${opts(CONFIG.ERR_TASTE,'T')}</optgroup></select>
         <input class="t remark-note" placeholder="Ghi chú khác…" value="${esc(sc.note)}" onchange="scNote('${sm.no}',this.value)"></div></td></tr>`;}).join('');
   wrap.innerHTML=`<div class="score-sheet">
-    <div class="score-form-head"><button class="btn sm all-in-btn noprint" onclick="scAllIn()" title="Đánh IN cho tất cả mẫu">✔ All IN</button>
+    <div class="score-form-head"><div class="sc-head-tools noprint">
+        <button class="btn sec sm sc-nav" onclick="scNav(-1)" ${si>0?'':'disabled'} title="Set trước trong ${esc(set.shift)} · ${esc(fmtDate(set.date))}" aria-label="Set trước">◀</button>
+        <span class="sc-nav-lbl" title="Các Set đang mở trong ${esc(set.shift)} · ${esc(fmtDate(set.date))}">Set ${si+1}/${sib.length}${set.scores[pid]?' ✓':''}</span>
+        <button class="btn sec sm sc-nav" onclick="scNav(1)" ${si<sib.length-1?'':'disabled'} title="Set sau trong ${esc(set.shift)} · ${esc(fmtDate(set.date))}" aria-label="Set sau">▶</button>
+        <button class="btn sm all-in-btn" onclick="scAllIn()" title="Đánh IN cho tất cả mẫu">✔ All IN</button></div>
       <div class="score-form-title">Sensory - In/Out Score Sheet for Finished Goods<br>and Semi-Finished Goods</div>
       <div class="score-form-sub">Phiếu chấm điểm cảm quan ${noJI?'IN / OUT · Green coffee':'IN / Just In / OUT'}</div>
       <div class="score-meta"><div><b>Name / Tên</b><span>${esc(person.name)}</span></div><div><b>Dept. / Bộ phận</b><span>${esc(person.dept||'—')}</span></div>
@@ -1007,7 +1046,8 @@ function scSubmit(){
     Object.values(set.scores[pid]).forEach(sc=>sc.at=at);
     if(!set.attendees.includes(pid))set.attendees.push(pid);
     logAudit('Nộp phiếu nếm · '+(STATE.panellists.find(p=>p.id===pid)?.name||pid)+' · '+set.name); save();
-    SC_SESSION.panelId='';STATE.currentPanellistId=null;SC_DRAFT={};toast('Đã nộp phiếu ✓','ok'); renderScoring(); if(CLOUD.user)setTimeout(cloudMaybeApplyPending,2500); };
+    SC_DRAFT={};const more=scSiblings().some(s=>s.id!==set.id&&!s.scores?.[pid]); // giữ người nếm để chấm tiếp Set khác
+    toast('Đã nộp phiếu ✓'+(more?' — bấm ▶ để sang Set kế tiếp':''),'ok'); renderScoring(); if(CLOUD.user)setTimeout(cloudMaybeApplyPending,2500); };
   if(set.scores[pid]) confirmAsk('Panelist này đã có phiếu. Ghi đè phiếu cũ?','Ghi đè',doSubmit); else doSubmit();
 }
 
@@ -1058,7 +1098,8 @@ function wizStep2(){ const rows=WIZ.samples.map((s,i)=>`<tr><td>${i+1}</td>
      <td><input class="t" value="${esc(s.batch||'')}" onchange="wizEdit(${i},'batch',this.value)"></td>
      <td><button class="btn sm danger" onclick="wizDel(${i})">✕</button></td></tr>`).join('');
   return `<div class="card"><h3>Bước ② — Danh sách mẫu (${esc(WIZ.meta.name)} · ${fmtDate(WIZ.meta.date)} · ${WIZ.meta.shift} · ${esc(WIZ.meta.sampleType)})</h3>
-    <div class="toolbar"><span class="hint">Nhập từng mẫu bên dưới, hoặc nạp hàng loạt:</span><span class="spacer"></span>
+    <div class="toolbar"><span class="hint">${isSemiProduct(WIZ.meta.sampleType)?'Semi product: đã nạp sẵn mẫu mặc định — điền <b>SSCC/Hour</b> và <b>Batch</b>; có thể thêm hoặc xoá mẫu.':'Nhập từng mẫu bên dưới, hoặc nạp hàng loạt:'}</span><span class="spacer"></span>
+      ${isSemiProduct(WIZ.meta.sampleType)?'<button class="btn sec sm" onclick="wizAddSemiDefaults()" title="Thêm lại các mẫu mặc định còn thiếu">↺ Nạp mẫu mặc định</button>':''}
       <button class="btn sec sm" onclick="downloadSetTemplate()">⤓ Tải template Excel</button>
       ${WIZ.samples.length?'<button class="btn sec sm" onclick="exportSetSamples()">⤓ Xuất danh sách mẫu</button>':''}
       <button class="btn sm" onclick="document.getElementById('fileSetSamples').click()">⤒ Nhập mẫu từ Excel</button>
@@ -1077,9 +1118,16 @@ function wizStep2(){ const rows=WIZ.samples.map((s,i)=>`<tr><td>${i+1}</td>
       <button class="btn sec sm" onclick="wizRecode()">↻ Đánh mã lại</button></div>`:''}
     <div class="toolbar" style="margin-top:12px"><button class="btn sec" onclick="wizBack()">← Quay lại</button><span class="spacer"></span>
       <button class="btn" onclick="wizCreate()">✔ Tạo Set &amp; mở buổi nếm</button></div></div>`; }
+/* Semi product: nạp sẵn danh sách mẫu mặc định (tên cố định, người dùng điền SSCC/Hour + Batch; vẫn thêm/xoá được) */
+const isSemiProduct=t=>/^semi product$/i.test((t||'').trim());
+function wizSemiDefaults(){ let n=0;CONFIG.SEMI_DEFAULT_SAMPLES.forEach(name=>{if(WIZ.samples.some(x=>(x.name||'').trim().toLowerCase()===name.toLowerCase()))return;
+    WIZ.samples.push({code:wizNextCode(),name,sscc:'',batch:'',auto:true});n++;});return n; }
+function wizAddSemiDefaults(){ const n=wizSemiDefaults();renderSetup();toast(n?'Đã nạp '+n+' mẫu mặc định':'Danh sách đã có đủ mẫu mặc định',n?'ok':''); }
 function wizNext(){ WIZ.meta={name:$('#wName').value.trim(),date:dateVal('wDate'),shift:$('#wShift').value,sampleType:$('#wType').value};
   if(!WIZ.meta.name)return toast('Nhập tên Set','err'); if(!WIZ.meta.date)return toast('Ngày không hợp lệ — nhập dd/mm/yyyy','err');
   if(dupSetName(WIZ.meta))return toast('Đã có Set "'+WIZ.meta.name+'" trong ca '+WIZ.meta.shift+' ngày '+fmtDate(WIZ.meta.date),'err');
+  if(isSemiProduct(WIZ.meta.sampleType)){if(!WIZ.semiFilled){WIZ.semiFilled=true;wizSemiDefaults();}}
+  else if(WIZ.semiFilled){WIZ.semiFilled=false;WIZ.samples=WIZ.samples.filter(x=>!(x.auto&&!x.sscc&&!x.batch));} // đổi sang loại khác → bỏ mẫu mặc định chưa điền gì
   WIZ.step=2; renderSetup(); }
 /* true nếu đã tồn tại Set trùng tên trong cùng ngày+ca */
 function dupSetName(m){ return STATE.sets.some(s=>s.date===m.date&&s.shift===m.shift&&s.name.toLowerCase()===m.name.toLowerCase()); }
@@ -1110,12 +1158,14 @@ function sumSampleInfo(set,no){ const errs=new Map(),tasters=[];
     [...(sc.appearance||[]),...(sc.taste||[]),...(sc.note?.trim()?[sc.note.trim()]:[])].forEach(e=>errs.set(e,(errs.get(e)||0)+1));});
   return {errs:[...errs].map(([e,n])=>n>1?e+' ('+n+')':e),tasters};
 }
+/* Green coffee: cột Result ghi IN / OUT thay cho % (IN khi mẫu đạt ngưỡng theo cách tính hiện có, OUT khi không đạt) */
+const sumResultText=(set,r)=>r.pct===null?'':(isGreenCoffee(set)?(r.pass?'IN':'OUT'):r.pct.toFixed(1));
 function summaryFormHTML(set){
   const other=!SUM_TYPES.slice(0,4).includes(set.sampleType);
   const types=SUM_TYPES.map(t=>{const on=t==='Other'?other:set.sampleType===t;
     return `<span class="sf-chk ${on?'on':''}"><i>${on?'✓':''}</i>${t}${t==='Other'&&other&&set.sampleType?': <b>'+esc(set.sampleType)+'</b>':''}</span>`;}).join('');
   const rows=set.samples.map(sm=>{const r=calcSample(set,sm.no),x=sumSampleInfo(set,sm.no);
-    const pct=r.pct===null?'':`<b class="${r.pass?'sf-pass':'sf-fail'}">${r.pct.toFixed(1)}</b>`;
+    const pct=r.pct===null?'':`<b class="${r.pass?'sf-pass':'sf-fail'}">${sumResultText(set,r)}</b>`;
     return `<tr><td class="c">${sm.no}</td><td>${esc(sm.name)}<small class="sf-code">Mã: ${esc(sampleCode(sm))}</small></td><td class="c">${esc(sm.sscc||'')}</td><td class="c">${esc(sm.batch||'')}</td>
       <td class="c">${r.total?r.IN:''}</td><td class="c">${r.total?r.JI:''}</td><td class="c">${r.total?r.OUT:''}</td><td class="c">${r.total||''}</td><td class="c">${pct}</td>
       <td class="sf-cmt">${x.errs.map(esc).join(', ')}</td><td class="sf-cmt">${x.tasters.map(esc).join(', ')}</td></tr>`;});
@@ -1132,10 +1182,10 @@ function summaryFormHTML(set){
         <th rowspan="2" class="sf-cmt-h">Comments <i>(ghi chú)</i> :<br><b>Just in/out</b> <i>(Lỗi thử nếm)</i> ${CONFIG.ERR_TASTE.map(esc).join(', ')}, …<br><b>Appearance</b> <i>(Lỗi ngoại quan)</i> ${CONFIG.ERR_APPEARANCE.map(esc).join(', ')}, …</th>
         <th rowspan="2">Taster<small>(Người nếm)</small></th></tr>
       <tr><th>Name sample<small>(Tên mẫu)</small></th><th>SSCC/Hour</th><th>Batch<small>(Lô sx)</small></th>
-        <th>IN<small>(Đạt)</small></th><th>JUST IN<small>(Chấp nhận)</small></th><th>OUT<small>(Không đạt)</small></th><th>Total</th><th>Result<small>(%)</small></th></tr></thead>
+        <th>IN<small>(Đạt)</small></th><th>JUST IN<small>(Chấp nhận)</small></th><th>OUT<small>(Không đạt)</small></th><th>Total</th><th>Result<small>${isGreenCoffee(set)?'(IN / OUT)':'(%)'}</small></th></tr></thead>
       <tbody>${rows.join('')}</tbody></table>
     <div class="sf-foot"><div>(*) KQ and semi-FGs: at least ${CONFIG.MIN_PANELLIST} trained assessors<br>(*) Finish good product: at least ${CONFIG.MIN_PANELLIST} trained assessors.<br>(*) Raw material: at least ${CONFIG.MIN_PANELLIST} trained assessors<br>
-      <span class="sf-rule">Result% = (1 − [(Out×3 + JustIn×0.5)/(Total×3)]) × 100 · Passed ≥ ${CONFIG.PASS_THRESHOLD}%</span></div>
+      <span class="sf-rule">${isGreenCoffee(set)?`Green coffee: Result = IN / OUT · IN khi tỷ lệ phiếu đạt ≥ ${CONFIG.PASS_THRESHOLD}%`:`Result% = (1 − [(Out×3 + JustIn×0.5)/(Total×3)]) × 100 · Passed ≥ ${CONFIG.PASS_THRESHOLD}%`}</span></div>
       <div class="sf-check"><b>Check by:</b><span>${set.approval?esc(set.approval.by)+'<small style="display:block;font-size:10px;color:#555">'+esc(fmtDateTime(set.approval.at))+'</small>':''}</span></div></div></div>`;
 }
 /* ---- Giám sát nếm: xác nhận kết quả Set sau khi hoàn thành báo cáo → khoá Set (không nộp/sửa thêm) ---- */
@@ -1162,14 +1212,29 @@ function unapproveSet(id){ if(!can('confirmSet'))return toast('Bạn không có 
     const by=s.approval.by;delete s.approval;logAudit('Huỷ xác nhận Set: '+setLabel(s)+' (trước đó: '+by+')');save();renderSummary();toast('Đã huỷ xác nhận','ok');});
 }
 function sumPickSet(id){ STATE.currentSetId=id||null; $('#hdrSet').textContent=setLabel(curSet()); renderSummary(); }
+/* Lọc danh sách Set ở ô chọn: theo Loại mẫu và Ngày nếm (để trống = tất cả) */
+let SUMF={type:'',date:''};
+const sumMatch=s=>(!SUMF.type||s.sampleType===SUMF.type)&&(!SUMF.date||s.date===SUMF.date);
+function sumFilter(){ SUMF.type=$('#sumType').value||'';const raw=($('#sumDate').value||'').trim();SUMF.date=dateVal('sumDate')||'';
+  if(raw&&!SUMF.date)toast('Ngày không hợp lệ — nhập dd/mm/yyyy','err');
+  const set=curSet();if(set&&!sumMatch(set))STATE.currentSetId=null; // Set đang xem không thuộc bộ lọc → chọn lại
+  $('#hdrSet').textContent=setLabel(curSet());renderSummary(); }
+function sumFilterClear(){ SUMF={type:'',date:''};renderSummary(); }
 function renderSummary(){
   const box=$('#summaryBody'),set=curSet();
   if(!STATE.sets.length){ box.innerHTML=`<div class="ph"><span class="big">📊</span>Chưa có Set nếm nào. Vào <b>Tạo Set</b> để bắt đầu.</div>`; return; }
-  const opts=[...STATE.sets].sort((a,b)=>(b.date+b.shift).localeCompare(a.date+a.shift)).map(s=>`<option value="${s.id}" ${set?.id===s.id?'selected':''}>${esc(setLabel(s))}${s.status==='closed'?' · đã đóng':''}</option>`).join('');
-  const picker=`<div class="card noprint"><div class="toolbar" style="margin:0"><label class="f" style="margin:0">Set nếm</label>
-    <select class="s" style="max-width:420px" onchange="sumPickSet(this.value)">${set?'':'<option value="">— Chọn Set —</option>'}${opts}</select>
+  if(set&&!sumMatch(set))SUMF={type:'',date:''}; // mở Set từ nơi khác (Danh sách Set…) mà không khớp bộ lọc → bỏ lọc
+  const list=STATE.sets.filter(sumMatch).sort((a,b)=>(b.date+b.shift).localeCompare(a.date+a.shift)||b.name.localeCompare(a.name,'vi',{numeric:true}));
+  const opts=list.map(s=>`<option value="${s.id}" ${set?.id===s.id?'selected':''}>${esc(setLabel(s))} · ${esc(s.sampleType)}${s.status==='closed'?' · đã đóng':''}</option>`).join('');
+  const typeOpts=[...new Set([...CONFIG.SAMPLE_TYPES,...STATE.sets.map(s=>s.sampleType).filter(Boolean)])].map(t=>`<option value="${esc(t)}" ${SUMF.type===t?'selected':''}>${esc(t)}</option>`).join('');
+  const picker=`<div class="card noprint"><div class="toolbar" style="margin:0">
+    <label class="f" style="margin:0">Loại mẫu</label><select class="s" id="sumType" style="max-width:170px" onchange="sumFilter()"><option value="">Tất cả loại</option>${typeOpts}</select>
+    <label class="f" style="margin:0">Ngày</label>${dateField('sumDate',SUMF.date,'sumFilter()','max-width:160px')}
+    ${SUMF.type||SUMF.date?'<button class="btn sec sm" onclick="sumFilterClear()" title="Bỏ lọc loại mẫu và ngày">✕</button>':''}
+    <label class="f" style="margin:0">Set nếm</label>
+    <select class="s" style="max-width:420px" onchange="sumPickSet(this.value)">${set?'':`<option value="">— Chọn Set (${list.length}) —</option>`}${opts}</select>
     <span class="spacer"></span>${set?`<button class="btn sec sm" onclick="exportSummaryCSV()">⤓ Xuất Excel</button><button class="btn sec sm" onclick="printSummary()">🖨️ Xuất PDF</button>`:''}</div></div>`;
-  if(!set){ box.innerHTML=picker+`<div class="ph"><span class="big">📊</span>Chọn một Set nếm để xem báo cáo.</div>`; return; }
+  if(!set){ box.innerHTML=picker+`<div class="ph"><span class="big">📊</span>${list.length?'Chọn một Set nếm để xem báo cáo.':'Không có Set nào khớp Loại mẫu / Ngày đang lọc.'}</div>`; return; }
   const results=set.samples.map(sm=>calcSample(set,sm.no));
   const nPass=results.filter(r=>r.pass).length, nFail=results.filter(r=>r.pct!==null&&!r.pass).length;
   const nAtt=Object.keys(set.scores).length;
@@ -1661,9 +1726,9 @@ document.getElementById('fileSetSamples').addEventListener('change',async e=>{ c
 
 function exportSummaryCSV(){ const set=curSet(); if(!set)return toast('Chưa có Set','err');
   const rows=[['iLD SUMMARY TASTING RESULT'],['Set',set.name,'Ngày',fmtDate(set.date),'Ca',set.shift,'Loại',set.sampleType],['Giám sát xác nhận',set.approval?set.approval.by+' · '+fmtDateTime(set.approval.at):'Chưa xác nhận'],[],
-    ['No.','Tên mã hóa','Tên mẫu','SSCC/Hour','Batch','IN','Just In','Out','Total','Result %','Kết luận','Comments (Lỗi)','Taster (Người nếm)']];
+    ['No.','Tên mã hóa','Tên mẫu','SSCC/Hour','Batch','IN','Just In','Out','Total',isGreenCoffee(set)?'Result (IN/OUT)':'Result %','Kết luận','Comments (Lỗi)','Taster (Người nếm)']];
   set.samples.forEach(sm=>{ const r=calcSample(set,sm.no),x=sumSampleInfo(set,sm.no);
-    rows.push([sm.no,sampleCode(sm),sm.name,sm.sscc||'',sm.batch||'',r.IN,r.JI,r.OUT,r.total,r.pct===null?'':r.pct.toFixed(1),
+    rows.push([sm.no,sampleCode(sm),sm.name,sm.sscc||'',sm.batch||'',r.IN,r.JI,r.OUT,r.total,sumResultText(set,r),
       r.pct===null?'chưa đủ':(r.pass?'Passed':'Failed'),x.errs.join('; '),x.tasters.join('; ')]); });
   downloadFile('Summary_'+set.name.replace(/\s+/g,'_')+'.csv',toCSV(rows),'text/csv');
   logAudit('Xuất Excel: '+set.name); toast('Đã xuất Excel (CSV)','ok'); }
@@ -1792,6 +1857,7 @@ function renderGuide(){
           <li><b>📥 Nhập Excel từ SAP</b> — dùng thẳng file xuất từ SAP (cột ITEMNAME, BATCH, SSCC). Nếu có dòng đánh dấu <i>Checked</i> thì chỉ lấy các dòng đó.</li>
           <li><b>⤒ Nhập mẫu từ Excel</b> — tải template, điền rồi nạp lại.</li>
           <li>Gõ tay từng mẫu → <b>+ Thêm mẫu</b>.</li>
+          <li>Loại mẫu <b>Semi product</b>: app nạp sẵn danh sách mẫu mặc định — chỉ cần điền <b>SSCC/Hour</b> và <b>Batch</b>, thêm hoặc xoá mẫu tuỳ buổi.</li>
         </ul></li>
       <li><b>Tên mã hóa</b> là tên người nếm nhìn thấy (mẫu mù). Muốn đánh lại hàng loạt: gõ tiền tố (vd. <b>CHO</b>) → <b>↻ Đánh mã lại</b>.</li>
       <li>Bấm <b>✔ Tạo Set &amp; mở buổi nếm</b>.</li>
@@ -1802,10 +1868,11 @@ function renderGuide(){
   <div class="card">
     <h3>② Chấm nếm <span class="badge gray">tab Chấm nếm · F.071</span></h3>
     <ol ${L}>
-      <li>Chọn <b>Set nếm</b>, rồi gõ <b>tên</b> hoặc <b>Mã NV</b> để chọn người nếm.</li>
+      <li>Gõ <b>tên</b> hoặc <b>Mã NV</b> để chọn người nếm, rồi chọn <b>Set nếm</b> (ô <b>Ngày nếm</b> lọc Set theo ngày, mặc định hôm nay).</li>
       <li>Mỗi mẫu bấm <b>IN</b>, <b>Just In</b> hoặc <b>Out</b>. Tất cả đều đạt thì bấm <b>✔ All IN</b>.</li>
       <li>Mẫu <b>Just In / Out</b> bắt buộc chọn lỗi hoặc ghi chú ở cột Remark.</li>
       <li>Bấm <b>💾 Nộp phiếu</b>. Muốn làm lại từ đầu: <b>↺ Discard</b>.</li>
+      <li>Chấm tiếp Set khác trong cùng ngày, ca: bấm <b>◀ ▶</b> ở góc phải phiếu (cạnh All IN) — không cần chọn lại tên.</li>
     </ol>
     <p class="hint">Set loại <b>Green coffee</b> chỉ có IN / OUT. Nộp lại sẽ hỏi ghi đè phiếu cũ. Set đã được Giám sát xác nhận thì không nộp thêm được.</p>
   </div>
@@ -1821,7 +1888,7 @@ function renderGuide(){
   <div class="card">
     <h3>④ Báo cáo &amp; xác nhận <span class="badge gray">tab Báo cáo · F.072</span></h3>
     <ol ${L}>
-      <li>Chọn Set để xem phiếu tổng hợp: số IN / Just In / Out, <b>Result %</b> và người nếm của từng mẫu.</li>
+      <li>Lọc theo <b>Loại mẫu</b> và <b>Ngày</b> (nếu cần) rồi chọn Set để xem phiếu tổng hợp: số IN / Just In / Out, <b>Result %</b> và người nếm của từng mẫu.</li>
       <li><b>Passed</b> khi Result % ≥ ${CONFIG.PASS_THRESHOLD}%, dưới mức đó là <b>Failed</b>. App tự tính, không cần nhập.</li>
       <li><b>Giám sát</b> bấm <b>✔ Xác nhận kết quả</b> → Set bị khoá, tên Giám sát hiện ở ô <b>Check by</b>. Cần sửa thì bấm <b>Huỷ xác nhận</b> trước.</li>
       <li><b>⤓ Xuất Excel</b> hoặc <b>🖨️ Xuất PDF</b> (in A4 ngang).</li>
@@ -1937,7 +2004,7 @@ function cloudTryMerge(item,e){
   }catch(err){console.warn('Gộp xung đột thất bại',item.key,err);return null;} // → giữ làm xung đột để người dùng chọn
 }
 /* Có đang chấm dở phiếu không (chưa nộp) → chưa được nạp dữ liệu từ cloud đè lên bản nháp */
-function cloudScoringBusy(){return typeof SC_SESSION!=='undefined'&&$('#tab-scoring')?.classList.contains('active')&&!!SC_SESSION.panelId&&Object.values(SC_DRAFT||{}).some(x=>x&&x.result);}
+function cloudScoringBusy(){return typeof SC_SESSION!=='undefined'&&!!$('#tab-scoring')?.classList.contains('active')&&scDraftDirty();}
 function cloudHasLocalPending(){return CLOUD.localDirty||CLOUD.sync.outbox.length>0||CLOUD.sync.conflicts.length>0;}
 function cloudMaybeApplyPending(){if(CLOUD.pendingRemote)cloudApplyIncoming();}
 /* Nhật ký (log) không cần realtime → gửi thưa (5 phút; User chung 30 phút) để các máy khác không phải tải lại sau mỗi thao tác. force: gửi ngay (nút Cập nhật, đăng xuất). */
