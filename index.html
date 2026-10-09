@@ -903,7 +903,7 @@ function renderScoring(){
   const setOpts=open.filter(s=>!day||s.date===day).sort((a,b)=>(b.date+a.shift).localeCompare(a.date+b.shift)||scNameCmp(a,b))
     .map(s=>`<option value="${s.id}" ${s.id===SC_SESSION.setId?'selected':''}>${esc(setLabel(s))} · ${esc(s.sampleType)}${person&&s.scores?.[person.id]?' · ✓ đã nộp':''}</option>`).join('');
   const done=set?.scores||{};
-  const doneList=set?STATE.panellists.map(p=>done[p.id]?`<span class="pill-done">✓ ${esc(p.name)}</span>`:`<span class="pill-wait">${esc(p.name)}</span>`).join(''):'';
+  const doneList=set?STATE.panellists.filter(p=>done[p.id]).map(p=>`<span class="pill-done">✓ ${esc(p.name)}</span>`).join(''):''; // chỉ liệt kê người đã nộp
   box.innerHTML=`<div class="card scoring-start-card">
     <div class="row sc-who">
       <div><label class="f">Người nếm</label><div class="combo"><input class="t" id="scPanelQ" placeholder="Gõ tên hoặc Mã NV…" value="${esc(person?.name||'')}" autocomplete="off"
@@ -914,7 +914,7 @@ function renderScoring(){
     <div class="row sc-pick">
       <div><label class="f">Ngày nếm</label><select class="s" id="scDate" onchange="scPickDate()"><option value="">Tất cả ngày</option>${dateOpts}</select></div>
       <div><label class="f">Set nếm</label><select class="s" id="scSet" onchange="scPickSet()"><option value="">— chọn Set nếm —</option>${setOpts}</select></div>
-    </div>${person&&doneList?`<details class="sc-status"><summary>Xem trạng thái nộp phiếu</summary>${doneList}</details>`:`<div style="margin-top:4px">${doneList}</div>`}</div>
+    </div>${doneList?`<details class="sc-status"><summary>Xem người đã nộp phiếu (${Object.keys(done).length})</summary>${doneList}</details>`:''}</div>
     <div id="scGrid"></div>`;
   renderScoreGrid();
 }
