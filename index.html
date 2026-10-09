@@ -133,6 +133,7 @@ body[data-theme="dark"] .item-table .add-row td{background:#173d24!important}
 .sc-who{grid-template-columns:2fr 1fr 1fr}.sc-pick{grid-template-columns:1fr 2fr 1fr;margin-bottom:6px}
 .sc-head-tools{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:12px 20px;border-top:1px solid var(--line)} /* cuối phiếu: ◀ Set n/m ▶ · All IN */
 .sc-head-tools .all-in-btn{position:static;display:inline-block;margin:0 0 0 6px}
+.sc-nav-group{display:flex;align-items:center;gap:6px}.sc-nav-group.in-bar,.sc-bar-who{display:none}
 .btn.sm.sc-nav{min-width:56px;min-height:46px;padding:0;font-size:20px;line-height:1;text-align:center}.sc-nav-lbl{font-size:16px;font-weight:700;white-space:nowrap;color:var(--text);min-width:76px;max-width:46vw;overflow:hidden;text-overflow:ellipsis;text-align:center;padding:0 4px}
 @media(max-width:600px){.sc-who,.sc-pick{grid-template-columns:1fr}}
 .score-form-head{position:relative;padding:24px 24px 18px;border-bottom:1px solid rgba(148,163,184,.35);
@@ -155,6 +156,8 @@ body[data-theme="dark"] .score-table thead th{background:linear-gradient(180deg,
 .score-table th.result-col{width:92px}
 /* Cột Remark co theo nội dung: chưa có gì → hẹp tối đa; có ghi chú → rộng dần theo chữ (tối đa 44ch) rồi xuống dòng. Cột "Mẫu" nhận phần còn lại. */
 .score-table th.remark-col,.score-table tbody td:last-child{width:1%;white-space:nowrap}.score-table .blind-code{white-space:nowrap}
+/* Từ 1000px (PC/Laptop, tablet ngang): cột Mẫu và cột Remark rộng bằng nhau → nhóm Cupping results nằm giữa màn hình (ô ghi chú bên trong vẫn co theo chữ) */
+@media(min-width:1000px){.score-table thead tr:first-child th:nth-child(2),.score-table th.remark-col,.score-table tbody td:last-child{width:34%}}
 .score-table .remark-select{display:block;width:auto;min-width:100%;max-width:44ch}
 .score-table .remark-note{display:block;width:14ch;max-width:44ch;min-height:0;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.35}
 .score-table tbody tr{transition:transform .15s ease,filter .15s ease}.score-table tbody tr:hover{filter:brightness(.985)}
@@ -610,7 +613,17 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
   #tab-scoring .score-table.no-ji tbody td:nth-child(4){grid-column:3 / 4;grid-row:2}
   #tab-scoring .score-table.no-ji tbody td:nth-child(5){grid-column:1 / -1;grid-row:auto;text-align:left;padding-top:4px!important}
 }
+/* Tablet & điện thoại: ◀ Set n ▶ nằm cố định ở dòng dưới của thanh Discard / Nộp phiếu */
+@media(max-width:1180px){
+  #tab-scoring .sc-nav-group.in-sheet{display:none}
+  #tab-scoring .sc-nav-group.in-bar{display:flex;flex:1 1 100%;order:9;justify-content:center;gap:10px;padding-top:8px;border-top:1px solid var(--c-line,var(--line))}
+  #tab-scoring .score-actions .btn.sc-nav{width:auto;min-width:72px;min-height:46px;padding:0;font-size:22px}
+  #tab-scoring .sc-head-tools .all-in-btn{margin-left:0}
+  #tab-scoring .sc-bar-who{display:block;flex:1 1 100%;order:10;text-align:center;font-size:12.5px;line-height:1.2;color:var(--c-muted,var(--muted));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
+@media(max-width:600px){#tab-scoring .sc-nav-group.in-bar,#tab-scoring .sc-bar-who{grid-column:1 / -1}#tab-scoring .score-actions .btn.sc-nav{min-height:44px}}
 @media print{#tab-scoring .score-actions{position:static;box-shadow:none}}
+@media(min-width:1000px){#tab-scoring .score-table .remark-select{min-width:0}#tab-scoring .score-table .remark-select,#tab-scoring .score-table .remark-note{max-width:min(44ch,30vw)}}
 /* Nút đồng bộ ở header: ✓ đã gửi hết · ↻ còn thay đổi chưa gửi / có dữ liệu mới → bấm để cập nhật */
 .sync-btn{white-space:nowrap}
 html[data-ild-appearance] .hbtn.sync-btn.ok{color:var(--c-ok);border-color:var(--c-ok)}
@@ -923,7 +936,8 @@ function renderScoring(){
       <div><label class="f">Ngày nếm</label><select class="s" id="scDate" onchange="scPickDate()"><option value="">Tất cả ngày</option>${dateOpts}</select></div>
       <div><label class="f">Set nếm</label><select class="s" id="scSet" onchange="scPickSet()"><option value="">— chọn Set nếm —</option>${setOpts}</select></div>
     </div>${doneList?`<details class="sc-status"><summary>Xem người đã nộp phiếu (${Object.keys(done).length})</summary>${doneList}</details>`:''}</div>
-    <div id="scGrid"></div>`;
+    <div id="scGrid"></div>
+    <div class="toolbar score-actions" id="scBar" style="display:none"></div>`; // thanh dính đáy là con trực tiếp của #scoringBody để bám được trọn chiều cao
   renderScoreGrid();
 }
 function scPickDate(){SC_SESSION.date=$('#scDate').value||'';const set=scoringSet();if(set&&SC_SESSION.date&&set.date!==SC_SESSION.date){SC_SESSION.setId='';SC_DRAFT={};}renderScoring();}
@@ -965,12 +979,17 @@ function renderBlankScoreSheet(){
     <div class="hint" style="margin-top:10px;text-align:center">Chọn người nếm và Set nếm để bắt đầu chấm điểm.</div>`;
 }
 function renderScoreGrid(){
-  const wrap=$('#scGrid'),set=scoringSet(),pid=SC_SESSION.panelId;
-  if(!set||!pid){wrap.innerHTML=renderBlankScoreSheet();return;}
+  const wrap=$('#scGrid'),bar=$('#scBar'),set=scoringSet(),pid=SC_SESSION.panelId;
+  if(!set||!pid){wrap.innerHTML=renderBlankScoreSheet();bar.style.display='none';bar.innerHTML='';return;}
   const person=STATE.panellists.find(p=>p.id===pid)||{name:'',dept:''};
   scDraftInit();
   const noJI=isGreenCoffee(set); // Green coffee: chỉ IN / OUT
-  const sib=scSiblings(),si=sib.findIndex(s=>s.id===set.id);
+  const sib=scSiblings(),si=sib.findIndex(s=>s.id===set.id),when=esc(set.shift)+' · '+esc(fmtDate(set.date));
+  /* ◀ Set n ▶ — PC/Laptop: cuối phiếu cạnh All IN (in-sheet); tablet & điện thoại: dòng dưới của thanh Discard / Nộp phiếu dính đáy (in-bar) */
+  const navHTML=where=>`<div class="sc-nav-group ${where}">
+        <button class="btn sec sm sc-nav" onclick="scNav(-1)" ${si>0?'':'disabled'} title="Set trước trong ${when}" aria-label="Set trước">◀</button>
+        <span class="sc-nav-lbl" title="Set thứ ${si+1}/${sib.length} đang mở trong ${when}">${set.name.trim().toLowerCase().startsWith('set')?'':'Set '}${esc(set.name)}${set.scores[pid]?' ✓':''}</span>
+        <button class="btn sec sm sc-nav" onclick="scNav(1)" ${si<sib.length-1?'':'disabled'} title="Set sau trong ${when}" aria-label="Set sau">▶</button></div>`;
   const rows=set.samples.map(sm=>{
     const sc=SC_DRAFT[sm.no];
     const seg=(v,c,l)=>`<label class="${c} ${sc.result===v?'on':''}" onclick="scSet('${sm.no}','${v}')">${l}</label>`;
@@ -999,14 +1018,12 @@ function renderScoreGrid(){
       <tr><th class="result-col">IN<small>Đạt</small></th>${noJI?'':'<th class="result-col">Just In<small>Chấp nhận</small></th>'}<th class="result-col">OUT<small>Không đạt</small></th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <div class="score-instructions"><b>* Hướng dẫn:</b><br>1. Lỗi ngoại quan: ${CONFIG.ERR_APPEARANCE.map(esc).join(', ')}.<br>2. Lỗi thử nếm: ${CONFIG.ERR_TASTE.map(esc).join(', ')}.<br>3. Remark: Just In / Out bắt buộc chọn tình huống hoặc ghi chú · IN: ghi chú không bắt buộc.</div>
-      <div class="sc-head-tools noprint">
-        <button class="btn sec sm sc-nav" onclick="scNav(-1)" ${si>0?'':'disabled'} title="Set trước trong ${esc(set.shift)} · ${esc(fmtDate(set.date))}" aria-label="Set trước">◀</button>
-        <span class="sc-nav-lbl" title="Set thứ ${si+1}/${sib.length} đang mở trong ${esc(set.shift)} · ${esc(fmtDate(set.date))}">${set.name.trim().toLowerCase().startsWith('set')?'':'Set '}${esc(set.name)}${set.scores[pid]?' ✓':''}</span>
-        <button class="btn sec sm sc-nav" onclick="scNav(1)" ${si<sib.length-1?'':'disabled'} title="Set sau trong ${esc(set.shift)} · ${esc(fmtDate(set.date))}" aria-label="Set sau">▶</button>
+      <div class="sc-head-tools noprint">${navHTML('in-sheet')}
         <button class="btn sm all-in-btn" onclick="scAllIn()" title="Đánh IN cho tất cả mẫu">✔ All IN</button></div></div>
-    <div class="toolbar score-actions"><span class="hint" id="scStatus"></span><span class="spacer"></span>
+`;
+  bar.style.display='';bar.innerHTML=`<span class="hint" id="scStatus"></span><span class="spacer"></span>
       <button class="btn sec" onclick="scDiscard()" title="Xoá hết kết quả đang điền, làm lại từ đầu">↺ Discard</button>
-      <button class="btn" onclick="scSubmit()">💾 Nộp phiếu</button></div>`;
+      <button class="btn" onclick="scSubmit()">💾 Nộp phiếu</button>${navHTML('in-bar')}<div class="sc-bar-who" title="Người nếm đang chấm">👤 ${esc(person.name)}${person.dept?' · '+esc(person.dept):''}</div>`;
   scNoteSizeAll();updateScStatus();
 }
 let SC_DRAFT={};
@@ -1885,7 +1902,7 @@ function renderGuide(){
       <li>Mỗi mẫu bấm <b>IN</b>, <b>Just In</b> hoặc <b>Out</b>. Tất cả đều đạt thì bấm <b>✔ All IN</b> ở cuối phiếu.</li>
       <li>Mẫu <b>Just In / Out</b> bắt buộc chọn lỗi hoặc ghi chú ở cột Remark.</li>
       <li>Bấm <b>💾 Nộp phiếu</b>. Muốn làm lại từ đầu: <b>↺ Discard</b>.</li>
-      <li>Chấm tiếp Set khác trong cùng ngày, ca: bấm <b>◀ ▶</b> ở cuối phiếu (cạnh All IN) — không cần chọn lại tên.</li>
+      <li>Chấm tiếp Set khác trong cùng ngày, ca: bấm <b>◀ ▶</b> hai bên tên Set — trên tablet/điện thoại nằm ngay dưới nút Nộp phiếu, trên máy tính nằm cuối phiếu cạnh All IN — không cần chọn lại tên.</li>
     </ol>
     <p class="hint">Set loại <b>Green coffee</b> chỉ có IN / OUT. Nộp lại sẽ hỏi ghi đè phiếu cũ. Set đã được Giám sát xác nhận thì không nộp thêm được.</p>
   </div>
