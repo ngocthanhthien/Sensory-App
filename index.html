@@ -133,7 +133,7 @@ body[data-theme="dark"] .item-table .add-row td{background:#173d24!important}
 .sc-who{grid-template-columns:2fr 1fr 1fr}.sc-pick{grid-template-columns:1fr 2fr 1fr;margin-bottom:6px}
 .sc-head-tools{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:12px 20px;border-top:1px solid var(--line)} /* cuối phiếu: ◀ Set n/m ▶ · All IN */
 .sc-head-tools .all-in-btn{position:static;display:inline-block;margin:0 0 0 6px}
-.sc-nav{min-width:38px;padding-left:0;padding-right:0;text-align:center}.sc-nav-lbl{font-size:12.5px;font-weight:700;white-space:nowrap;color:var(--text);min-width:58px;text-align:center}
+.btn.sm.sc-nav{min-width:56px;min-height:46px;padding:0;font-size:20px;line-height:1;text-align:center}.sc-nav-lbl{font-size:16px;font-weight:700;white-space:nowrap;color:var(--text);min-width:76px;max-width:46vw;overflow:hidden;text-overflow:ellipsis;text-align:center;padding:0 4px}
 @media(max-width:600px){.sc-who,.sc-pick{grid-template-columns:1fr}}
 .score-form-head{position:relative;padding:24px 24px 18px;border-bottom:1px solid rgba(148,163,184,.35);
   background:radial-gradient(circle at 50% -40%,rgba(227,6,19,.12),transparent 46%),linear-gradient(180deg,#fff,#f8fafc)}
@@ -533,7 +533,7 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
   #tab-scoring .scoring-start-card .row{gap:12px;margin-bottom:8px}
   #tab-scoring .sc-who{grid-template-columns:1.6fr 1fr}#tab-scoring .sc-who>div:nth-child(3){grid-column:1 / -1;align-self:auto}
   #tab-scoring .sc-pick{grid-template-columns:1fr 1.6fr}
-  #tab-scoring .sc-nav{min-width:48px;min-height:44px;font-size:16px}#tab-scoring .sc-nav-lbl{font-size:14px}
+  #tab-scoring .sc-nav{min-width:64px;min-height:50px;font-size:22px}#tab-scoring .sc-nav-lbl{font-size:17px}
   #tab-scoring .scoring-start-card select.s,#tab-scoring .scoring-start-card input.t{min-height:48px;font-size:16px}
   #tab-scoring .score-form-head{padding:16px 16px 14px}
   #tab-scoring .score-form-title{font-size:16px}
@@ -569,7 +569,7 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
 /* ---- Điện thoại (≤600px): thẻ từng mẫu, nút to, thanh nộp 2 nút ---- */
 @media(max-width:600px){
   #tab-scoring .scoring-start-card .row{gap:10px;margin-bottom:6px}
-  #tab-scoring .sc-head-tools{flex-wrap:wrap;justify-content:center;padding:12px}#tab-scoring .sc-nav{min-width:48px;min-height:48px;font-size:16px}
+  #tab-scoring .sc-head-tools{flex-wrap:wrap;justify-content:center;padding:12px}#tab-scoring .sc-nav{min-width:64px;min-height:52px;font-size:22px}
   #tab-scoring .sc-head-tools .all-in-btn{width:100%;flex:1 1 100%;margin:4px 0 0}
   #tab-scoring .score-form-head{padding:14px 10px 12px}
   #tab-scoring .all-in-btn{width:100%;min-height:48px;font-size:15px;margin:0 0 12px}
@@ -996,7 +996,7 @@ function renderScoreGrid(){
     <div class="score-instructions"><b>* Hướng dẫn:</b><br>1. Lỗi ngoại quan: ${CONFIG.ERR_APPEARANCE.map(esc).join(', ')}.<br>2. Lỗi thử nếm: ${CONFIG.ERR_TASTE.map(esc).join(', ')}.</div>
       <div class="sc-head-tools noprint">
         <button class="btn sec sm sc-nav" onclick="scNav(-1)" ${si>0?'':'disabled'} title="Set trước trong ${esc(set.shift)} · ${esc(fmtDate(set.date))}" aria-label="Set trước">◀</button>
-        <span class="sc-nav-lbl" title="Các Set đang mở trong ${esc(set.shift)} · ${esc(fmtDate(set.date))}">Set ${si+1}/${sib.length}${set.scores[pid]?' ✓':''}</span>
+        <span class="sc-nav-lbl" title="Set thứ ${si+1}/${sib.length} đang mở trong ${esc(set.shift)} · ${esc(fmtDate(set.date))}">${set.name.trim().toLowerCase().startsWith('set')?'':'Set '}${esc(set.name)}${set.scores[pid]?' ✓':''}</span>
         <button class="btn sec sm sc-nav" onclick="scNav(1)" ${si<sib.length-1?'':'disabled'} title="Set sau trong ${esc(set.shift)} · ${esc(fmtDate(set.date))}" aria-label="Set sau">▶</button>
         <button class="btn sm all-in-btn" onclick="scAllIn()" title="Đánh IN cho tất cả mẫu">✔ All IN</button></div></div>
     <div class="toolbar score-actions"><span class="hint" id="scStatus"></span><span class="spacer"></span>
