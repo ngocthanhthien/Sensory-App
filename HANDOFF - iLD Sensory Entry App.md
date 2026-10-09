@@ -238,6 +238,7 @@ Hàm chính: `render*` (Scoring, Setup, Summary, Lookup, Submissions, Panellists
 - Nhận diện: nền kem `#F7F0E6`, espresso `#382E28`, bề mặt trắng, đỏ ILD `#E30613` (điểm nhấn nhỏ); tối dùng hệ nâu ấm `#1F1A17`. Token `--c-*` ánh xạ sang biến cũ (`--bg/--panel/--line/...`).
 - Theme (🎨 Giao diện): 4 cấu hình mẫu (Crafted tiêu chuẩn/dịu/tối/rõ nét) · Sáng/Tối/Theo hệ thống · Tương phản Tiêu chuẩn/Cao · Độ đậm Nhẹ/Tiêu chuẩn/Đậm; thuộc tính `<html data-ild-appearance|scheme|contrast|emphasis>`; đồng bộ với nút 🌓 cũ qua `body[data-theme]`.
 - Phiếu QA.F.072 (`.sf-paper`) và bản in luôn nền trắng.
+- Cột **Remark** của phiếu chấm co theo nội dung (07/10→09/10/2026): chưa có ghi chú thì hẹp tối đa, cột "Mẫu" nhận phần còn lại; ô ghi chú là `textarea.remark-note` tự rộng dần theo chữ (tối đa 44ch, tablet 36vw) rồi xuống dòng (`scNoteSize`). Bảng dùng `table-layout:auto` trên mọi cỡ màn hình; điện thoại vẫn là thẻ từng mẫu.
 - Tab Chấm nếm tối ưu **tablet (601–1180px)** & **phone (≤600px)**: nút 50px, không cuộn ngang, thanh Nộp phiếu dính đáy; header gọn trên phone. PC (≥1181px) giữ bố cục cũ; các tab khác ưu tiên PC/Laptop.
 
 ---

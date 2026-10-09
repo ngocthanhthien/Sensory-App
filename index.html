@@ -122,7 +122,7 @@ body[data-theme="dark"] .item-table .add-row td{background:#173d24!important}
 .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .err-box{margin-top:8px;display:none}.err-box.show{display:block}
 .err-box .lab{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 2px}
-.remark-box{display:none;min-width:230px}.remark-box.show{display:block}
+.remark-box{display:none;min-width:0}.remark-box.show{display:block}
 .remark-box .t{margin-top:6px}.remark-na{color:var(--muted);font-size:12px}
 .score-sheet{position:relative;background:var(--panel);border:1px solid rgba(148,163,184,.45);border-radius:18px;
   box-shadow:0 18px 45px rgba(15,23,42,.12),0 3px 10px rgba(15,23,42,.08);overflow:hidden;isolation:isolate}
@@ -152,7 +152,11 @@ body[data-theme="dark"] .score-meta>div{background:rgba(15,18,22,.45);box-shadow
 .score-table thead th{font-family:var(--font);background:linear-gradient(180deg,#f1f5f9,#e5eaf0);color:#273244;border-color:#cbd5e1;padding:9px 8px}
 body[data-theme="dark"] .score-table thead th{background:linear-gradient(180deg,#343b45,#2a3038);color:#e7ebf0;border-color:#46505d}
 .score-table thead small{display:block;font-size:9.5px;font-style:normal;font-weight:600;color:var(--muted);margin-top:3px}
-.score-table th.result-col{width:92px}.score-table th.remark-col{min-width:300px}
+.score-table th.result-col{width:92px}
+/* Cột Remark co theo nội dung: chưa có gì → hẹp tối đa; có ghi chú → rộng dần theo chữ (tối đa 44ch) rồi xuống dòng. Cột "Mẫu" nhận phần còn lại. */
+.score-table th.remark-col,.score-table tbody td:last-child{width:1%;white-space:nowrap}.score-table .blind-code{white-space:nowrap}
+.score-table .remark-select{display:block;width:auto;min-width:100%;max-width:44ch}
+.score-table .remark-note{display:block;width:14ch;max-width:44ch;min-height:0;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.35}
 .score-table tbody tr{transition:transform .15s ease,filter .15s ease}.score-table tbody tr:hover{filter:brightness(.985)}
 .score-table tbody td{padding:10px 9px}.score-table tbody td:nth-child(2) b{font-size:13.5px}
 .score-table .seg{border:0;overflow:visible}.score-table .seg label{border:1px solid #cbd5e1;border-radius:9px!important;min-width:54px;padding:9px 10px;
@@ -163,7 +167,7 @@ body[data-theme="dark"] .score-table thead th{background:linear-gradient(180deg,
 .score-table .seg label.ji.on{color:#9a5800;background:linear-gradient(180deg,#fff4cf,#fde59a);border-color:#efc85c;box-shadow:0 3px 0 #d9ad35,0 7px 14px rgba(217,138,0,.18)}
 .score-table .seg label.out.on{color:#b3121b;background:linear-gradient(180deg,#ffe1e3,#ffc5c9);border-color:#ef8f96;box-shadow:0 3px 0 #d96770,0 7px 14px rgba(210,28,28,.18)}
 body[data-theme="dark"] .score-table .seg label{background:linear-gradient(180deg,#353c46,#272d35);border-color:#4b5563;color:#e7ebf0;box-shadow:0 3px 0 #15191f}
-.score-table .remark-box select,.score-table .remark-box input{border-radius:10px;border-color:#cbd5e1;background:var(--panel);box-shadow:inset 0 1px 2px rgba(15,23,42,.05)}
+.score-table .remark-box select,.score-table .remark-box .remark-note{border-radius:10px;border-color:#cbd5e1;background:var(--panel);box-shadow:inset 0 1px 2px rgba(15,23,42,.05)}
 .score-instructions{padding:12px 20px 15px;border-top:1px solid rgba(148,163,184,.35);font-family:var(--font);font-size:11.5px;
   font-style:normal;line-height:1.65;color:var(--muted);background:linear-gradient(180deg,rgba(248,250,252,.5),rgba(241,245,249,.9))}
 body[data-theme="dark"] .score-instructions{background:#20252c}
@@ -181,7 +185,6 @@ body[data-theme="dark"] .scoring-start-card{background:linear-gradient(135deg,#2
   main{padding:18px 18px}
   .nav-item{padding:0 11px}
   .score-table{min-width:860px}
-  .score-table th.remark-col{min-width:260px}
 }
 @media(max-width:860px){
   .score-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -227,7 +230,8 @@ body[data-theme="dark"] .scoring-start-card{background:linear-gradient(135deg,#2
   .score-table tbody td:nth-child(6){grid-column:1 / -1;text-align:left;padding-top:4px!important}
   .score-table tbody td:nth-child(1):before,.score-table tbody td:nth-child(2):before{display:none}
   .score-table .seg,.score-table .seg label{display:block;width:100%}.score-table .seg label{min-width:0;padding:10px 5px;font-size:11.5px}
-  .score-table .remark-box{min-width:0}.score-table .remark-box select,.score-table .remark-box input{width:100%}
+  .score-table .remark-box{min-width:0}.score-table .remark-box select,.score-table .remark-box .remark-note{width:100%!important;max-width:none}
+  .score-table tbody td:last-child{width:100%;white-space:normal}
   .score-table .remark-na{display:block;text-align:center}
   .score-instructions{padding:11px 12px 13px;font-size:10.5px}
   .score-actions{display:grid;grid-template-columns:1fr}.score-actions .hint{text-align:center}.score-actions .btn{width:100%;min-height:46px}
@@ -463,7 +467,7 @@ html[data-ild-appearance] .score-table .seg label:hover{background:var(--c-selec
 html[data-ild-appearance] .score-table .seg label.in.on{background:var(--c-ok-bg);color:var(--c-ok);border-color:var(--c-ok);box-shadow:0 2px 0 var(--c-ok)}
 html[data-ild-appearance] .score-table .seg label.ji.on{background:var(--c-warn-bg);color:var(--c-warn);border-color:var(--c-warn);box-shadow:0 2px 0 var(--c-warn)}
 html[data-ild-appearance] .score-table .seg label.out.on{background:var(--c-fail-bg);color:var(--c-fail);border-color:var(--c-fail);box-shadow:0 2px 0 var(--c-fail)}
-html[data-ild-appearance] .score-table .remark-box select,html[data-ild-appearance] .score-table .remark-box input{border:var(--bw) solid var(--c-input);border-radius:6px;box-shadow:none}
+html[data-ild-appearance] .score-table .remark-box select,html[data-ild-appearance] .score-table .remark-box .remark-note{border:var(--bw) solid var(--c-input);border-radius:6px;box-shadow:none}
 html[data-ild-appearance] .score-instructions{background:var(--c-surface2);border-top-color:var(--c-line);color:var(--c-muted)}
 html[data-ild-appearance] .item-table .add-row td{background:var(--c-ok-bg)!important;border-bottom-color:var(--c-ok)}
 
@@ -542,15 +546,16 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
   #tab-scoring .score-meta>div{padding:7px 9px}
   #tab-scoring .all-in-btn{min-height:44px;padding:8px 18px;font-size:15px}
   #tab-scoring .score-sheet .tbl-wrap{max-height:none;overflow:visible}
-  #tab-scoring .score-table{min-width:0;table-layout:fixed}
-  #tab-scoring .score-table thead tr:first-child th:nth-child(1){width:44px}#tab-scoring .score-table thead tr:first-child th:nth-child(2){width:13%}
+  #tab-scoring .score-table{min-width:0;table-layout:auto}
+  #tab-scoring .score-table thead tr:first-child th:nth-child(1){width:44px}
   #tab-scoring .score-table thead tr:first-child th:nth-child(3){width:300px} /* 3 cột IN · Just In · OUT (bảng fixed lấy độ rộng từ hàng đầu) */
   #tab-scoring .score-table th.result-col{width:96px}#tab-scoring .score-table th.remark-col{min-width:0}
   #tab-scoring .score-table tbody td{padding:8px 6px}
   #tab-scoring .score-table .seg label{min-width:0;width:100%;min-height:50px;display:flex;align-items:center;justify-content:center;font-size:15px;padding:8px 4px}
   #tab-scoring .score-table .seg{display:block}
   #tab-scoring .score-table .remark-box{min-width:0}
-  #tab-scoring .score-table .remark-box select,#tab-scoring .score-table .remark-box input{min-height:44px;font-size:16px;width:100%}
+  #tab-scoring .score-table .remark-box select,#tab-scoring .score-table .remark-box .remark-note{min-height:44px;font-size:16px}
+  #tab-scoring .score-table .remark-select,#tab-scoring .score-table .remark-note{max-width:36vw}
 }
 @media(min-width:601px) and (max-width:767px){
   #tab-scoring .score-meta{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -580,7 +585,7 @@ html[data-ild-appearance] .sf-paper{box-shadow:var(--c-shadow);border:1px solid 
   #tab-scoring .score-table tbody td:nth-child(3){grid-column:2 / 3}#tab-scoring .score-table tbody td:nth-child(4){grid-column:3 / 4}#tab-scoring .score-table tbody td:nth-child(5){grid-column:4 / 5}
   #tab-scoring .score-table tbody td:nth-child(3),#tab-scoring .score-table tbody td:nth-child(4),#tab-scoring .score-table tbody td:nth-child(5){grid-row:2}
   #tab-scoring .score-table tbody td:nth-child(1){grid-row:1 / 3;align-self:center}
-  #tab-scoring .score-table .remark-box select,#tab-scoring .score-table .remark-box input{min-height:46px}
+  #tab-scoring .score-table .remark-box select,#tab-scoring .score-table .remark-box .remark-note{min-height:46px}
   #tab-scoring .score-actions{bottom:4px;margin:10px 0 0;display:grid;grid-template-columns:1fr 1.6fr;padding:10px}
   #tab-scoring .score-actions .hint{grid-column:1 / -1;text-align:center}
   #tab-scoring .score-actions .spacer{display:none}
@@ -954,9 +959,9 @@ function renderBlankScoreSheet(){
   return `<div class="score-sheet score-sheet-empty"><div class="score-form-head"><div class="score-form-title">Sensory - In/Out Score Sheet for Finished Goods<br>and Semi-Finished Goods</div>
     <div class="score-form-sub">Phiếu chấm điểm cảm quan IN / Just In / OUT</div>
     <div class="score-meta"><div><b>Name / Tên</b><span>&nbsp;</span></div><div><b>Dept. / Bộ phận</b><span>&nbsp;</span></div><div><b>Date / Ngày</b><span>&nbsp;</span></div><div><b>Set</b><span>&nbsp;</span></div><div><b>Shift / Ca</b><span>&nbsp;</span></div></div></div>
-    <div class="tbl-wrap"><table class="grid score-table"><thead><tr><th rowspan="2" style="width:44px">No.</th><th rowspan="2" class="l">Mẫu</th><th colspan="3">Cupping results <i>(Kết quả thử nếm)</i></th><th rowspan="2" class="l remark-col">Remark<br><small>Just In/Out: chọn tình huống hoặc ghi chú · IN: ghi chú (không bắt buộc)</small></th></tr>
+    <div class="tbl-wrap"><table class="grid score-table"><thead><tr><th rowspan="2" style="width:44px">No.</th><th rowspan="2" class="l">Mẫu</th><th colspan="3">Cupping results <i>(Kết quả thử nếm)</i></th><th rowspan="2" class="l remark-col">Remark</th></tr>
       <tr><th class="result-col">IN<small>Đạt</small></th><th class="result-col">Just In<small>Chấp nhận</small></th><th class="result-col">OUT<small>Không đạt</small></th></tr></thead><tbody>${blankRows}</tbody></table></div>
-    <div class="score-instructions"><b>* Hướng dẫn:</b><br>1. Lỗi ngoại quan: ${CONFIG.ERR_APPEARANCE.map(esc).join(', ')}.<br>2. Lỗi thử nếm: ${CONFIG.ERR_TASTE.map(esc).join(', ')}.</div></div>
+    <div class="score-instructions"><b>* Hướng dẫn:</b><br>1. Lỗi ngoại quan: ${CONFIG.ERR_APPEARANCE.map(esc).join(', ')}.<br>2. Lỗi thử nếm: ${CONFIG.ERR_TASTE.map(esc).join(', ')}.<br>3. Remark: Just In / Out bắt buộc chọn tình huống hoặc ghi chú · IN: ghi chú không bắt buộc.</div></div>
     <div class="hint" style="margin-top:10px;text-align:center">Chọn người nếm và Set nếm để bắt đầu chấm điểm.</div>`;
 }
 function renderScoreGrid(){
@@ -981,7 +986,7 @@ function renderScoreGrid(){
         <select class="s remark-select" style="display:${showErr?'':'none'}" onchange="scRemark('${sm.no}',this.value)"><option value="">— Chọn tình huống —</option>
           <optgroup label="Lỗi ngoại quan">${opts(CONFIG.ERR_APPEARANCE,'A')}</optgroup>
           <optgroup label="Lỗi thử nếm">${opts(CONFIG.ERR_TASTE,'T')}</optgroup></select>
-        <input class="t remark-note" placeholder="Ghi chú khác…" value="${esc(sc.note)}" onchange="scNote('${sm.no}',this.value)"></div></td></tr>`;}).join('');
+        <textarea class="t remark-note" rows="1" placeholder="Ghi chú…" oninput="scNoteSize(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" onchange="scNote('${sm.no}',this.value)">${esc(sc.note)}</textarea></div></td></tr>`;}).join('');
   wrap.innerHTML=`<div class="score-sheet">
     <div class="score-form-head">
       <div class="score-form-title">Sensory - In/Out Score Sheet for Finished Goods<br>and Semi-Finished Goods</div>
@@ -990,10 +995,10 @@ function renderScoreGrid(){
         <div><b>Date / Ngày</b><span>${esc(fmtDate(set.date))}</span></div><div><b>Set</b><span>${esc(set.name)}</span></div><div><b>Shift / Ca</b><span>${esc(set.shift)}</span></div></div></div>
     <div class="tbl-wrap"><table class="grid score-table ${noJI?'no-ji':''}"><thead>
       <tr><th rowspan="2" style="width:44px">No.</th><th rowspan="2" class="l">Mẫu</th><th colspan="${noJI?2:3}">Cupping results <i>(Kết quả thử nếm)</i></th>
-        <th rowspan="2" class="l remark-col">Remark<br><small>Just In/Out: chọn tình huống hoặc ghi chú · IN: ghi chú (không bắt buộc)</small></th></tr>
+        <th rowspan="2" class="l remark-col">Remark</th></tr>
       <tr><th class="result-col">IN<small>Đạt</small></th>${noJI?'':'<th class="result-col">Just In<small>Chấp nhận</small></th>'}<th class="result-col">OUT<small>Không đạt</small></th></tr></thead>
       <tbody>${rows}</tbody></table></div>
-    <div class="score-instructions"><b>* Hướng dẫn:</b><br>1. Lỗi ngoại quan: ${CONFIG.ERR_APPEARANCE.map(esc).join(', ')}.<br>2. Lỗi thử nếm: ${CONFIG.ERR_TASTE.map(esc).join(', ')}.</div>
+    <div class="score-instructions"><b>* Hướng dẫn:</b><br>1. Lỗi ngoại quan: ${CONFIG.ERR_APPEARANCE.map(esc).join(', ')}.<br>2. Lỗi thử nếm: ${CONFIG.ERR_TASTE.map(esc).join(', ')}.<br>3. Remark: Just In / Out bắt buộc chọn tình huống hoặc ghi chú · IN: ghi chú không bắt buộc.</div>
       <div class="sc-head-tools noprint">
         <button class="btn sec sm sc-nav" onclick="scNav(-1)" ${si>0?'':'disabled'} title="Set trước trong ${esc(set.shift)} · ${esc(fmtDate(set.date))}" aria-label="Set trước">◀</button>
         <span class="sc-nav-lbl" title="Set thứ ${si+1}/${sib.length} đang mở trong ${esc(set.shift)} · ${esc(fmtDate(set.date))}">${set.name.trim().toLowerCase().startsWith('set')?'':'Set '}${esc(set.name)}${set.scores[pid]?' ✓':''}</span>
@@ -1002,7 +1007,7 @@ function renderScoreGrid(){
     <div class="toolbar score-actions"><span class="hint" id="scStatus"></span><span class="spacer"></span>
       <button class="btn sec" onclick="scDiscard()" title="Xoá hết kết quả đang điền, làm lại từ đầu">↺ Discard</button>
       <button class="btn" onclick="scSubmit()">💾 Nộp phiếu</button></div>`;
-  updateScStatus();
+  scNoteSizeAll();updateScStatus();
 }
 let SC_DRAFT={};
 function scDraftInit(){ const set=scoringSet(),pid=SC_SESSION.panelId;
@@ -1024,7 +1029,11 @@ function scAllIn(){ const set=scoringSet();if(!set||!SC_SESSION.panelId)return;
   other?confirmAsk(other+' mẫu đang là Just In / Out. Đổi tất cả thành IN?','All IN',doIt):doIt(); }
 function scRemarkValue(sc){if(sc.appearance?.length)return 'A:'+sc.appearance[0];if(sc.taste?.length)return 'T:'+sc.taste[0];return '';}
 function scRemark(no,value){const sc=SC_DRAFT[no];sc.appearance=[];sc.taste=[];if(value.startsWith('A:'))sc.appearance=[value.slice(2)];if(value.startsWith('T:'))sc.taste=[value.slice(2)];updateScStatus();}
-function scNote(no,v){ SC_DRAFT[no].note=v; }
+function scNote(no,v){ SC_DRAFT[no].note=v.replace(/[\r\n]+/g,' '); }
+/* Ô ghi chú co dãn theo chữ: rộng dần tới giới hạn (CSS max-width) rồi xuống dòng, cao theo số dòng */
+function scNoteSize(el){ const n=(el.value||'').length;el.style.width=Math.min(Math.max(n+3,(el.placeholder||'').length+4),44)+'ch';
+  el.style.height='auto';el.style.height=el.scrollHeight?(el.scrollHeight+2)+'px':''; }
+const scNoteSizeAll=()=>document.querySelectorAll('#scGrid .remark-note').forEach(scNoteSize);
 function paintDraft(){ const set=scoringSet();
   set.samples.forEach(sm=>{ const sc=SC_DRAFT[sm.no];
     const tr=[...$('#scGrid').querySelectorAll('tbody tr')].find(r=>r.children[0].textContent==sm.no); if(!tr)return;
@@ -1035,7 +1044,7 @@ function paintDraft(){ const set=scoringSet();
     const showErr=sc.result==='JUSTIN'||sc.result==='OUT',rb=tr.querySelector('.remark-box'),na=tr.querySelector('.remark-na'),sel=rb.querySelector('.remark-select');
     rb.classList.toggle('show',!!sc.result);na.style.display=sc.result?'none':'inline'; // IN: chỉ ô ghi chú (không bắt buộc); Just In/Out: chọn lỗi + ghi chú
     sel.style.display=showErr?'':'none';sel.value=scRemarkValue(sc);rb.querySelector('.remark-note').value=sc.note||''; });
-  updateScStatus();
+  scNoteSizeAll();updateScStatus();
 }
 function updateScStatus(){ const set=scoringSet();if(!set)return;const f=set.samples.filter(sm=>SC_DRAFT[sm.no].result).length;
   const el=$('#scStatus'); if(el)el.textContent=`Đã chấm ${f}/${set.samples.length} mẫu`; }
